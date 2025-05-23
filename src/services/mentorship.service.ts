@@ -355,4 +355,16 @@ export class MentorshipService {
       return { data: null, error: errorMessage }
     }
   }
-} 
+}
+
+// Export a singleton instance for consistency with other services
+export const mentorshipService = {
+  getAll: () => MentorshipService.getAll(),
+  getById: (id: string) => MentorshipService.getById(id),
+  getBySessionType: (sessionType: MentorshipSession['sessionType']) => MentorshipService.getBySessionType(sessionType),
+  getByMentor: (mentorName: string) => MentorshipService.getByMentor(mentorName),
+  create: (data: CreateMentorshipSessionData) => MentorshipService.create(data),
+  update: (id: string, data: UpdateMentorshipSessionData) => MentorshipService.update(id, data),
+  delete: (id: string) => MentorshipService.delete(id),
+  getStats: () => MentorshipService.getStats()
+}; 

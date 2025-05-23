@@ -353,4 +353,15 @@ export class IdeasService {
       return { data: null, error: errorMessage }
     }
   }
-} 
+}
+
+// Export a singleton instance for consistency with other services
+export const ideasService = {
+  getAll: () => IdeasService.getAll(),
+  getById: (id: string) => IdeasService.getById(id),
+  getByStage: (stage: Idea['stage']) => IdeasService.getByStage(stage),
+  create: (data: CreateIdeaData) => IdeasService.create(data),
+  update: (id: string, data: UpdateIdeaData) => IdeasService.update(id, data),
+  delete: (id: string) => IdeasService.delete(id),
+  getStats: () => IdeasService.getStats()
+}; 

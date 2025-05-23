@@ -289,4 +289,15 @@ export class IncomeStreamsService {
       return { data: null, error: errorMessage }
     }
   }
-} 
+}
+
+// Export a singleton instance for consistency with other services
+export const incomeStreamsService = {
+  getAll: () => IncomeStreamsService.getAll(),
+  getById: (id: string) => IncomeStreamsService.getById(id),
+  getByStatus: (status: IncomeStream['status']) => IncomeStreamsService.getByStatus(status),
+  create: (data: CreateIncomeStreamData) => IncomeStreamsService.create(data),
+  update: (id: string, data: UpdateIncomeStreamData) => IncomeStreamsService.update(id, data),
+  delete: (id: string) => IncomeStreamsService.delete(id),
+  getStats: () => IncomeStreamsService.getStats()
+}; 

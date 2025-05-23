@@ -6,6 +6,7 @@ import { ContentMetrics } from '@/components/dashboard/ContentMetrics';
 import { OperationsStatus } from '@/components/dashboard/OperationsStatus';
 import { MentorshipInsights } from '@/components/dashboard/MentorshipInsights';
 import { AnalyticsOverview } from '@/components/dashboard/AnalyticsOverview';
+import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
 
 export default function DashboardPage() {
   return (
@@ -32,6 +33,11 @@ export default function DashboardPage() {
           {/* Ideas Pipeline Section */}
           <DashboardGrid>
             <IdeasPipeline />
+          </DashboardGrid>
+
+          {/* AI Intelligence Section */}
+          <DashboardGrid>
+            <AIInsightsPanel />
           </DashboardGrid>
 
           {/* Content & Operations Section */}

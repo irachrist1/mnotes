@@ -64,6 +64,13 @@ export function Header() {
               Mentorship
             </a>
             <a 
+              href="/dashboard/ai-insights" 
+              className="text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors flex items-center space-x-1"
+            >
+              <span>📊</span>
+              <span>Insights</span>
+            </a>
+            <a 
               href="/dashboard/analytics" 
               className="text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors"
             >
@@ -136,6 +143,13 @@ export function Header() {
               className="text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium transition-colors"
             >
               Mentorship
+            </a>
+            <a 
+              href="/dashboard/ai-insights" 
+              className="text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium transition-colors flex items-center space-x-2"
+            >
+              <span>📊</span>
+              <span>Insights</span>
             </a>
             <a 
               href="/dashboard/analytics" 
