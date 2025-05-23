@@ -1,15 +1,17 @@
 'use client';
 
-import { type Idea } from '@/data/ideas';
+import { type Idea } from '@/services/ideas.service';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 interface IdeaCardProps {
   idea: Idea;
   compact?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function IdeaCard({ idea, compact = false }: IdeaCardProps) {
+export function IdeaCard({ idea, compact = false, onEdit, onDelete }: IdeaCardProps) {
   const getRevenueColor = (potential: string) => {
     switch (potential) {
       case 'very-high':
@@ -67,8 +69,8 @@ export function IdeaCard({ idea, compact = false }: IdeaCardProps) {
 
   if (compact) {
     return (
-      <Card className="p-3 hover:shadow-md transition-shadow duration-200 cursor-pointer">
-        <div className="space-y-2">
+      <Card className="p-3 hover:shadow-md transition-shadow duration-200 min-h-[140px] flex flex-col">
+        <div className="space-y-2 flex-1">
           {/* Title and Revenue */}
           <div>
             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 line-clamp-2">
@@ -105,6 +107,38 @@ export function IdeaCard({ idea, compact = false }: IdeaCardProps) {
             {idea.category}
           </div>
         </div>
+
+        {/* Actions for compact view */}
+        {(onEdit || onDelete) && (
+          <div className="flex items-stretch gap-1 pt-2 border-t border-slate-200 dark:border-slate-700 mt-auto">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="small"
+                className="flex-1 text-xs flex items-center justify-center px-2 py-1"
+                onClick={onEdit}
+              >
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Edit</span>
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="small"
+                className="flex-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center justify-center px-2 py-1"
+                onClick={onDelete}
+              >
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Delete</span>
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
     );
   }
@@ -164,6 +198,19 @@ export function IdeaCard({ idea, compact = false }: IdeaCardProps) {
               {idea.marketSize}
             </span>
           </div>
+
+          {idea.competitionLevel && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Competition</span>
+              <span className={`text-sm font-medium capitalize ${
+                idea.competitionLevel === 'low' ? 'text-green-600 dark:text-green-400' :
+                idea.competitionLevel === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
+                'text-red-600 dark:text-red-400'
+              }`}>
+                {idea.competitionLevel}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Flags and Tags */}
@@ -197,39 +244,62 @@ export function IdeaCard({ idea, compact = false }: IdeaCardProps) {
           )}
         </div>
 
-        {/* Last Updated */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Last updated: {formatDate(idea.lastUpdated)}
-          </p>
-        </div>
+        {/* Next Steps Preview */}
+        {idea.nextSteps.length > 0 && (
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Next Steps:</p>
+            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              {idea.nextSteps.slice(0, 2).map((step, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="w-1 h-1 bg-slate-400 rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="line-clamp-1">{step}</span>
+                </li>
+              ))}
+              {idea.nextSteps.length > 2 && (
+                <li className="text-xs text-slate-500 dark:text-slate-400">
+                  +{idea.nextSteps.length - 2} more steps
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          <Button
-            variant="ghost"
-            size="small"
-            className="flex-1 text-xs"
-          >
-            View Details
-          </Button>
-          <Button
-            variant="ghost"
-            size="small"
-            className="flex-1 text-xs"
-          >
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="small"
-            className="p-2"
-            title="More options"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
-          </Button>
+        {/* Last Updated & Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Updated {formatDate(idea.lastUpdated)}
+          </div>
+          
+          {(onEdit || onDelete) && (
+            <div className="flex items-center gap-2">
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="text-xs flex items-center justify-center p-2"
+                  onClick={onEdit}
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center justify-center p-2"
+                  onClick={onDelete}
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Card>

@@ -1,11 +1,59 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ideas, ideaSummary } from '@/data/ideas';
+import { IdeasService, type Idea } from '@/services/ideas.service';
 
 export function IdeasPipeline() {
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [stats, setStats] = useState<{
+    totalIdeas: number;
+    aiRelevantIdeas: number;
+    hardwareComponentIdeas: number;
+    byStage: Record<string, number>;
+    byRevenuePotential: Record<string, number>;
+    averageComplexity: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch ideas and stats on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch both ideas and stats in parallel
+        const [ideasResponse, statsResponse] = await Promise.all([
+          IdeasService.getAll(),
+          IdeasService.getStats()
+        ]);
+        
+        if (ideasResponse.error) {
+          setError(ideasResponse.error);
+        } else {
+          setIdeas(ideasResponse.data || []);
+        }
+        
+        if (statsResponse.error) {
+          setError(statsResponse.error);
+        } else {
+          setStats(statsResponse.data);
+        }
+      } catch (err) {
+        setError('Failed to load ideas data');
+        console.error('Error fetching ideas:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const getStageColor = (stage: string) => {
     switch (stage) {
       case 'raw-thought':
@@ -61,6 +109,97 @@ export function IdeasPipeline() {
     .filter(idea => idea.potentialRevenue === 'very-high' || idea.potentialRevenue === 'high')
     .slice(0, 3);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="col-span-1 md:col-span-2 lg:col-span-4">
+        <Card>
+          <CardHeader>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Ideas Pipeline
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Loading ideas data...
+              </p>
+            </div>
+          </CardHeader>
+          
+          <CardContent>
+            <div className="animate-pulse space-y-6">
+              {/* Pipeline Overview Skeleton */}
+              <div className="grid grid-cols-4 gap-4">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index} className="border-l-4 border-gray-200 pl-4">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* High Priority Ideas Skeleton */}
+              <div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-3"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[...Array(3)].map((_, index) => (
+                    <div key={index} className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+                      <div className="flex justify-between">
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="col-span-1 md:col-span-2 lg:col-span-4">
+        <Card>
+          <CardHeader>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Ideas Pipeline
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Error loading ideas data
+              </p>
+            </div>
+          </CardHeader>
+          
+          <CardContent>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <h3 className="font-medium text-red-800 dark:text-red-200">
+                    Failed to load ideas
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300 text-sm mt-1">
+                    {error}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="col-span-1 md:col-span-2 lg:col-span-4">
       <Card>
@@ -70,7 +209,7 @@ export function IdeasPipeline() {
               Ideas Pipeline
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {ideaSummary.totalIdeas} total ideas • {ideaSummary.aiRelevantIdeas} AI-related • {ideaSummary.hardwareComponentIdeas} hardware components
+              {stats?.totalIdeas || 0} total ideas • {stats?.aiRelevantIdeas || 0} AI-related • {stats?.hardwareComponentIdeas || 0} hardware components
             </p>
           </div>
           <div className="flex gap-2">
@@ -113,64 +252,78 @@ export function IdeasPipeline() {
             <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">
               High Priority Ideas
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {highPriorityIdeas.map((idea) => (
-                <div key={idea.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStageColor(idea.stage)}`}>
-                      {idea.stage.replace('-', ' ')}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      {idea.aiRelevance && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full" title="AI Relevant"></span>
-                      )}
-                      {idea.hardwareComponent && (
-                        <span className="w-2 h-2 bg-purple-500 rounded-full" title="Hardware Component"></span>
-                      )}
+            {highPriorityIdeas.length === 0 ? (
+              <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                <svg className="w-8 h-8 mx-auto text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  No high priority ideas yet
+                </p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs">
+                  Add ideas with high or very high revenue potential
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {highPriorityIdeas.map((idea) => (
+                  <div key={idea.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStageColor(idea.stage)}`}>
+                        {idea.stage.replace('-', ' ')}
+                      </span>
+                      <div className="flex items-center space-x-1">
+                        {idea.aiRelevance && (
+                          <span className="w-2 h-2 bg-blue-500 rounded-full" title="AI Relevant"></span>
+                        )}
+                        {idea.hardwareComponent && (
+                          <span className="w-2 h-2 bg-purple-500 rounded-full" title="Hardware Component"></span>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="font-medium text-slate-900 dark:text-slate-100 text-sm mb-1">
+                      {idea.title}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
+                      {idea.description}
+                    </p>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-medium ${getRevenueColor(idea.potentialRevenue)}`}>
+                        {idea.potentialRevenue.replace('-', ' ')} revenue
+                      </span>
+                      <span className={`font-medium ${getComplexityColor(idea.implementationComplexity)}`}>
+                        Complexity: {idea.implementationComplexity}/5
+                      </span>
                     </div>
                   </div>
-                  <h4 className="font-medium text-slate-900 dark:text-slate-100 text-sm mb-1">
-                    {idea.title}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
-                    {idea.description}
-                  </p>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={`font-medium ${getRevenueColor(idea.potentialRevenue)}`}>
-                      {idea.potentialRevenue.replace('-', ' ')} revenue
-                    </span>
-                    <span className={`font-medium ${getComplexityColor(idea.implementationComplexity)}`}>
-                      Complexity: {idea.implementationComplexity}/5
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {ideaSummary.aiRelevantIdeas}
+                {stats?.aiRelevantIdeas || 0}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">AI Ideas</div>
             </div>
             <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {ideaSummary.hardwareComponentIdeas}
+                {stats?.hardwareComponentIdeas || 0}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">Hardware</div>
             </div>
             <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {ideaSummary.byRevenuePotential['very-high']}
+                {stats?.byRevenuePotential['very-high'] || 0}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">Very High ROI</div>
             </div>
             <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div className="text-lg font-bold text-slate-600 dark:text-slate-400">
-                {ideaSummary.byStage.developing + ideaSummary.byStage.testing}
+                {(stats?.byStage.developing || 0) + (stats?.byStage.testing || 0)}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">In Progress</div>
             </div>

@@ -1,13 +1,15 @@
 'use client';
 
-import { type Idea } from '@/data/ideas';
+import { type Idea } from '@/services/ideas.service';
 import { IdeaCard } from './IdeaCard';
 
 interface IdeasPipelineBoardProps {
   ideas: Idea[];
+  onEdit?: (idea: Idea) => void;
+  onDelete?: (idea: Idea) => void;
 }
 
-export function IdeasPipelineBoard({ ideas }: IdeasPipelineBoardProps) {
+export function IdeasPipelineBoard({ ideas, onEdit, onDelete }: IdeasPipelineBoardProps) {
   const stages = [
     { key: 'raw-thought', label: 'Raw Thought', color: 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600' },
     { key: 'researching', label: 'Researching', color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' },
@@ -78,7 +80,7 @@ export function IdeasPipelineBoard({ ideas }: IdeasPipelineBoardProps) {
 
       {/* Desktop Pipeline View */}
       <div className="hidden lg:block">
-        <div className="grid grid-cols-6 gap-4 min-h-[600px]">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 min-h-[600px]">
           {stages.map((stage) => {
             const stageIdeas = getIdeasByStage(stage.key);
             
@@ -102,8 +104,13 @@ export function IdeasPipelineBoard({ ideas }: IdeasPipelineBoardProps) {
                 {/* Ideas in Stage */}
                 <div className="space-y-3">
                   {stageIdeas.map((idea) => (
-                    <div key={idea.id} className="transform transition-all duration-200 hover:scale-105">
-                      <IdeaCard idea={idea} compact />
+                    <div key={idea.id} className="transform transition-all duration-200 hover:scale-[1.02]">
+                      <IdeaCard 
+                        idea={idea} 
+                        compact
+                        onEdit={onEdit ? () => onEdit(idea) : undefined}
+                        onDelete={onDelete ? () => onDelete(idea) : undefined}
+                      />
                     </div>
                   ))}
                   
@@ -145,7 +152,13 @@ export function IdeasPipelineBoard({ ideas }: IdeasPipelineBoardProps) {
               {stageIdeas.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {stageIdeas.map((idea) => (
-                    <IdeaCard key={idea.id} idea={idea} compact />
+                    <IdeaCard 
+                      key={idea.id} 
+                      idea={idea} 
+                      compact
+                      onEdit={onEdit ? () => onEdit(idea) : undefined}
+                      onDelete={onDelete ? () => onDelete(idea) : undefined}
+                    />
                   ))}
                 </div>
               ) : (

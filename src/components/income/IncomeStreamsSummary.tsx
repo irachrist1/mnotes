@@ -1,9 +1,39 @@
 'use client';
 
-import { incomeStreamSummary } from '@/data/incomeStreams';
+import { useState, useEffect } from 'react';
+import { IncomeStreamsService } from '@/services/incomeStreams.service';
 import { Card } from '@/components/ui/Card';
 
 export function IncomeStreamsSummary() {
+  const [stats, setStats] = useState<{
+    totalRevenue: number;
+    activeStreams: number;
+    averageGrowthRate: number;
+    totalTimeInvestment: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const { data, error: statsError } = await IncomeStreamsService.getStats();
+      
+      if (statsError) {
+        setError(statsError);
+        console.error('Failed to fetch income stream stats:', statsError);
+      } else {
+        setStats(data);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchStats();
+  }, []);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -13,11 +43,37 @@ export function IncomeStreamsSummary() {
     }).format(amount);
   };
 
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, index) => (
+          <Card key={index} className="p-6">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-600 dark:text-red-300 text-sm">
+          {error || 'Failed to load income stream statistics'}
+        </p>
+      </div>
+    );
+  }
+
   const summaryCards = [
     {
       title: 'Total Monthly Revenue',
-      value: formatCurrency(incomeStreamSummary.totalMonthlyRevenue),
-      subtitle: 'Across all active streams',
+      value: formatCurrency(stats.totalRevenue),
+      subtitle: 'Across all streams',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -28,7 +84,7 @@ export function IncomeStreamsSummary() {
     },
     {
       title: 'Active Streams',
-      value: `${incomeStreamSummary.streamsByStatus.active} of ${Object.values(incomeStreamSummary.streamsByStatus).reduce((a, b) => a + b, 0)}`,
+      value: `${stats.activeStreams}`,
       subtitle: 'Currently generating revenue',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,8 +96,8 @@ export function IncomeStreamsSummary() {
     },
     {
       title: 'Average Growth Rate',
-      value: `${incomeStreamSummary.averageGrowthRate.toFixed(1)}%`,
-      subtitle: 'For active streams',
+      value: `${stats.averageGrowthRate.toFixed(1)}%`,
+      subtitle: 'Across all streams',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -52,7 +108,7 @@ export function IncomeStreamsSummary() {
     },
     {
       title: 'Total Time Investment',
-      value: `${incomeStreamSummary.totalTimeInvestment}h`,
+      value: `${stats.totalTimeInvestment}h`,
       subtitle: 'Hours per week',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
