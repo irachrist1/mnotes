@@ -1,11 +1,36 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AnalyticsService, type AnalyticsKPIs } from '@/services/analytics.service';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { analyticsKPIs } from '@/data/analytics';
 
 export function AnalyticsOverview() {
+  const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const { data, error: analyticsError } = await AnalyticsService.getKPIMetrics();
+      
+      if (analyticsError) {
+        setError(analyticsError);
+        console.error('Failed to fetch analytics overview:', analyticsError);
+      } else {
+        setKpis(data);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchAnalyticsData();
+  }, []);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -15,136 +40,132 @@ export function AnalyticsOverview() {
     }).format(amount);
   };
 
-  const keyMetrics = [
-    {
-      label: 'Monthly Revenue',
-      value: formatCurrency(analyticsKPIs.revenueGrowth.current),
-      change: `+${analyticsKPIs.revenueGrowth.growthRate}%`,
-      changeType: 'positive' as const,
-      color: 'text-blue-600 dark:text-blue-400'
-    },
-    {
-      label: 'Content ROI',
-      value: formatCurrency(analyticsKPIs.contentPerformance.monthlyROI),
-      change: `+${analyticsKPIs.contentPerformance.roiGrowth}%`,
-      changeType: 'positive' as const,
-      color: 'text-green-600 dark:text-green-400'
-    },
-    {
-      label: 'Total Subscribers',
-      value: analyticsKPIs.contentPerformance.totalSubscribers.toLocaleString(),
-      change: `+${analyticsKPIs.contentPerformance.subscriberGrowth}%`,
-      changeType: 'positive' as const,
-      color: 'text-purple-600 dark:text-purple-400'
-    },
-    {
-      label: 'Pipeline Value',
-      value: formatCurrency(analyticsKPIs.businessDevelopment.pipelineValue),
-      change: `${analyticsKPIs.businessDevelopment.newOpportunities} opportunities`,
-      changeType: 'neutral' as const,
-      color: 'text-yellow-600 dark:text-yellow-400'
-    }
-  ];
-
-  const getChangeColor = (changeType: 'positive' | 'negative' | 'neutral') => {
-    switch (changeType) {
-      case 'positive':
-        return 'text-green-600 dark:text-green-400';
-      case 'negative':
-        return 'text-red-600 dark:text-red-400';
-      case 'neutral':
-        return 'text-slate-600 dark:text-slate-400';
-    }
-  };
-
-  return (
-    <div className="col-span-1 md:col-span-2">
+  if (isLoading) {
+    return (
       <Card>
         <CardHeader>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Business Analytics
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Key performance indicators and growth metrics
-            </p>
+          <div className="animate-pulse">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
           </div>
-          <Link href="/dashboard/analytics">
-            <Button variant="outline" size="small">
-              Full Analytics
-            </Button>
-          </Link>
         </CardHeader>
-        
         <CardContent>
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {keyMetrics.map((metric, index) => (
-              <div key={index} className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                    {metric.label}
-                  </span>
-                  <span className={`text-xs font-medium ${getChangeColor(metric.changeType)}`}>
-                    {metric.change}
-                  </span>
-                </div>
-                <div className={`text-xl font-bold ${metric.color}`}>
-                  {metric.value}
-                </div>
+          <div className="animate-pulse space-y-4">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="flex justify-between">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
               </div>
             ))}
+            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-          {/* Progress Indicators */}
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-slate-600 dark:text-slate-400">Revenue Target Progress</span>
-                <span className="text-slate-900 dark:text-slate-100">
-                  {((analyticsKPIs.revenueGrowth.yearToDate / analyticsKPIs.revenueGrowth.target) * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min((analyticsKPIs.revenueGrowth.yearToDate / analyticsKPIs.revenueGrowth.target) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-slate-600 dark:text-slate-400">Content Engagement</span>
-                <span className="text-slate-900 dark:text-slate-100">
-                  {analyticsKPIs.contentPerformance.averageEngagement}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
-                <div 
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${analyticsKPIs.contentPerformance.averageEngagement}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Insights */}
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                Growth Insight
-              </span>
-            </div>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              Revenue grew {analyticsKPIs.revenueGrowth.growthRate}% this month with {analyticsKPIs.businessDevelopment.newOpportunities} new business opportunities identified.
+  if (error || !kpis) {
+    return (
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Analytics Overview
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Performance insights and key metrics
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <p className="text-red-600 dark:text-red-300 text-sm">
+              {error || 'Failed to load analytics data'}
             </p>
           </div>
         </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Analytics Overview
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Performance insights and key metrics
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+              <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                Monthly Revenue
+              </div>
+              <div className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                {formatCurrency(kpis.monthlyRevenue.current)}
+              </div>
+              <div className="text-xs text-blue-700 dark:text-blue-300">
+                +{kpis.monthlyRevenue.growthRate.toFixed(1)}% growth
+              </div>
+            </div>
+            
+            <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+              <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                Content ROI
+              </div>
+              <div className="text-xl font-bold text-green-900 dark:text-green-100">
+                {formatCurrency(kpis.contentPerformance.monthlyROI)}
+              </div>
+              <div className="text-xs text-green-700 dark:text-green-300">
+                +{kpis.contentPerformance.roiGrowthRate}% growth
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Metrics */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Pipeline Value</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {formatCurrency(kpis.pipelineValue.totalValue)}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Total Subscribers</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {kpis.contentPerformance.totalSubscribers.toLocaleString()}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Ideas in Pipeline</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {kpis.ideaPipeline.totalIdeas}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Conversion Rate</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {kpis.pipelineValue.conversionRate.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+            <Link href="/dashboard/analytics">
+              <Button variant="outline" className="w-full">
+                View Full Analytics
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 } 

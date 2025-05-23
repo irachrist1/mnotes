@@ -1,9 +1,34 @@
 'use client';
 
-import { monthlyRevenueTrends } from '@/data/analytics';
+import { useState, useEffect } from 'react';
+import { AnalyticsService, type MonthlyRevenueTrend } from '@/services/analytics.service';
 import { Card } from '@/components/ui/Card';
 
 export function RevenueAnalytics() {
+  const [revenueTrends, setRevenueTrends] = useState<MonthlyRevenueTrend[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRevenueTrends = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const { data, error: trendError } = await AnalyticsService.getRevenueTrends();
+      
+      if (trendError) {
+        setError(trendError);
+        console.error('Failed to fetch revenue trends:', trendError);
+      } else {
+        setRevenueTrends(data || []);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchRevenueTrends();
+  }, []);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -13,11 +38,48 @@ export function RevenueAnalytics() {
     }).format(amount);
   };
 
-  const latestMonth = monthlyRevenueTrends[monthlyRevenueTrends.length - 1];
-  const previousMonth = monthlyRevenueTrends[monthlyRevenueTrends.length - 2];
-  const growthRate = ((latestMonth.totalRevenue - previousMonth.totalRevenue) / previousMonth.totalRevenue * 100);
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, index) => (
+            <Card key={index} className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="space-y-3">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const maxRevenue = Math.max(...monthlyRevenueTrends.map(t => t.totalRevenue));
+  if (error || revenueTrends.length === 0) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-600 dark:text-red-300 text-sm">
+          {error || 'No revenue trends data available'}
+        </p>
+      </div>
+    );
+  }
+
+  const latestMonth = revenueTrends[revenueTrends.length - 1];
+  const previousMonth = revenueTrends[revenueTrends.length - 2];
+  const growthRate = previousMonth 
+    ? ((latestMonth.totalRevenue - previousMonth.totalRevenue) / previousMonth.totalRevenue * 100)
+    : 0;
+
+  const maxRevenue = Math.max(...revenueTrends.map(t => t.totalRevenue));
 
   return (
     <div className="space-y-6">
@@ -56,7 +118,7 @@ export function RevenueAnalytics() {
           
           {/* Simple Chart Visualization */}
           <div className="space-y-3">
-            {monthlyRevenueTrends.map((trend, index) => {
+            {revenueTrends.map((trend, index) => {
               const date = new Date(trend.month + '-01');
               const percentage = (trend.totalRevenue / maxRevenue) * 100;
               
@@ -94,19 +156,20 @@ export function RevenueAnalytics() {
           <div className="space-y-4">
             {Object.entries(latestMonth.breakdown).map(([category, amount]) => {
               const percentage = (amount / latestMonth.totalRevenue * 100);
-              const categoryColors = {
+              const categoryColors: Record<string, string> = {
                 employment: 'bg-blue-500',
                 consulting: 'bg-green-500',
                 content: 'bg-yellow-500',
-                projectBased: 'bg-purple-500',
+                'project-based': 'bg-purple-500',
                 product: 'bg-red-500',
+                other: 'bg-gray-500',
               };
 
               return (
                 <div key={category}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-slate-900 dark:text-slate-100 capitalize">
-                      {category.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                      {category.replace(/-/g, ' ')}
                     </span>
                     <span className="text-sm text-slate-600 dark:text-slate-400">
                       {formatCurrency(amount)} ({percentage.toFixed(1)}%)
@@ -114,7 +177,7 @@ export function RevenueAnalytics() {
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full transition-all duration-500 ${categoryColors[category as keyof typeof categoryColors]}`}
+                      className={`h-2 rounded-full transition-all duration-500 ${categoryColors[category] || 'bg-gray-500'}`}
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -133,7 +196,7 @@ export function RevenueAnalytics() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(monthlyRevenueTrends.reduce((sum, trend) => sum + trend.totalRevenue, 0))}
+              {formatCurrency(revenueTrends.reduce((sum, trend) => sum + trend.totalRevenue, 0))}
             </div>
             <div className="text-sm text-blue-700 dark:text-blue-300 mt-1">
               Total 6-Month Revenue
@@ -142,7 +205,7 @@ export function RevenueAnalytics() {
           
           <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(monthlyRevenueTrends.reduce((sum, trend) => sum + trend.totalRevenue, 0) / monthlyRevenueTrends.length)}
+              {formatCurrency(revenueTrends.reduce((sum, trend) => sum + trend.totalRevenue, 0) / revenueTrends.length)}
             </div>
             <div className="text-sm text-green-700 dark:text-green-300 mt-1">
               Average Monthly Revenue
@@ -154,7 +217,7 @@ export function RevenueAnalytics() {
               {Object.entries(latestMonth.breakdown).reduce((max, [category, amount]) => 
                 amount > max.amount ? { category, amount } : max, 
                 { category: '', amount: 0 }
-              ).category.replace(/([A-Z])/g, ' $1').toLowerCase()}
+              ).category.replace(/-/g, ' ')}
             </div>
             <div className="text-sm text-purple-700 dark:text-purple-300 mt-1">
               Top Income Stream

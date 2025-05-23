@@ -1,11 +1,83 @@
 'use client';
 
-import { ideaFunnelMetrics, analyticsKPIs } from '@/data/analytics';
+import { useState, useEffect } from 'react';
+import { AnalyticsService, type IdeaFunnelMetrics, type AnalyticsKPIs } from '@/services/analytics.service';
 import { Card } from '@/components/ui/Card';
 
 export function IdeaPipelineAnalytics() {
-  const totalIdeas = ideaFunnelMetrics.reduce((sum, stage) => sum + stage.currentCount, 0);
-  const avgTimeToLaunch = analyticsKPIs.ideaPipeline.averageTimeToLaunch;
+  const [funnelMetrics, setFunnelMetrics] = useState<IdeaFunnelMetrics[]>([]);
+  const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPipelineData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const [funnelResult, kpisResult] = await Promise.all([
+        AnalyticsService.getIdeaFunnelMetrics(),
+        AnalyticsService.getKPIMetrics()
+      ]);
+      
+      if (funnelResult.error) {
+        setError(funnelResult.error);
+        console.error('Failed to fetch funnel metrics:', funnelResult.error);
+      } else {
+        setFunnelMetrics(funnelResult.data || []);
+      }
+
+      if (kpisResult.error) {
+        console.error('Failed to fetch KPI metrics:', kpisResult.error);
+      } else {
+        setKpis(kpisResult.data);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchPipelineData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, index) => (
+            <Card key={index} className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || funnelMetrics.length === 0) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-600 dark:text-red-300 text-sm">
+          {error || 'No pipeline data available'}
+        </p>
+      </div>
+    );
+  }
+
+  const totalIdeas = funnelMetrics.reduce((sum, stage) => sum + stage.currentCount, 0);
+  const avgTimeToLaunch = kpis?.ideaPipeline.averageTimeToLaunch || 180;
+  const launchedThisYear = kpis?.ideaPipeline.launchedThisYear || 0;
+  const successRate = kpis?.ideaPipeline.successRate || 0;
   
   const stageColors = {
     'raw-thought': { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300', accent: 'bg-gray-500' },
@@ -40,7 +112,7 @@ export function IdeaPipelineAnalytics() {
           </div>
 
           <div className="space-y-4">
-            {ideaFunnelMetrics.map((stage, index) => {
+            {funnelMetrics.map((stage, index) => {
               const stageColor = stageColors[stage.stage as keyof typeof stageColors];
               
               return (
@@ -74,7 +146,7 @@ export function IdeaPipelineAnalytics() {
                     </div>
                   </div>
 
-                  {index < ideaFunnelMetrics.length - 1 && (
+                  {index < funnelMetrics.length - 1 && (
                     <div className="flex justify-center my-2">
                       <svg className="w-6 h-6 text-slate-400 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -111,7 +183,7 @@ export function IdeaPipelineAnalytics() {
               
               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {analyticsKPIs.ideaPipeline.launchedThisYear}
+                  {launchedThisYear}
                 </div>
                 <div className="text-sm text-green-700 dark:text-green-300">
                   Launched This Year
@@ -145,13 +217,13 @@ export function IdeaPipelineAnalytics() {
                   Success Rate
                 </span>
                 <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
-                  {analyticsKPIs.ideaPipeline.successRate}%
+                  {successRate.toFixed(1)}%
                 </span>
               </div>
               <div className="w-full bg-yellow-200 dark:bg-yellow-800 rounded-full h-2">
                 <div 
                   className="bg-yellow-500 h-2 rounded-full"
-                  style={{ width: `${analyticsKPIs.ideaPipeline.successRate}%` }}
+                  style={{ width: `${successRate}%` }}
                 />
               </div>
               <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
@@ -171,7 +243,7 @@ export function IdeaPipelineAnalytics() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
             <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              {ideaFunnelMetrics.reduce((sum, stage) => sum + stage.monthlyInflow, 0)}
+              {funnelMetrics.reduce((sum, stage) => sum + stage.monthlyInflow, 0)}
             </div>
             <div className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
               New Ideas/Month
@@ -180,7 +252,9 @@ export function IdeaPipelineAnalytics() {
           
           <div className="text-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
             <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
-              {(ideaFunnelMetrics.reduce((sum, stage) => sum + stage.conversionRate, 0) / ideaFunnelMetrics.length).toFixed(1)}%
+              {funnelMetrics.length > 0 
+                ? (funnelMetrics.reduce((sum, stage) => sum + stage.conversionRate, 0) / funnelMetrics.length).toFixed(1)
+                : '0.0'}%
             </div>
             <div className="text-sm text-teal-700 dark:text-teal-300 mt-1">
               Avg. Conversion Rate
@@ -189,7 +263,7 @@ export function IdeaPipelineAnalytics() {
           
           <div className="text-center p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
             <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
-              {ideaFunnelMetrics.find(s => s.stage === 'developing')?.currentCount || 0}
+              {funnelMetrics.find(s => s.stage === 'developing')?.currentCount || 0}
             </div>
             <div className="text-sm text-pink-700 dark:text-pink-300 mt-1">
               In Development
@@ -198,10 +272,10 @@ export function IdeaPipelineAnalytics() {
           
           <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {Math.round((ideaFunnelMetrics.reduce((sum, stage) => sum + stage.averageTimeInStage, 0) / ideaFunnelMetrics.length))}
+              {funnelMetrics.find(s => s.stage === 'launched')?.currentCount || 0}
             </div>
             <div className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
-              Avg. Days/Stage
+              Successfully Launched
             </div>
           </div>
         </div>

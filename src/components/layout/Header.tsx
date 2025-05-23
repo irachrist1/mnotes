@@ -24,14 +24,14 @@ export function Header() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">ED</span>
+                <span className="text-white font-bold text-sm">CT</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Entrepreneurial Dashboard
+                  Christian's Dashboard
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  AI-Powered Business Intelligence
+                  AI-Powered Personal Intelligence
                 </p>
               </div>
             </div>
@@ -56,6 +56,12 @@ export function Header() {
               className="text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors"
             >
               Ideas
+            </a>
+            <a 
+              href="/dashboard/mentorship" 
+              className="text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 text-sm font-medium transition-colors"
+            >
+              Mentorship
             </a>
             <a 
               href="/dashboard/analytics" 
@@ -124,6 +130,12 @@ export function Header() {
               className="text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium transition-colors"
             >
               Ideas
+            </a>
+            <a 
+              href="/dashboard/mentorship" 
+              className="text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 block px-3 py-2 rounded-md text-base font-medium transition-colors"
+            >
+              Mentorship
             </a>
             <a 
               href="/dashboard/analytics" 
