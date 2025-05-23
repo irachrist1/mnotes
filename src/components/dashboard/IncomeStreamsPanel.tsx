@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { incomeStreams, incomeStreamSummary } from '@/data/incomeStreams';
@@ -56,9 +57,11 @@ export function IncomeStreamsPanel() {
               {incomeStreamSummary.streamsByStatus.active} active streams generating {formatCurrency(incomeStreamSummary.totalMonthlyRevenue)}/month
             </p>
           </div>
-          <Button variant="outline" size="small">
-            View All
-          </Button>
+          <Link href="/dashboard/income">
+            <Button variant="outline" size="small">
+              View All Streams
+            </Button>
+          </Link>
         </CardHeader>
         
         <CardContent>

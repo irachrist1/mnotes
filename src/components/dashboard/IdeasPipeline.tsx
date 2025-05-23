@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ideas, ideaSummary } from '@/data/ideas';
@@ -72,9 +73,16 @@ export function IdeasPipeline() {
               {ideaSummary.totalIdeas} total ideas • {ideaSummary.aiRelevantIdeas} AI-related • {ideaSummary.hardwareComponentIdeas} hardware components
             </p>
           </div>
-          <Button variant="primary" size="small">
-            Add Idea
-          </Button>
+          <div className="flex gap-2">
+            <Link href="/dashboard/ideas">
+              <Button variant="outline" size="small">
+                View All Ideas
+              </Button>
+            </Link>
+            <Button variant="primary" size="small">
+              Add Idea
+            </Button>
+          </div>
         </CardHeader>
         
         <CardContent>

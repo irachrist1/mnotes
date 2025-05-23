@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { contentMetrics, newsletterStats, contentSummary } from '@/data/contentPerformance';
@@ -34,9 +35,11 @@ export function ContentMetrics() {
               {contentSummary.totalContent} pieces reaching {formatNumber(contentSummary.totalReach)} people
             </p>
           </div>
-          <Button variant="outline" size="small">
-            View Analytics
-          </Button>
+          <Link href="/dashboard/analytics">
+            <Button variant="outline" size="small">
+              View Analytics
+            </Button>
+          </Link>
         </CardHeader>
         
         <CardContent>

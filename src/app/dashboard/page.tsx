@@ -5,6 +5,7 @@ import { IdeasPipeline } from '@/components/dashboard/IdeasPipeline';
 import { ContentMetrics } from '@/components/dashboard/ContentMetrics';
 import { OperationsStatus } from '@/components/dashboard/OperationsStatus';
 import { MentorshipInsights } from '@/components/dashboard/MentorshipInsights';
+import { AnalyticsOverview } from '@/components/dashboard/AnalyticsOverview';
 
 export default function DashboardPage() {
   return (
@@ -37,6 +38,11 @@ export default function DashboardPage() {
           <DashboardGrid>
             <ContentMetrics />
             <OperationsStatus />
+          </DashboardGrid>
+
+          {/* Analytics & Performance Section */}
+          <DashboardGrid>
+            <AnalyticsOverview />
           </DashboardGrid>
         </div>
       </main>
