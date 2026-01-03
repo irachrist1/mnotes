@@ -29,17 +29,17 @@ export function Card({
   variant = 'default',
   padding = 'medium'
 }: CardProps) {
-  const baseClasses = 'bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors duration-200';
+  const baseClasses = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 transition-all duration-200 h-full flex flex-col';
   
   const variantClasses = {
-    default: '',
+    default: 'shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700',
     outlined: 'border-2',
-    elevated: 'shadow-lg'
+    elevated: 'shadow-lg hover:shadow-xl'
   };
 
   const paddingClasses = {
     none: '',
-    small: 'p-3',
+    small: 'p-4',
     medium: 'p-6', 
     large: 'p-8'
   };
@@ -58,7 +58,7 @@ export function Card({
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between mb-4', className)}>
+    <div className={cn('flex items-center justify-between mb-6', className)}>
       {children}
     </div>
   );
@@ -66,7 +66,7 @@ export function CardHeader({ children, className = '' }: CardHeaderProps) {
 
 export function CardContent({ children, className = '' }: CardContentProps) {
   return (
-    <div className={cn('', className)}>
+    <div className={cn('flex-1', className)}>
       {children}
     </div>
   );

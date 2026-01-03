@@ -8,7 +8,8 @@
       "Bash(npx next dev)",
       "Bash(test:*)",
       "Bash(cat:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

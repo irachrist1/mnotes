@@ -7,7 +7,77 @@
 
 ## 🚨 Critical Issues
 
-### 1. Dashboard Alignment Errors
+### 1. Migrate from Supabase to Convex
+**Priority**: CRITICAL 🔥
+**Status**: ❌ Not Started
+
+**Reason**: Transitioning to Convex for better real-time capabilities and developer experience
+
+**Migration Tasks**:
+- [ ] Set up Convex project and account
+- [ ] Install Convex dependencies (`npm install convex`)
+- [ ] Design Convex schema based on current Supabase tables:
+  - [ ] Income Streams schema
+  - [ ] Ideas Pipeline schema
+  - [ ] Mentorship Insights schema
+  - [ ] Analytics data schema
+  - [ ] User data schema
+- [ ] Migrate database structure to Convex
+- [ ] Export existing data from Supabase
+- [ ] Import data to Convex
+- [ ] Rewrite service layer to use Convex:
+  - [ ] `incomeStreams.service.ts` → Convex mutations/queries
+  - [ ] `ideas.service.ts` → Convex mutations/queries
+  - [ ] `mentorship.service.ts` → Convex mutations/queries
+  - [ ] `analytics.service.ts` → Convex queries
+- [ ] Update all components to use Convex hooks (`useQuery`, `useMutation`)
+- [ ] Replace `src/utils/supabase.ts` with Convex setup
+- [ ] Implement Convex authentication
+- [ ] Update environment variables (remove Supabase vars)
+- [ ] Test all CRUD operations with Convex
+- [ ] Remove Supabase dependencies from package.json
+- [ ] Update documentation to reflect Convex usage
+
+**References**:
+- Convex docs: https://docs.convex.dev
+- Migration guide: https://docs.convex.dev/database/import
+
+---
+
+### 2. Upgrade AI Model to Gemini 2.0 Flash Experimental
+**Priority**: HIGH ⚡
+**Status**: ❌ Not Started
+
+**Current**: `gemini-2.0-flash` (stable version)
+**Target**: `gemini-2.0-flash-exp` (experimental with enhanced capabilities)
+
+**Migration Tasks**:
+- [x] ~~Check current Gemini model version in codebase~~ → Found: `gemini-2.0-flash` in `src/services/ai.service.ts:9`
+- [ ] Review Gemini 2.0 Flash Experimental documentation
+- [ ] Update `src/services/ai.service.ts` to use new model:
+  - Current: `model: "gemini-2.0-flash"`
+  - New: `model: "gemini-2.0-flash-exp"`
+- [ ] Update Google AI API dependency if needed
+- [ ] Test AI insights generation with new model
+- [ ] Compare response quality and latency
+- [ ] Update prompt engineering for better results with new model
+- [ ] Test Ultra Mode with Gemini 2.0 Flash
+- [ ] Update environment variables if needed
+- [ ] Monitor token usage and costs with new model
+- [ ] Update documentation to reflect model version
+
+**Expected Benefits**:
+- Improved response quality
+- Better context understanding
+- Enhanced reasoning capabilities
+- Potentially lower latency
+
+**References**:
+- Gemini 2.0 Flash docs: https://ai.google.dev/gemini-api/docs/models/gemini-v2
+
+---
+
+### 3. Dashboard Alignment Errors
 **Priority**: HIGH
 **Status**: ❌ Not Started
 
@@ -327,41 +397,55 @@
 
 ## 📋 Immediate Next Steps (Priority Order)
 
-1. **Fix Dashboard Alignment Issues** (CRITICAL)
+1. **Migrate from Supabase to Convex** 🔥 (CRITICAL)
+   - Set up Convex project
+   - Design schemas based on existing tables
+   - Migrate service layer to Convex mutations/queries
+   - Update all components to use Convex hooks
+   - Export data from Supabase and import to Convex
+   - Remove Supabase dependencies
+
+2. **Upgrade to Gemini 2.0 Flash Experimental** ⚡ (HIGH)
+   - Check current model version in `ai.service.ts`
+   - Update to `gemini-2.0-flash-exp`
+   - Test all AI features with new model
+   - Update prompt engineering if needed
+
+3. **Fix Dashboard Alignment Issues** (HIGH)
    - Audit all components
    - Standardize spacing and layouts
    - Test responsive design
 
-2. **Implement Authentication** (HIGH)
-   - Add Supabase Auth
+4. **Implement Authentication with Convex** (HIGH)
+   - Add Convex Auth (replaces Supabase Auth)
    - Protect routes
    - Create login/signup pages
 
-3. **Connect Landing Page Waitlist** (HIGH)
-   - Integrate email service
+5. **Connect Landing Page Waitlist** (HIGH)
+   - Integrate email service (Resend recommended)
    - Test form submission
    - Set up email notifications
 
-4. **Fix Build Process** (HIGH)
+6. **Fix Build Process** (HIGH)
    - Resolve production build errors
-   - Add real environment variables
+   - Update environment variables for Convex
 
-5. **Complete Content Metrics Module** (MEDIUM)
+7. **Complete Content Metrics Module** (MEDIUM)
    - Design and implement
    - Add to dashboard
 
-6. **Add Analytics Tracking** (MEDIUM)
-   - Install analytics
+8. **Add Analytics Tracking** (MEDIUM)
+   - Install analytics (Plausible/PostHog)
    - Track key metrics
 
-7. **Write Tests** (MEDIUM)
+9. **Write Tests** (MEDIUM)
    - Set up testing infrastructure
    - Write critical path tests
 
-8. **Deploy to Staging** (MEDIUM)
-   - Set up Vercel project
-   - Configure environment
-   - Test deployment
+10. **Deploy to Staging** (MEDIUM)
+    - Set up Vercel project
+    - Configure environment with Convex
+    - Test deployment
 
 ---
 
@@ -381,13 +465,16 @@
 
 ## 🔄 Changelog
 
-### January 3, 2026
+### January 3, 2026 (Updated)
 - ✅ Completed landing page (11 components)
 - ✅ Fixed routing structure
 - ✅ Removed Turbopack flag
 - ✅ Moved documentation to `/docs`
 - ⚠️ Identified dashboard alignment issues
 - 📝 Created this task tracking document
+- 🔥 **Added CRITICAL task: Migrate from Supabase to Convex**
+- ⚡ **Added HIGH priority task: Upgrade to Gemini 2.0 Flash Experimental**
+- 📋 Updated priority order for immediate next steps
 
 ---
 
