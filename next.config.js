@@ -9,6 +9,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Suppress SWC warnings on Windows ARM
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  experimental: {
+    // Use WASM fallback
+    swcPlugins: [],
+  },
 }
 
 module.exports = nextConfig 
