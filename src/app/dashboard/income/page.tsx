@@ -1,3 +1,5 @@
+'use client';
+
 import { Header } from '@/components/layout/Header';
 import { IncomeStreamsList } from '@/components/income/IncomeStreamsList';
 import { IncomeStreamsSummary } from '@/components/income/IncomeStreamsSummary';

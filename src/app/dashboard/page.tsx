@@ -1,3 +1,5 @@
+'use client';
+
 import { Header } from '@/components/layout/Header';
 import { IncomeStreamsPanel } from '@/components/dashboard/IncomeStreamsPanel';
 import { IdeasPipeline } from '@/components/dashboard/IdeasPipeline';

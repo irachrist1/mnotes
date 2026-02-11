@@ -103,7 +103,7 @@ export function IncomeStreamsPanel({ className }: IncomeStreamsPanelProps) {
 
   if (isLoading) {
     return (
-      <div className={cn("col-span-1 md:col-span-2 lg:col-span-3", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -138,7 +138,7 @@ export function IncomeStreamsPanel({ className }: IncomeStreamsPanelProps) {
 
   if (error) {
     return (
-      <div className={cn("col-span-1 md:col-span-2 lg:col-span-3", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -168,7 +168,7 @@ export function IncomeStreamsPanel({ className }: IncomeStreamsPanelProps) {
   }
 
   return (
-    <div className={cn("col-span-1 md:col-span-2 lg:col-span-3", className)}>
+    <div className={cn("h-full", className)}>
       <Card>
         <CardHeader>
           <div>

@@ -59,7 +59,7 @@ export function AnalyticsOverview({ className }: AnalyticsOverviewProps) {
 
   if (isLoading) {
     return (
-      <div className={cn("", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div className="animate-pulse">
@@ -85,7 +85,7 @@ export function AnalyticsOverview({ className }: AnalyticsOverviewProps) {
 
   if (error || !kpis) {
     return (
-      <div className={cn("", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -110,7 +110,7 @@ export function AnalyticsOverview({ className }: AnalyticsOverviewProps) {
   }
 
   return (
-    <div className={cn("", className)}>
+    <div className={cn("h-full", className)}>
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">

@@ -41,7 +41,7 @@ export function ContentMetrics({ className }: ContentMetricsProps) {
     .slice(0, 3);
 
   return (
-    <div className={cn("col-span-1 md:col-span-2", className)}>
+    <div className={cn("h-full", className)}>
       <Card>
         <CardHeader>
           <div>

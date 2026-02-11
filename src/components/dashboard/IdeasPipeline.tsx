@@ -130,7 +130,7 @@ export function IdeasPipeline({ className }: IdeasPipelineProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className={cn("col-span-1 md:col-span-2 lg:col-span-4", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -184,7 +184,7 @@ export function IdeasPipeline({ className }: IdeasPipelineProps) {
   // Error state
   if (error) {
     return (
-      <div className={cn("col-span-1 md:col-span-2 lg:col-span-4", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -217,7 +217,7 @@ export function IdeasPipeline({ className }: IdeasPipelineProps) {
   }
 
   return (
-    <div className={cn("col-span-1 md:col-span-2 lg:col-span-4", className)}>
+    <div className={cn("h-full", className)}>
       <Card>
         <CardHeader>
           <div>

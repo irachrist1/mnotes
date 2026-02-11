@@ -1,3 +1,5 @@
+'use client';
+
 import { Header } from '@/components/layout/Header';
 import { AnalyticsKPICards } from '@/components/analytics/AnalyticsKPICards';
 import { RevenueAnalytics } from '@/components/analytics/RevenueAnalytics';

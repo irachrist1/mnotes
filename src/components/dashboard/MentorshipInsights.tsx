@@ -108,7 +108,7 @@ export function MentorshipInsights({ className }: MentorshipInsightsProps) {
 
   if (isLoading) {
     return (
-      <div className={cn("col-span-1", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -139,7 +139,7 @@ export function MentorshipInsights({ className }: MentorshipInsightsProps) {
 
   if (error) {
     return (
-      <div className={cn("col-span-1", className)}>
+      <div className={cn("h-full", className)}>
         <Card>
           <CardHeader>
             <div>
@@ -171,7 +171,7 @@ export function MentorshipInsights({ className }: MentorshipInsightsProps) {
   }
 
   return (
-    <div className={cn("col-span-1", className)}>
+    <div className={cn("h-full", className)}>
       <Card>
         <CardHeader>
           <div>

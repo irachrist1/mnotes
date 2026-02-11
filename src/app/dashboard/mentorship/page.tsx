@@ -1,3 +1,5 @@
+'use client';
+
 import { Header } from '@/components/layout/Header';
 import { MentorshipList } from '@/components/mentorship/MentorshipList';
 import { MentorshipSummary } from '@/components/mentorship/MentorshipSummary';

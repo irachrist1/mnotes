@@ -29,7 +29,7 @@ export function AIInsightsPanel({ className }: AIInsightsPanelProps) {
   };
 
   return (
-    <div className={cn("col-span-1", className)}>
+    <div className={cn("h-full", className)}>
       <Card className="relative overflow-hidden border-none shadow-lg">
         {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 dark:from-blue-900 dark:via-purple-900 dark:to-indigo-950">

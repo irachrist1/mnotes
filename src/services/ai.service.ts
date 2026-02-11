@@ -1,10 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize AI service (using environment variable for API key)
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY || 'AIzaSyDEK2L_tx9KQIh5bK_6b3ZBQoMZ1Q7Xsxg';
+// AI Provider Configuration
+// Priority: OpenRouter > Google AI Studio
+const OPENROUTER_API_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+const GOOGLE_AI_KEY = process.env.NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY || '';
 
-// Initialize Google Gemini AI for Ultra Mode
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Determine which provider to use
+const useOpenRouter = !!OPENROUTER_API_KEY;
+const useGoogleAI = !useOpenRouter && !!GOOGLE_AI_KEY;
+
+// Initialize Google AI only if needed
+const genAI = useGoogleAI ? new GoogleGenerativeAI(GOOGLE_AI_KEY) : null;
 
 export interface AIInsight {
   type: 'revenue_optimization' | 'mentorship_analysis' | 'idea_scoring' | 'predictive_trends';
@@ -54,16 +60,72 @@ export interface PredictiveAnalyticsRequest {
   forecastMonths: number;
 }
 
-class AIService {
-  private model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash",
+/**
+ * Call AI via OpenRouter API (supports Gemini, Claude, GPT, etc.)
+ */
+async function callOpenRouter(prompt: string): Promise<string> {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://mnotes.app',
+      'X-Title': 'MNotes AI Insights',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.0-flash-exp:free',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2048,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+/**
+ * Call AI via Google AI Studio (Gemini SDK)
+ */
+async function callGoogleAI(prompt: string): Promise<string> {
+  if (!genAI) {
+    throw new Error('Google AI not initialized. Please set NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY.');
+  }
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
     generationConfig: {
       temperature: 0.7,
       topP: 0.8,
       topK: 40,
       maxOutputTokens: 2048,
-    }
+    },
   });
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+
+/**
+ * Unified AI call - routes to available provider
+ */
+async function callAI(prompt: string): Promise<string> {
+  if (useOpenRouter) {
+    return callOpenRouter(prompt);
+  } else if (useGoogleAI) {
+    return callGoogleAI(prompt);
+  } else {
+    throw new Error(
+      'No AI API key configured. Set NEXT_PUBLIC_OPENROUTER_API_KEY or NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY in your .env.local file.'
+    );
+  }
+}
+
+class AIService {
 
   /**
    * Generate actionable insights from mentorship session data
@@ -118,9 +180,7 @@ class AIService {
       Format as JSON with: insight, actionItems (array), priority, confidence (0-100)
     `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = await callAI(prompt);
     
     const aiResponse = this.parseAIResponse(text);
     
@@ -205,9 +265,7 @@ class AIService {
       Format as JSON with: insight, actionItems (array), priority, confidence (0-100)
     `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = await callAI(prompt);
     
     const aiResponse = this.parseAIResponse(text);
     
@@ -290,9 +348,7 @@ class AIService {
       Format as JSON with: insight, actionItems (array), priority, confidence (0-100), score (0-100)
     `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = await callAI(prompt);
     
     const aiResponse = this.parseAIResponse(text);
     
@@ -374,9 +430,7 @@ class AIService {
       Format as JSON with: insight, actionItems (array), priority, confidence (0-100)
     `;
 
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = await callAI(prompt);
     
     const aiResponse = this.parseAIResponse(text);
     
