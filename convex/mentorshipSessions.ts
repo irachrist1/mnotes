@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getUserId } from "./lib/auth";
+import { validateShortText, validateMediumText, validateArray, validateNumber } from "./lib/validate";
 
 // Get all mentorship sessions for the current user
 export const list = query({
@@ -53,6 +54,13 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    validateShortText(args.mentorName, "Mentor name");
+    validateNumber(args.duration, "Duration", 1, 480);
+    validateArray(args.topics, "Topics");
+    validateArray(args.keyInsights, "Key insights");
+    validateArray(args.actionItems, "Action items");
+    validateNumber(args.rating, "Rating", 1, 5);
+    validateMediumText(args.notes, "Notes");
     return await ctx.db.insert("mentorshipSessions", {
       ...args,
       userId,

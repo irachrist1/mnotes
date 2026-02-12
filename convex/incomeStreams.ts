@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getUserId } from "./lib/auth";
+import { validateShortText, validateMediumText, validateNumber } from "./lib/validate";
 
 // Get all income streams for the current user
 export const list = query({
@@ -51,6 +52,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    validateShortText(args.name, "Name");
+    if (args.notes) validateMediumText(args.notes, "Notes");
+    if (args.clientInfo) validateMediumText(args.clientInfo, "Client info");
+    validateNumber(args.monthlyRevenue, "Monthly revenue", 0, 10_000_000);
+    validateNumber(args.timeInvestment, "Time investment", 0, 168);
+    validateNumber(args.growthRate, "Growth rate", -100, 1000);
     const now = Date.now();
     return await ctx.db.insert("incomeStreams", {
       ...args,

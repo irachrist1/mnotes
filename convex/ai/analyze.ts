@@ -2,7 +2,7 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { parseAIResponse } from "./parseAIResponse";
 
 export const analyze = action({
@@ -12,8 +12,8 @@ export const analyze = action({
     model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Get user settings for API key and provider (auth handled inside get)
-    const settings = await ctx.runQuery(api.userSettings.get, {});
+    // Use internal query to get unmasked API keys (never exposed to client)
+    const settings = await ctx.runQuery(internal.userSettings.getWithKeys, {});
 
     if (!settings) {
       throw new Error("Please configure AI settings first (Settings page)");
