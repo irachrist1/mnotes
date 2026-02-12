@@ -169,7 +169,7 @@ export default function MentorshipPage() {
           <Field label="Mentor Name"><input type="text" value={form.mentorName} onChange={(e) => setForm({ ...form, mentorName: e.target.value })} className="input-field" placeholder="Name" /></Field>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="input-field" /></Field>
-            <Field label="Duration (min)"><input type="number" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input-field" /></Field>
+            <Field label="Duration (min)"><input type="number" min="0" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input-field" /></Field>
             <Field label="Type"><select value={form.sessionType} onChange={(e) => setForm({ ...form, sessionType: e.target.value as SessionType })} className="input-field"><option value="receiving">Receiving</option><option value="giving">Giving</option></select></Field>
           </div>
           <Field label="Rating (1-10)"><input type="number" min={1} max={10} value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} className="input-field" /></Field>

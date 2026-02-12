@@ -95,4 +95,28 @@ export default defineSchema({
   }).index("by_date", ["date"])
     .index("by_session_type", ["sessionType"])
     .index("by_creation_time", ["createdAt"]),
+
+  userSettings: defineTable({
+    userId: v.string(),
+    aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
+    aiModel: v.string(),
+    openrouterApiKey: v.optional(v.string()),
+    googleApiKey: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  aiInsights: defineTable({
+    userId: v.string(),
+    type: v.string(), // "revenue" | "idea" | "mentorship" | "general"
+    title: v.string(),
+    body: v.string(),
+    actionItems: v.array(v.string()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    confidence: v.number(),
+    model: v.string(),
+    status: v.union(v.literal("unread"), v.literal("read"), v.literal("dismissed")),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_creation", ["createdAt"]),
 });

@@ -10,6 +10,7 @@ import {
   Users,
   BarChart3,
   Sparkles,
+  Settings,
   Menu,
   X,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Mentorship', href: '/dashboard/mentorship', icon: Users },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'AI Insights', href: '/dashboard/ai-insights', icon: Sparkles },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export function Sidebar() {

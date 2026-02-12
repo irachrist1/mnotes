@@ -206,8 +206,8 @@ export default function IncomePage() {
             </select>
           </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Revenue ($/mo)"><input type="number" value={form.monthlyRevenue} onChange={(e) => setForm({ ...form, monthlyRevenue: e.target.value })} className="input-field" /></Field>
-            <Field label="Hrs/week"><input type="number" value={form.timeInvestment} onChange={(e) => setForm({ ...form, timeInvestment: e.target.value })} className="input-field" /></Field>
+            <Field label="Revenue ($/mo)"><input type="number" min="0" value={form.monthlyRevenue} onChange={(e) => setForm({ ...form, monthlyRevenue: e.target.value })} className="input-field" /></Field>
+            <Field label="Hrs/week"><input type="number" min="0" value={form.timeInvestment} onChange={(e) => setForm({ ...form, timeInvestment: e.target.value })} className="input-field" /></Field>
             <Field label="Growth %"><input type="number" value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} className="input-field" /></Field>
           </div>
           <Field label="Client Info"><input type="text" value={form.clientInfo} onChange={(e) => setForm({ ...form, clientInfo: e.target.value })} className="input-field" placeholder="Client name or info" /></Field>
