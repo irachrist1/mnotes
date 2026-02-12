@@ -26,7 +26,7 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_status", ["status"])
     .index("by_category", ["category"])
-    .index("by_creation_time", ["createdAt"]),
+    .index("by_created_at", ["createdAt"]),
 
   ideas: defineTable({
     title: v.string(),
@@ -46,7 +46,7 @@ export default defineSchema({
       v.literal("high"),
       v.literal("very-high")
     ),
-    implementationComplexity: v.number(), // 1-5
+    implementationComplexity: v.number(),
     timeToMarket: v.string(),
     requiredSkills: v.array(v.string()),
     marketSize: v.string(),
@@ -94,7 +94,7 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_date", ["date"])
     .index("by_session_type", ["sessionType"])
-    .index("by_creation_time", ["createdAt"]),
+    .index("by_created_at", ["createdAt"]),
 
   userSettings: defineTable({
     userId: v.string(),

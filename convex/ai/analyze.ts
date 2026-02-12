@@ -1,6 +1,7 @@
 "use node";
 
 import { action } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { api } from "../_generated/api";
 
@@ -11,11 +12,12 @@ export const analyze = action({
     businessData: v.string(),
     model: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ id: Id<"aiInsights">; title: string; body: string; actionItems: string[]; priority: "low" | "medium" | "high"; confidence: number }> => {
     const userId = args.userId || "default";
 
     // Get user settings for API key and provider
-    const settings = await ctx.runQuery(api.userSettings.get, { userId });
+    const settings: { aiProvider: "openrouter" | "google"; aiModel: string; openrouterApiKey?: string; googleApiKey?: string } | null =
+      await ctx.runQuery(api.userSettings.get, { userId });
     
     if (!settings) {
       throw new Error("Please configure AI settings first (Settings page)");
@@ -33,7 +35,7 @@ export const analyze = action({
     const prompt = buildAnalysisPrompt(args.analysisType, args.businessData);
 
     // Call the AI
-    const model = args.model || settings.aiModel;
+    const model: string = args.model || settings.aiModel;
     const aiResponse = await ctx.runAction(api.ai.generate.generate, {
       prompt,
       model,
@@ -45,7 +47,7 @@ export const analyze = action({
     const parsed = parseAIResponse(aiResponse);
 
     // Save the insight to the database
-    const insightId = await ctx.runMutation(api.aiInsights.create, {
+    const insightId: Id<"aiInsights"> = await ctx.runMutation(api.aiInsights.create, {
       userId,
       type: args.analysisType,
       title: parsed.title,
