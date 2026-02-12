@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 interface BadgeProps {
   children: ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple';
   size?: 'sm' | 'md';
 }
 
@@ -12,6 +12,7 @@ const variantStyles = {
   warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   danger: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
 };
 
 const sizeStyles = {
@@ -24,7 +25,7 @@ export function Badge({ children, variant = 'default', size = 'sm' }: BadgeProps
     <span
       className={`
         inline-flex items-center rounded-md font-medium
-        ${variantStyles[variant]}
+        ${variantStyles[variant] || variantStyles.default}
         ${sizeStyles[size]}
       `}
     >
