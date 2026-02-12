@@ -15,7 +15,7 @@ import Footer from './components/Footer'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <Toaster position="top-center" richColors />
       <LandingHeader />
       <main>

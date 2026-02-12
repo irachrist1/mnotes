@@ -4,120 +4,137 @@ import { motion } from 'framer-motion'
 import { fadeUpVariants, staggerContainer } from '@/lib/animations'
 
 export default function Hero() {
-  const scrollToWaitlist = () => {
-    const element = document.getElementById('waitlist')
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
-  }
-
-  const scrollToHowItWorks = () => {
-    const element = document.getElementById('how-it-works')
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-900 dark:via-blue-950/20 dark:to-slate-900">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-400/10 to-transparent dark:from-blue-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-400/10 to-transparent dark:from-purple-600/10 rounded-full blur-3xl animate-pulse delay-1000" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white dark:bg-gray-950">
+      {/* Gradient mesh background */}
+      <div className="absolute inset-0">
+        <div className="absolute top-[-20%] left-[15%] w-[600px] h-[600px] bg-sky-500/10 dark:bg-sky-500/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] bg-sky-400/10 dark:bg-sky-400/15 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] right-[25%] w-[400px] h-[400px] bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[20%] left-[5%] w-[300px] h-[300px] bg-sky-600/5 dark:bg-sky-600/10 rounded-full blur-[80px]" />
+        {/* Subtle grid overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.04] dark:opacity-[0.03]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(128,128,128,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(128,128,128,0.3) 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }}
+        />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 pt-24">
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-32 pt-28">
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-          className="text-center space-y-8"
+          className="text-center space-y-6"
         >
           {/* Eyebrow */}
           <motion.div variants={fadeUpVariants}>
-            <span className="inline-block px-4 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-              AI that finally has context
+            <span className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 rounded-full text-xs font-medium tracking-wide">
+              <span className="w-1.5 h-1.5 bg-sky-500 dark:bg-sky-400 rounded-full animate-pulse" />
+              Now in early access
             </span>
           </motion.div>
 
           {/* Headline */}
           <motion.h1
             variants={fadeUpVariants}
-            className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white leading-tight"
+            className="text-4xl sm:text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-[1.1] tracking-tight"
           >
-            Finally, an AI That
+            The intelligence layer
             <br />
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Actually Knows You
+            <span className="bg-gradient-to-r from-sky-500 to-cyan-400 dark:from-sky-400 dark:to-cyan-300 bg-clip-text text-transparent">
+              for everything you build
             </span>
           </motion.h1>
 
           {/* Subheadline */}
           <motion.p
             variants={fadeUpVariants}
-            className="max-w-3xl mx-auto text-xl sm:text-2xl text-slate-600 dark:text-slate-300 leading-relaxed"
+            className="max-w-2xl mx-auto text-lg text-gray-500 dark:text-gray-400 leading-relaxed"
           >
-            MNotes captures your income, ideas, mentorship, and goals — giving AI the context it needs to deliver insights that actually matter.
+            Track your income streams, ideas, and mentorship sessions.
+            Let AI connect the dots and surface what matters most.
           </motion.p>
 
           {/* CTAs */}
           <motion.div
             variants={fadeUpVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4"
           >
             <button
-              onClick={scrollToWaitlist}
-              className="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2"
+              onClick={() => scrollTo('waitlist')}
+              className="group w-full sm:w-auto bg-sky-500 hover:bg-sky-400 text-white font-medium px-6 py-3 rounded-lg transition-all hover:shadow-lg hover:shadow-sky-500/25 flex items-center justify-center gap-2"
             >
-              Join the Waitlist
-              <svg
-                className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
+              Get Early Access
+              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </button>
             <button
-              onClick={scrollToHowItWorks}
-              className="w-full sm:w-auto border-2 border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 hover:scale-105"
+              onClick={() => scrollTo('how-it-works')}
+              className="w-full sm:w-auto border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium px-6 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-white/5"
             >
-              See How It Works
+              See how it works
             </button>
           </motion.div>
 
           {/* Dashboard Preview */}
           <motion.div
             variants={fadeUpVariants}
-            className="pt-16 max-w-5xl mx-auto"
+            className="pt-16 max-w-4xl mx-auto"
           >
             <div className="relative group">
-              {/* Glow effect */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-2xl group-hover:blur-3xl transition-all duration-500" />
-
-              {/* Dashboard mockup placeholder */}
-              <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div className="bg-slate-100 dark:bg-slate-900 px-4 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+              <div className="absolute -inset-1 bg-gradient-to-r from-sky-500/20 via-cyan-500/10 to-sky-500/20 rounded-xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+              <div className="relative bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden shadow-2xl">
+                {/* Browser chrome */}
+                <div className="bg-gray-100 dark:bg-gray-900 px-4 py-3 flex items-center gap-2 border-b border-gray-200 dark:border-white/[0.06]">
                   <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-700" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-700" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-700" />
                   </div>
-                  <div className="flex-1 text-center text-sm text-slate-500 dark:text-slate-400 font-mono">
-                    mnotes.app/dashboard
+                  <div className="flex-1 mx-12">
+                    <div className="bg-white dark:bg-gray-800 rounded-md px-3 py-1 text-center text-xs text-gray-400 dark:text-gray-500 font-mono">
+                      mnotes.app/dashboard
+                    </div>
                   </div>
                 </div>
-                <div className="p-8 min-h-[400px] flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
+                {/* Dashboard mockup content */}
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { label: 'Monthly Revenue', value: '$12,450', accent: 'text-emerald-600 dark:text-emerald-400' },
+                      { label: 'Active Ideas', value: '23', accent: 'text-sky-600 dark:text-sky-400' },
+                      { label: 'Growth Rate', value: '+18.2%', accent: 'text-sky-600 dark:text-sky-400' },
+                      { label: 'AI Insights', value: '5 new', accent: 'text-amber-600 dark:text-amber-400' },
+                    ].map((stat) => (
+                      <div key={stat.label} className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-white/[0.04]">
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                        <p className={`text-lg font-semibold ${stat.accent} mt-0.5 tabular-nums`}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2 bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-white/[0.04] h-32">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Revenue Trend</p>
+                      <div className="flex items-end gap-1.5 h-16">
+                        {[40, 55, 45, 60, 50, 70, 65, 80, 75, 90, 85, 95].map((h, i) => (
+                          <div key={i} className="flex-1 bg-gradient-to-t from-sky-500/40 to-sky-400/60 rounded-sm" style={{ height: `${h}%` }} />
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400 font-medium">
-                      Dashboard preview coming soon
-                    </p>
+                    <div className="bg-gradient-to-br from-sky-500/10 to-cyan-500/10 rounded-lg p-4 border border-sky-500/20">
+                      <p className="text-xs text-sky-600 dark:text-sky-400 font-medium mb-2">AI Insight</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Your consulting revenue grew 23% this quarter. Consider raising rates for new clients.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -130,15 +147,15 @@ export default function Hero() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
+        transition={{ delay: 2 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
       >
         <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="text-slate-400 dark:text-slate-600"
+          animate={{ y: [0, 6, 0] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+          className="text-gray-300 dark:text-gray-600"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </motion.div>

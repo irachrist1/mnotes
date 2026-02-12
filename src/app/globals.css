@@ -47,6 +47,22 @@
     --color-border: 30 41 59;
   }
 
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --color-primary: 56 189 248;
+      --color-primary-dark: 14 165 233;
+      --color-secondary: 156 163 175;
+      --color-success: 16 185 129;
+      --color-warning: 245 158 11;
+      --color-error: 239 68 68;
+      --color-surface: 31 41 55;
+      --color-background: 3 7 18;
+      --color-text-primary: 243 244 246;
+      --color-text-secondary: 156 163 175;
+      --color-border: 55 65 81;
+    }
+  }
+
   * {
     border-color: rgb(var(--color-border));
   }
@@ -95,6 +111,10 @@
     background-image: radial-gradient(circle, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
   }
 
+  .dashboard-panel {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+
   .bg-gradient-mesh {
     background:
       radial-gradient(at 27% 37%, rgba(125, 211, 252, 0.08) 0px, transparent 50%),
@@ -104,6 +124,10 @@
 
   .bg-glow {
     background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(56, 189, 248, 0.06), transparent 40%);
+  }
+
+  .dashboard-panel-title {
+    @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
   }
 
   /* ─── Cards ─── */
@@ -152,6 +176,10 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  .btn-outline {
+    @apply border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+
   .btn-secondary:hover {
     @apply bg-gray-50 dark:bg-white/10;
   }
@@ -195,6 +223,10 @@
     @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
   }
 
+  .status-maintenance {
+    @apply bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300;
+  }
+
   /* ─── Trend Indicators ─── */
   .trend-up {
     @apply text-emerald-600 dark:text-emerald-400;
@@ -202,6 +234,10 @@
 
   .trend-down {
     @apply text-red-600 dark:text-red-400;
+  }
+
+  .trend-stable {
+    @apply text-gray-600 dark:text-gray-400;
   }
 
   /* ─── Loading ─── */

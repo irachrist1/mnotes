@@ -7,105 +7,91 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { fadeUpVariants } from '@/lib/animations'
 
-type FormData = {
+interface FormData {
   email: string
-  interests: string[]
 }
 
 export default function WaitlistCTA() {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>()
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+  const [submitted, setSubmitted] = useState(false)
+
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>()
 
   const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true)
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    console.log('Waitlist submission:', data)
-    toast.success('Thanks for joining! We\'ll be in touch soon.')
-    reset()
-    setIsSubmitting(false)
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    setSubmitted(true)
+    toast.success(`You're on the list, ${data.email.split('@')[0]}!`)
   }
 
   return (
-    <section id="waitlist" ref={ref} className="py-24 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-600 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
+    <section id="waitlist" ref={ref} className="py-24 bg-gray-50 dark:bg-gray-950 relative overflow-hidden">
+      {/* Gradient mesh */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-sky-500/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
           initial="hidden"
           animate={inView ? 'visible' : 'hidden'}
           variants={fadeUpVariants}
-          className="text-center space-y-8"
+          className="space-y-8"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-white">
-            Be First to Experience AI With Context
-          </h2>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-            MNotes is currently in development. Join the waitlist to get early access and help shape the future of personal AI intelligence.
-          </p>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto space-y-4">
-            <div>
-              <input
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address'
-                  }
-                })}
-                type="email"
-                placeholder="Enter your email"
-                className="w-full px-6 py-4 rounded-lg text-slate-900 text-lg focus:outline-none focus:ring-4 focus:ring-white/50 transition-shadow"
-              />
-              {errors.email && (
-                <p className="text-red-200 text-sm mt-2">{errors.email.message}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all duration-200 hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isSubmitting ? 'Joining...' : 'Join Waitlist →'}
-            </button>
-
-            <p className="text-blue-100 text-sm">
-              No spam. Just updates on launch.
+          <div className="space-y-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+              Get early access
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Join the waitlist and be the first to try MNotes when we open up.
+              No spam. Just an email when it&apos;s your turn.
             </p>
-          </form>
-
-          {/* Optional interest checkboxes */}
-          <div className="pt-8">
-            <p className="text-blue-100 mb-4">I&apos;m interested in:</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {['Personal use', 'Business/consulting', 'Content creation', 'All of the above'].map((interest) => (
-                <label
-                  key={interest}
-                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-white cursor-pointer transition-colors"
-                >
-                  <input
-                    {...register('interests')}
-                    type="checkbox"
-                    value={interest}
-                    className="rounded border-white/50"
-                  />
-                  <span className="text-sm">{interest}</span>
-                </label>
-              ))}
-            </div>
           </div>
+
+          {submitted ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-gray-900 border border-sky-500/20 rounded-xl p-8 space-y-3"
+            >
+              <div className="w-10 h-10 mx-auto bg-sky-500/10 border border-sky-500/20 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-sky-500 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-gray-900 dark:text-white font-medium">You&apos;re on the list</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">We&apos;ll send you an email when early access opens.</p>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    {...register('email', {
+                      required: 'Email is required',
+                      pattern: { value: /^\S+@\S+$/i, message: 'Enter a valid email' },
+                    })}
+                    type="email"
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 text-left">{errors.email.message}</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-sky-500 hover:bg-sky-400 text-white font-medium px-6 py-3 rounded-lg transition-all hover:shadow-lg hover:shadow-sky-500/25 disabled:opacity-50 text-sm whitespace-nowrap"
+                >
+                  {isSubmitting ? 'Joining...' : 'Join Waitlist'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-600">
+                Free during early access. No credit card required.
+              </p>
+            </form>
+          )}
         </motion.div>
       </div>
     </section>
