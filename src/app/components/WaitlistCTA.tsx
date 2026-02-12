@@ -24,7 +24,7 @@ export default function WaitlistCTA() {
   }
 
   return (
-    <section id="waitlist" ref={ref} className="py-24 bg-gray-950 relative overflow-hidden">
+    <section id="waitlist" ref={ref} className="py-24 bg-gray-50 dark:bg-gray-950 relative overflow-hidden">
       {/* Gradient mesh */}
       <div className="absolute inset-0">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-sky-500/10 rounded-full blur-[120px]" />
@@ -39,10 +39,10 @@ export default function WaitlistCTA() {
           className="space-y-8"
         >
           <div className="space-y-4">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
               Get early access
             </h2>
-            <p className="text-gray-400">
+            <p className="text-gray-500 dark:text-gray-400">
               Join the waitlist and be the first to try MNotes when we open up.
               No spam. Just an email when it&apos;s your turn.
             </p>
@@ -52,15 +52,15 @@ export default function WaitlistCTA() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-gray-900 border border-sky-500/20 rounded-xl p-8 space-y-3"
+              className="bg-white dark:bg-gray-900 border border-sky-500/20 rounded-xl p-8 space-y-3"
             >
               <div className="w-10 h-10 mx-auto bg-sky-500/10 border border-sky-500/20 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 text-sky-500 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-white font-medium">You&apos;re on the list</p>
-              <p className="text-sm text-gray-400">We&apos;ll send you an email when early access opens.</p>
+              <p className="text-gray-900 dark:text-white font-medium">You&apos;re on the list</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">We&apos;ll send you an email when early access opens.</p>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -73,10 +73,10 @@ export default function WaitlistCTA() {
                     })}
                     type="email"
                     placeholder="you@example.com"
-                    className="w-full px-4 py-3 bg-gray-900 border border-white/[0.08] rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
                   />
                   {errors.email && (
-                    <p className="text-xs text-red-400 mt-1.5 text-left">{errors.email.message}</p>
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 text-left">{errors.email.message}</p>
                   )}
                 </div>
                 <button
@@ -87,7 +87,7 @@ export default function WaitlistCTA() {
                   {isSubmitting ? 'Joining...' : 'Join Waitlist'}
                 </button>
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-400 dark:text-gray-600">
                 Free during early access. No credit card required.
               </p>
             </form>

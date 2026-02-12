@@ -18,19 +18,21 @@
     --color-border: 229 231 235; /* gray-200 */
   }
 
-  .dark {
-    /* Dark Theme */
-    --color-primary: 56 189 248; /* sky-400 */
-    --color-primary-dark: 14 165 233; /* sky-500 */
-    --color-secondary: 156 163 175; /* gray-400 */
-    --color-success: 16 185 129; /* emerald-500 */
-    --color-warning: 245 158 11; /* amber-500 */
-    --color-error: 239 68 68; /* red-500 */
-    --color-surface: 31 41 55; /* gray-800 */
-    --color-background: 3 7 18; /* gray-950 */
-    --color-text-primary: 243 244 246; /* gray-100 */
-    --color-text-secondary: 156 163 175; /* gray-400 */
-    --color-border: 55 65 81; /* gray-700 */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Dark Theme */
+      --color-primary: 56 189 248; /* sky-400 */
+      --color-primary-dark: 14 165 233; /* sky-500 */
+      --color-secondary: 156 163 175; /* gray-400 */
+      --color-success: 16 185 129; /* emerald-500 */
+      --color-warning: 245 158 11; /* amber-500 */
+      --color-error: 239 68 68; /* red-500 */
+      --color-surface: 31 41 55; /* gray-800 */
+      --color-background: 3 7 18; /* gray-950 */
+      --color-text-primary: 243 244 246; /* gray-100 */
+      --color-text-secondary: 156 163 175; /* gray-400 */
+      --color-border: 55 65 81; /* gray-700 */
+    }
   }
 
   * {

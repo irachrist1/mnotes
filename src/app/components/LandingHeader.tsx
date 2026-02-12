@@ -26,7 +26,7 @@ export default function LandingHeader() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-gray-950/80 backdrop-blur-xl border-b border-white/[0.06]'
+          ? 'bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/[0.06]'
           : 'bg-transparent'
       }`}
     >
@@ -36,7 +36,7 @@ export default function LandingHeader() {
             <div className="w-8 h-8 bg-gradient-to-br from-sky-400 to-sky-500 rounded-lg flex items-center justify-center shadow-lg shadow-sky-500/25">
               <span className="text-white font-bold text-sm">M</span>
             </div>
-            <span className="text-lg font-semibold text-white">MNotes</span>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">MNotes</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -44,7 +44,7 @@ export default function LandingHeader() {
               <button
                 key={item}
                 onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}
-                className="text-sm text-gray-400 hover:text-white transition-colors"
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
               >
                 {item}
               </button>
@@ -54,7 +54,7 @@ export default function LandingHeader() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               Dashboard
             </Link>
@@ -68,7 +68,7 @@ export default function LandingHeader() {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden text-gray-400 p-2"
+            className="md:hidden text-gray-500 dark:text-gray-400 p-2"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
@@ -88,14 +88,14 @@ export default function LandingHeader() {
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="md:hidden bg-gray-950/95 backdrop-blur-xl border-t border-white/[0.06]"
+          className="md:hidden bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/[0.06]"
         >
           <nav className="px-4 py-3 space-y-1">
             {['Features', 'How It Works', 'Roadmap'].map((item) => (
               <button
                 key={item}
                 onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}
-                className="block w-full text-left px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                className="block w-full text-left px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
               >
                 {item}
               </button>
