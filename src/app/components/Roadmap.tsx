@@ -6,51 +6,53 @@ import { fadeUpVariants, staggerContainer } from '@/lib/animations'
 
 const phases = [
   {
-    phase: 'Core Dashboard',
-    status: '🔨 Building',
-    description: 'Income, Ideas, Mentorship, Analytics',
-    items: ['Real-time data tracking', 'CRUD operations', 'Dark mode support', 'Responsive design'],
+    phase: 'Phase 1',
+    title: 'Core Dashboard',
+    status: 'Live',
+    statusColor: 'bg-emerald-500',
+    items: ['Income stream tracking', 'Ideas pipeline', 'Mentorship sessions', 'CRUD operations', 'Mobile responsive'],
   },
   {
-    phase: 'AI Intelligence',
-    status: '⚡ In Progress',
-    description: 'Gemini-powered insights and recommendations',
-    items: ['Revenue optimization tips', 'Idea scoring system', 'Pattern recognition', 'Predictive analytics'],
+    phase: 'Phase 2',
+    title: 'AI Intelligence',
+    status: 'Building',
+    statusColor: 'bg-sky-500',
+    items: ['Server-side AI actions', 'Multi-model support', 'Revenue optimization', 'Idea scoring', 'Persistent insights'],
   },
   {
-    phase: 'Integrations',
-    status: '📋 Planned',
-    description: 'Connect your calendar, bank, social accounts',
-    items: ['Calendar sync', 'Bank account linking', 'Social media APIs', 'Export capabilities'],
+    phase: 'Phase 3',
+    title: 'Smart Analytics',
+    status: 'Next',
+    statusColor: 'bg-amber-500',
+    items: ['Real Chart.js charts', 'Revenue projections', 'Pipeline velocity', 'Efficiency metrics', 'Date range filters'],
   },
   {
-    phase: 'Mobile App',
-    status: '📋 Planned',
-    description: 'Capture ideas on the go',
-    items: ['iOS & Android apps', 'Offline support', 'Quick capture', 'Push notifications'],
+    phase: 'Phase 4',
+    title: 'Auth + Integrations',
+    status: 'Planned',
+    statusColor: 'bg-gray-500',
+    items: ['User authentication', 'Calendar sync', 'Scheduled AI runs', 'Push notifications', 'Goal tracking'],
   },
 ]
 
 export default function Roadmap() {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section id="roadmap" ref={ref} className="py-24 bg-gradient-to-br from-blue-50 via-purple-50/30 to-blue-50 dark:from-slate-800 dark:via-blue-900/20 dark:to-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="roadmap" ref={ref} className="py-24 bg-gray-950">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
           animate={inView ? 'visible' : 'hidden'}
           variants={fadeUpVariants}
-          className="text-center mb-16"
+          className="text-center space-y-4 mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Where We&apos;re Headed
+          <p className="text-sky-400 text-sm font-medium tracking-wide uppercase">Roadmap</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            Where we&apos;re headed
           </h2>
-          <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-            Building the future of personal intelligence, one feature at a time
+          <p className="max-w-xl mx-auto text-gray-400">
+            Shipping fast. Phase 1 is live. Phase 2 is actively in development.
           </p>
         </motion.div>
 
@@ -58,68 +60,36 @@ export default function Roadmap() {
           initial="hidden"
           animate={inView ? 'visible' : 'hidden'}
           variants={staggerContainer}
-          className="space-y-8 max-w-4xl mx-auto"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          {phases.map((phase, index) => (
+          {phases.map((phase) => (
             <motion.div
-              key={index}
+              key={phase.phase}
               variants={fadeUpVariants}
-              className="relative"
+              className="bg-gray-900 border border-white/[0.06] rounded-xl p-5"
             >
-              {/* Timeline connector */}
-              {index < phases.length - 1 && (
-                <div className="absolute left-8 top-24 w-0.5 h-full bg-gradient-to-b from-blue-600/50 to-purple-600/50" />
-              )}
-
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700 hover:shadow-xl transition-shadow duration-300">
-                <div className="flex items-start gap-6">
-                  {/* Status indicator */}
-                  <div className="flex-shrink-0">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                      {index + 1}
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 space-y-4">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                        {phase.phase}
-                      </h3>
-                      <span className="inline-block px-4 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-                        {phase.status}
-                      </span>
-                    </div>
-                    <p className="text-lg text-slate-600 dark:text-slate-300">
-                      {phase.description}
-                    </p>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {phase.items.map((item, idx) => (
-                        <li key={idx} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                          <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 font-mono">{phase.phase}</p>
+                  <h3 className="text-base font-semibold text-white">{phase.title}</h3>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${phase.statusColor}`} />
+                  <span className="text-xs text-gray-400">{phase.status}</span>
                 </div>
               </div>
+              <ul className="space-y-1.5">
+                {phase.items.map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm text-gray-400">
+                    <svg className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </motion.div>
           ))}
-        </motion.div>
-
-        {/* Bottom note */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ delay: 0.8 }}
-          className="text-center mt-12"
-        >
-          <p className="text-slate-600 dark:text-slate-400">
-            <span className="font-semibold">Building in public.</span> Follow the journey and help shape the future.
-          </p>
         </motion.div>
       </div>
     </section>

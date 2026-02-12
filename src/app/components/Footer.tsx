@@ -1,105 +1,82 @@
 'use client'
 
-import Link from 'next/link'
-
 export default function Footer() {
   const currentYear = new Date().getFullYear()
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
-    <footer className="bg-slate-900 text-slate-300 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main footer content */}
+    <footer className="bg-gray-950 border-t border-white/[0.06] pt-12 pb-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {/* Product */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Product</h3>
-            <ul className="space-y-3">
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Product</h3>
+            <ul className="space-y-2">
               <li>
-                <button
-                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="hover:text-white transition-colors"
-                >
+                <button onClick={() => scrollTo('features')} className="text-sm text-gray-500 hover:text-white transition-colors">
                   Features
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="hover:text-white transition-colors"
-                >
+                <button onClick={() => scrollTo('roadmap')} className="text-sm text-gray-500 hover:text-white transition-colors">
                   Roadmap
                 </button>
               </li>
               <li>
-                <span className="text-slate-500 cursor-not-allowed">Pricing (Coming)</span>
+                <button onClick={() => scrollTo('waitlist')} className="text-sm text-gray-500 hover:text-white transition-colors">
+                  Waitlist
+                </button>
               </li>
             </ul>
           </div>
 
           {/* Resources */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Resources</h3>
-            <ul className="space-y-3">
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Blog</span>
-              </li>
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Documentation</span>
-              </li>
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Changelog</span>
-              </li>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Resources</h3>
+            <ul className="space-y-2">
+              <li><span className="text-sm text-gray-600">Blog (soon)</span></li>
+              <li><span className="text-sm text-gray-600">Docs (soon)</span></li>
+              <li><span className="text-sm text-gray-600">Changelog (soon)</span></li>
             </ul>
           </div>
 
           {/* Company */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Company</h3>
-            <ul className="space-y-3">
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">About</span>
-              </li>
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Contact</span>
-              </li>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Company</h3>
+            <ul className="space-y-2">
+              <li><span className="text-sm text-gray-600">About (soon)</span></li>
+              <li><span className="text-sm text-gray-600">Contact (soon)</span></li>
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Legal</h3>
-            <ul className="space-y-3">
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Privacy</span>
-              </li>
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Terms</span>
-              </li>
-              <li>
-                <span className="text-slate-500 cursor-not-allowed">Security</span>
-              </li>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Legal</h3>
+            <ul className="space-y-2">
+              <li><span className="text-sm text-gray-600">Privacy (soon)</span></li>
+              <li><span className="text-sm text-gray-600">Terms (soon)</span></li>
             </ul>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-slate-800">
+        <div className="pt-8 border-t border-white/[0.06]">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Logo and copyright */}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">M</span>
+              <div className="w-7 h-7 bg-gradient-to-br from-sky-400 to-sky-500 rounded-lg flex items-center justify-center shadow-lg shadow-sky-500/25">
+                <span className="text-white font-bold text-xs">M</span>
               </div>
               <div>
-                <div className="text-white font-semibold">MNotes</div>
-                <div className="text-sm text-slate-500">© {currentYear} MNotes. All rights reserved.</div>
+                <span className="text-sm text-white font-medium">MNotes</span>
+                <span className="text-xs text-gray-600 ml-2">&copy; {currentYear}</span>
               </div>
             </div>
-
-            {/* Tagline */}
-            <div className="text-sm text-slate-500">
-              Made for people who ship
-            </div>
+            <p className="text-xs text-gray-600">
+              Built for people who track what matters.
+            </p>
           </div>
         </div>
       </div>

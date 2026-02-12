@@ -3,91 +3,90 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import * as Accordion from '@radix-ui/react-accordion'
-import { fadeUpVariants } from '@/lib/animations'
+import { fadeUpVariants, staggerContainer } from '@/lib/animations'
 
 const faqs = [
   {
     question: 'How is this different from Notion or spreadsheets?',
-    answer: 'Notion is a blank canvas — you build everything yourself. MNotes is purpose-built for tracking your income, ideas, and mentorship with AI that understands the connections between them. Unlike spreadsheets, MNotes provides intelligent insights, not just data storage.',
+    answer: 'Notion is a blank canvas. You build everything yourself. MNotes is purpose-built for tracking income, ideas, and mentorship. The AI reads across all your data, so insights actually connect the dots between what you earn, what you build, and who you learn from.',
   },
   {
-    question: 'What AI powers MNotes?',
-    answer: 'We use Google\'s Gemini AI for deep analysis. The difference is that our AI has your complete context — your revenue data, your ideas, your goals — so insights are actually relevant to you, not generic advice.',
+    question: 'What AI models does it use?',
+    answer: 'You choose your provider and model. We support OpenRouter and Google AI Studio, which gives you access to GPT-4, Claude, Gemini, and dozens of others. Bring your own API key. Your data never leaves your control.',
   },
   {
     question: 'Is my data secure?',
-    answer: 'Yes. Your data is stored securely with Supabase (enterprise-grade PostgreSQL). We don\'t sell your data or use it to train AI models. Your intelligence stays yours.',
+    answer: 'Your data is stored with Convex, a production-grade backend with end-to-end encryption. We never sell your data or use it to train models. AI calls use your own API keys, so your information stays between you and your chosen provider.',
   },
   {
     question: 'Can I import existing data?',
-    answer: 'We\'re building import tools for spreadsheets and common formats. If you have specific needs, let us know when you join the waitlist.',
+    answer: 'Import tools for spreadsheets and common formats are on the roadmap. If you have specific needs, mention them when you join the waitlist and we will prioritize accordingly.',
   },
   {
-    question: 'When will MNotes launch?',
-    answer: 'We\'re in active development. Waitlist members will get early access as we roll out. Join to stay updated on our progress.',
+    question: 'When does early access open?',
+    answer: 'Phase 1 (core dashboard) is live. Phase 2 (AI intelligence) is actively shipping. Waitlist members get access as we roll features out. Join to get notified.',
   },
   {
     question: 'Will there be a free tier?',
-    answer: 'Yes. We believe everyone deserves AI with context. Free tier will include core features with usage limits. Premium unlocks unlimited tracking and advanced AI features.',
+    answer: 'Yes. Free tier includes core tracking and limited AI insights. Premium unlocks unlimited AI runs, advanced analytics, and priority access to new features.',
   },
 ]
 
 export default function FAQ() {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section ref={ref} className="py-24 bg-white dark:bg-slate-900">
+    <section ref={ref} className="py-24 bg-gray-950">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          variants={fadeUpVariants}
+          className="text-center space-y-4 mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Questions? We&apos;ve Got Answers.
+          <p className="text-sky-400 text-sm font-medium tracking-wide uppercase">FAQ</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            Common questions
           </h2>
         </motion.div>
 
-        <Accordion.Root type="single" collapsible className="space-y-4">
-          {faqs.map((faq, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-              transition={{ delay: index * 0.1, duration: 0.6 }}
-            >
-              <Accordion.Item
-                value={`item-${index}`}
-                className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
-              >
-                <Accordion.Header>
-                  <Accordion.Trigger className="w-full px-6 py-5 text-left flex items-center justify-between group hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
-                    <span className="text-lg font-semibold text-slate-900 dark:text-white pr-8">
-                      {faq.question}
-                    </span>
-                    <svg
-                      className="w-5 h-5 text-slate-500 dark:text-slate-400 transition-transform duration-300 group-data-[state=open]:rotate-180"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                  <div className="px-6 pb-5 text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {faq.answer}
-                  </div>
-                </Accordion.Content>
-              </Accordion.Item>
-            </motion.div>
-          ))}
-        </Accordion.Root>
+        <motion.div
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          variants={staggerContainer}
+        >
+          <Accordion.Root type="single" collapsible className="space-y-3">
+            {faqs.map((faq, index) => (
+              <motion.div key={index} variants={fadeUpVariants}>
+                <Accordion.Item
+                  value={`item-${index}`}
+                  className="bg-gray-900 border border-white/[0.06] rounded-xl overflow-hidden"
+                >
+                  <Accordion.Header>
+                    <Accordion.Trigger className="w-full px-5 py-4 text-left flex items-center justify-between group hover:bg-white/[0.02] transition-colors">
+                      <span className="text-sm font-medium text-white pr-8">
+                        {faq.question}
+                      </span>
+                      <svg
+                        className="w-4 h-4 text-gray-500 transition-transform duration-300 group-data-[state=open]:rotate-180 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </Accordion.Trigger>
+                  </Accordion.Header>
+                  <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                    <div className="px-5 pb-4 text-sm text-gray-400 leading-relaxed">
+                      {faq.answer}
+                    </div>
+                  </Accordion.Content>
+                </Accordion.Item>
+              </motion.div>
+            ))}
+          </Accordion.Root>
+        </motion.div>
       </div>
     </section>
   )

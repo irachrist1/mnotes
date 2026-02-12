@@ -2,130 +2,184 @@
 
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
-import { fadeUpVariants, slideInFromLeft, slideInFromRight } from '@/lib/animations'
+import { fadeUpVariants, staggerContainer } from '@/lib/animations'
 
 const features = [
   {
-    title: 'See Your Complete Revenue Picture',
-    description: 'Track consulting, products, content, employment — every dollar, every source. Understand where your time creates the most value.',
-    aiAngle: 'AI analyzes your streams to spot optimization opportunities',
-    icon: (
-      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+    title: 'Revenue Tracking',
+    description: 'See every income stream in one view. Monthly revenue, time invested, growth rates, and category breakdowns.',
+    accent: 'from-emerald-500/20 to-emerald-500/5',
+    border: 'hover:border-emerald-500/20',
+    iconColor: 'text-emerald-400',
+    span: 'md:col-span-2',
+    preview: (
+      <div className="mt-4 flex items-end gap-1 h-20">
+        {[35, 42, 38, 55, 48, 62, 58, 72, 68, 78, 82, 90].map((h, i) => (
+          <div key={i} className="flex-1 bg-gradient-to-t from-emerald-500/30 to-emerald-400/50 rounded-sm" style={{ height: `${h}%` }} />
+        ))}
+      </div>
     ),
-    gradient: 'from-green-500 to-emerald-600',
   },
   {
-    title: 'From Shower Thought to Shipped Product',
-    description: 'Capture ideas instantly. Develop them through a 6-stage pipeline. Never lose a breakthrough to a forgotten note.',
-    aiAngle: 'AI scores each idea based on your goals, skills, and market potential',
-    icon: (
-      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
+    title: 'Ideas Pipeline',
+    description: 'Move ideas from raw thought to launch. Score by potential, complexity, and market fit.',
+    accent: 'from-violet-500/20 to-violet-500/5',
+    border: 'hover:border-violet-500/20',
+    iconColor: 'text-violet-400',
+    span: '',
+    preview: (
+      <div className="mt-4 space-y-2">
+        {['Launched', 'Testing', 'Developing', 'Researching'].map((stage, i) => (
+          <div key={stage} className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-500 w-16 text-right">{stage}</span>
+            <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-violet-500/60 to-violet-400/40 rounded-full" style={{ width: `${[20, 30, 50, 80][i]}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
     ),
-    gradient: 'from-purple-500 to-pink-600',
   },
   {
-    title: 'Wisdom Captured. Action Tracked.',
-    description: 'Log every meaningful conversation. Extract key insights. Track action items. Your mentorship becomes a searchable knowledge base.',
-    aiAngle: 'AI surfaces patterns and connects advice to your current challenges',
-    icon: (
-      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
+    title: 'Mentorship Log',
+    description: 'Track sessions, capture insights, and follow up on action items. Never lose advice again.',
+    accent: 'from-sky-500/20 to-sky-500/5',
+    border: 'hover:border-sky-500/20',
+    iconColor: 'text-sky-400',
+    span: '',
+    preview: (
+      <div className="mt-4 space-y-2">
+        {[
+          { name: 'Design Review', type: 'Receiving', rating: '9/10' },
+          { name: 'Career Strategy', type: 'Giving', rating: '8/10' },
+        ].map((s) => (
+          <div key={s.name} className="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2 border border-white/[0.04]">
+            <span className="text-xs text-gray-300">{s.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-500">{s.type}</span>
+              <span className="text-[10px] text-sky-400 tabular-nums">{s.rating}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     ),
-    gradient: 'from-blue-500 to-cyan-600',
   },
   {
-    title: 'Your AI Advisor — With Full Context',
-    description: 'Powered by advanced AI that sees your complete picture. Get revenue optimization tips, idea validation, predictive insights, and strategic recommendations.',
-    aiAngle: 'Regular analysis + "Ultra Mode" for deep strategic insights',
-    icon: (
-      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
+    title: 'AI Insights',
+    description: 'Generate analysis across all your data. Revenue optimization, idea scoring, mentorship patterns. Powered by your choice of model.',
+    accent: 'from-sky-500/20 to-cyan-500/5',
+    border: 'hover:border-sky-500/20',
+    iconColor: 'text-sky-400',
+    span: 'md:col-span-2',
+    preview: (
+      <div className="mt-4 bg-gradient-to-br from-sky-500/10 to-cyan-500/5 rounded-lg p-3 border border-sky-500/10">
+        <div className="flex items-start gap-2">
+          <div className="w-6 h-6 bg-sky-500/20 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg className="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs text-gray-300">Your consulting work has the best revenue-to-time ratio at $92/hr. Product revenue is growing slower but requires less active time.</p>
+            <p className="text-[10px] text-gray-500 mt-1.5">92% confidence / gemini-2.5-flash</p>
+          </div>
+        </div>
+      </div>
     ),
-    gradient: 'from-orange-500 to-red-600',
+  },
+  {
+    title: 'Analytics',
+    description: 'Real charts. Revenue by category, pipeline velocity, mentorship trends. Not CSS rectangles.',
+    accent: 'from-amber-500/20 to-amber-500/5',
+    border: 'hover:border-amber-500/20',
+    iconColor: 'text-amber-400',
+    span: '',
+    preview: (
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {[
+          { label: 'Monthly Rev', value: '$12.4k', change: '+18%' },
+          { label: 'Rev/Hour', value: '$62', change: '+7%' },
+        ].map((s) => (
+          <div key={s.label} className="bg-gray-800/50 rounded-lg p-2 border border-white/[0.04]">
+            <p className="text-[10px] text-gray-500">{s.label}</p>
+            <p className="text-sm font-semibold text-white tabular-nums">{s.value}</p>
+            <p className="text-[10px] text-emerald-400">{s.change}</p>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    title: 'Settings',
+    description: 'Pick your AI provider and model. Bring your own API key. OpenRouter or Google AI Studio.',
+    accent: 'from-gray-500/20 to-gray-500/5',
+    border: 'hover:border-gray-500/20',
+    iconColor: 'text-gray-400',
+    span: '',
+    preview: (
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2 border border-white/[0.04]">
+          <span className="text-[10px] text-gray-500">Provider</span>
+          <span className="text-xs text-gray-300">OpenRouter</span>
+        </div>
+        <div className="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2 border border-white/[0.04]">
+          <span className="text-[10px] text-gray-500">Model</span>
+          <span className="text-xs text-gray-300">gemini-2.5-flash</span>
+        </div>
+      </div>
+    ),
   },
 ]
 
 export default function Features() {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section id="features" ref={ref} className="py-24 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="features" ref={ref} className="py-24 bg-gray-950 relative">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
           animate={inView ? 'visible' : 'hidden'}
           variants={fadeUpVariants}
-          className="text-center mb-20"
+          className="text-center space-y-4 mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Everything You Need in One Place
+          <p className="text-sky-400 text-sm font-medium tracking-wide uppercase">Features</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            Everything you need, nothing you don&apos;t
           </h2>
-          <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-            MNotes brings together all the pieces of your personal and professional growth
+          <p className="max-w-2xl mx-auto text-gray-400">
+            Six modules that work together. Each one captures a different part of your business.
+            AI reads across all of them.
           </p>
         </motion.div>
 
-        <div className="space-y-24">
-          {features.map((feature, index) => (
+        {/* Bento Grid */}
+        <motion.div
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          variants={staggerContainer}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        >
+          {features.map((feature) => (
             <motion.div
-              key={index}
-              initial="hidden"
-              animate={inView ? 'visible' : 'hidden'}
-              variants={index % 2 === 0 ? slideInFromLeft : slideInFromRight}
-              className={`flex flex-col ${
-                index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'
-              } gap-12 items-center`}
+              key={feature.title}
+              variants={fadeUpVariants}
+              className={`group relative bg-gray-900 border border-white/[0.06] rounded-xl p-5 ${feature.border} transition-all duration-300 overflow-hidden ${feature.span}`}
             >
-              {/* Content */}
-              <div className="flex-1 space-y-6">
-                <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.gradient}`}>
-                  <div className="text-white">
-                    {feature.icon}
-                  </div>
-                </div>
-                <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
+              {/* Gradient overlay on hover */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+              <div className="relative">
+                <h3 className={`text-sm font-semibold ${feature.iconColor} mb-1.5`}>
                   {feature.title}
                 </h3>
-                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-sm text-gray-400 leading-relaxed">
                   {feature.description}
                 </p>
-                <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <p className="text-blue-900 dark:text-blue-200 font-medium">
-                    {feature.aiAngle}
-                  </p>
-                </div>
-              </div>
-
-              {/* Visual */}
-              <div className="flex-1 w-full">
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 min-h-[300px] flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <div className={`w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center`}>
-                      <div className="text-white">
-                        {feature.icon}
-                      </div>
-                    </div>
-                    <p className="text-slate-500 dark:text-slate-400">
-                      Feature visualization
-                    </p>
-                  </div>
-                </div>
+                {feature.preview}
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )
