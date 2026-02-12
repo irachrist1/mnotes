@@ -129,7 +129,11 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const { id, ...updates } = args;
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Idea not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.patch(id, {
       ...updates,
       lastUpdated: new Date().toISOString(),
@@ -141,6 +145,10 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("ideas") },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Idea not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.delete(args.id);
   },
 });

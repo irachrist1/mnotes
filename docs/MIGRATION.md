@@ -1,16 +1,23 @@
-# Ideas Table: snake_case → camelCase Migration
+# Ideas Field Migration (snake_case -> camelCase)
 
-This migration transforms legacy Supabase data (snake_case) to match the Convex schema (camelCase).
+## Purpose
 
-## Status: ✅ Completed
+This migration exists only for legacy Convex deployments that still have snake_case idea fields.
 
-18 ideas were migrated successfully. The schema has been reverted to camelCase-only.
+- Migration function: `convex/migrations/migrateIdeasToCamelCase.ts`
+- Command: `npx convex run migrations/migrateIdeasToCamelCase:migrate`
 
-## For future deployments (e.g. production)
+## Current Status
 
-If you have snake_case data in another Convex deployment:
+Completed for this project. Keep this doc only as a reference for older environments.
 
-1. Temporarily add optional snake_case fields to the ideas schema (see git history).
-2. Push: `npx convex dev` or `npx convex deploy`
-3. Run: `npx convex run migrations/migrateIdeasToCamelCase:migrate`
-4. Revert schema to camelCase-only and push again.
+## When to run it
+
+Run only if your `ideas` documents still include fields like:
+
+- `ai_relevance`, `competition_level`, `created_date`, `last_updated`
+- `potential_revenue`, `related_income_stream`, `required_skills`
+- `source_of_inspiration`, `next_steps`, `implementation_complexity`
+- `time_to_market`, `market_size`, `hardware_component`
+
+If your deployment already uses camelCase fields, do not run this migration.

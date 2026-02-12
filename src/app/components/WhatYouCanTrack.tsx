@@ -17,8 +17,8 @@ export default function WhatYouCanTrack() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section ref={ref} className="py-24 bg-gray-50 dark:bg-gray-950 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sky-500/[0.02] to-transparent" />
+    <section ref={ref} className="py-24 bg-stone-50 dark:bg-stone-950 relative">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/[0.02] to-transparent" />
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -27,10 +27,10 @@ export default function WhatYouCanTrack() {
           variants={fadeUpVariants}
           className="text-center space-y-4 mb-16"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">
             Built for people who track what matters
           </h2>
-          <p className="max-w-xl mx-auto text-gray-500 dark:text-gray-400">
+          <p className="max-w-xl mx-auto text-stone-500 dark:text-stone-400">
             Every module is designed for speed. Log an entry in under a minute.
             Let AI handle the analysis.
           </p>
@@ -46,12 +46,12 @@ export default function WhatYouCanTrack() {
             <motion.div
               key={cap.label}
               variants={fadeUpVariants}
-              className="flex items-start gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 hover:border-gray-300 dark:hover:border-white/[0.1] transition-colors"
+              className="flex items-start gap-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/[0.06] rounded-lg p-4 hover:border-stone-300 dark:hover:border-white/[0.1] transition-colors"
             >
-              <div className="w-1.5 h-1.5 bg-sky-400 rounded-full mt-2 flex-shrink-0" />
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{cap.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{cap.detail}</p>
+                <p className="text-sm font-medium text-stone-900 dark:text-white">{cap.label}</p>
+                <p className="text-xs text-stone-500 mt-0.5">{cap.detail}</p>
               </div>
             </motion.div>
           ))}

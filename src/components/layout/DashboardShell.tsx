@@ -16,12 +16,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           className: 'card',
           style: {
             borderRadius: '12px',
+            fontSize: '13px',
+            fontWeight: 500,
           },
         }}
       />
       <Sidebar />
       <div className="relative lg:pl-56 min-h-screen transition-all duration-200">
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
           {children}
         </main>
       </div>

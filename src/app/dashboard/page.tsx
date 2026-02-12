@@ -19,15 +19,14 @@ import {
 import Link from "next/link";
 
 const container = {
-  enter: { transition: { staggerChildren: 0.06 } },
+  enter: { transition: { staggerChildren: 0.05 } },
 };
 
 const item = {
-  initial: { opacity: 0, y: 12 },
+  initial: { opacity: 0 },
   enter: {
     opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
 
@@ -128,22 +127,22 @@ export default function DashboardPage() {
                 {incomeStreams.slice(0, 5).map((stream) => (
                   <div
                     key={stream._id}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
                         {stream.name}
                       </span>
                       <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">
                       ${stream.monthlyRevenue.toLocaleString()}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 py-6 text-center">No income streams yet</p>
+              <p className="text-sm text-stone-400 py-6 text-center">No income streams yet</p>
             )}
           </OverviewPanel>
         </motion.div>
@@ -156,9 +155,9 @@ export default function DashboardPage() {
                 {ideas.slice(0, 5).map((idea) => (
                   <div
                     key={idea._id}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
                       {idea.title}
                     </span>
                     <Badge variant="default">{stageLabel[idea.stage] ?? idea.stage}</Badge>
@@ -166,7 +165,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 py-6 text-center">No ideas yet</p>
+              <p className="text-sm text-stone-400 py-6 text-center">No ideas yet</p>
             )}
           </OverviewPanel>
         </motion.div>
@@ -179,24 +178,24 @@ export default function DashboardPage() {
                 {sessions.slice(0, 5).map((session) => (
                   <div
                     key={session._id}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
                         {session.mentorName}
                       </span>
                       <Badge variant={session.sessionType === "giving" ? "purple" : "info"}>
                         {session.sessionType}
                       </Badge>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                    <span className="text-xs text-stone-500 dark:text-stone-400 tabular-nums">
                       {session.rating}/10
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 py-6 text-center">No sessions yet</p>
+              <p className="text-sm text-stone-400 py-6 text-center">No sessions yet</p>
             )}
           </OverviewPanel>
         </motion.div>
@@ -204,7 +203,7 @@ export default function DashboardPage() {
         {/* Quick Stats */}
         <motion.div variants={item}>
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
               Quick Stats
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -255,10 +254,10 @@ function OverviewPanel({
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+        <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">{title}</h3>
         <Link
           href={href}
-          className="flex items-center gap-1 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
+          className="flex items-center gap-1 text-xs font-medium text-stone-400 dark:text-stone-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
           View all <ArrowRight className="w-3 h-3" />
         </Link>
@@ -266,7 +265,7 @@ function OverviewPanel({
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-9 rounded-lg bg-gray-100 dark:bg-white/[0.03] animate-pulse" />
+            <div key={i} className="h-9 rounded-lg bg-stone-100 dark:bg-white/[0.03] animate-pulse" />
           ))}
         </div>
       ) : (
@@ -288,25 +287,25 @@ function MiniStat({
   highlight?: boolean;
 }) {
   return (
-    <div className="py-3 px-3 rounded-lg bg-gray-50 dark:bg-white/[0.02]">
+    <div className="py-3 px-3 rounded-lg bg-stone-50 dark:bg-white/[0.02]">
       <div className="flex items-center gap-1.5 mb-1">
         {Icon && (
           <Icon
             className={`w-3 h-3 ${
-              highlight ? "text-sky-500" : "text-gray-400 dark:text-gray-500"
+              highlight ? "text-blue-600 dark:text-blue-400" : "text-stone-400 dark:text-stone-500"
             }`}
             strokeWidth={1.5}
           />
         )}
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">
+        <p className="text-[11px] text-stone-500 dark:text-stone-400 uppercase tracking-wider font-medium">
           {label}
         </p>
       </div>
       <p
         className={`text-lg font-semibold tabular-nums ${
           highlight
-            ? "text-sky-500 dark:text-sky-400"
-            : "text-gray-900 dark:text-gray-100"
+            ? "text-blue-600 dark:text-blue-400"
+            : "text-stone-900 dark:text-stone-100"
         }`}
       >
         {value}

@@ -97,7 +97,11 @@ export const update = mutation({
     clientInfo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const { id, ...updates } = args;
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Income stream not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.patch(id, {
       ...updates,
       updatedAt: Date.now(),
@@ -109,6 +113,10 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("incomeStreams") },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Income stream not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.delete(args.id);
   },
 });

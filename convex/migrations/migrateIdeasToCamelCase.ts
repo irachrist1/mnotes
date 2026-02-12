@@ -103,7 +103,7 @@ export const migrate = mutation({
       if (needsMigration(doc)) {
         const migratedDoc = toCamelCase(doc);
         const { _id, ...rest } = migratedDoc;
-        await ctx.db.replace("ideas", _id, rest);
+        await ctx.db.replace("ideas", _id, rest as typeof rest & { stage: "raw-thought" | "researching" | "validating" | "developing" | "testing" | "launched" });
         migrated++;
       }
     }

@@ -97,7 +97,11 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const { id, ...updates } = args;
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Session not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.patch(id, updates);
   },
 });
@@ -106,6 +110,10 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("mentorshipSessions") },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Session not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.delete(args.id);
   },
 });
@@ -118,8 +126,10 @@ export const toggleActionItem = mutation({
     completed: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const session = await ctx.db.get(args.id);
     if (!session) throw new Error("Session not found");
+    if (session.userId !== userId) throw new Error("Unauthorized");
 
     const updatedActionItems = [...session.actionItems];
     updatedActionItems[args.actionItemIndex] = {

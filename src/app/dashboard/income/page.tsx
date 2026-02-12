@@ -128,59 +128,59 @@ export default function IncomePage() {
       <div className="flex items-center gap-1.5 mb-4">
         {(["all", "active", "developing", "planned", "paused"] as const).map((s) => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === s ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900" : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === s ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900" : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800"}`}>
             {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
       </div>
 
       {isLoading ? (<TableSkeleton />) : filtered && filtered.length > 0 ? (
-        <div className="card divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="card divide-y divide-stone-100 dark:divide-stone-800">
           {/* Desktop table header */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
             <span className="col-span-4">Name</span><span className="col-span-2">Category</span><span className="col-span-1">Status</span>
             <span className="col-span-2 text-right">Revenue</span><span className="col-span-1 text-right">Hrs/wk</span><span className="col-span-1 text-right">Growth</span><span className="col-span-1" />
           </div>
           {filtered.map((stream) => (
             <div key={stream._id}>
               {/* Desktop row */}
-              <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
                 <div className="col-span-4 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
-                  {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stream.clientInfo}</p>}
+                  <p className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">{stream.name}</p>
+                  {stream.clientInfo && <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{stream.clientInfo}</p>}
                 </div>
-                <div className="col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
+                <div className="col-span-2"><span className="text-xs text-stone-600 dark:text-stone-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
                 <div className="col-span-1"><Badge variant={statusVariant(stream.status)}>{stream.status}</Badge></div>
-                <div className="col-span-2 text-right"><span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
-                <div className="col-span-1 text-right text-sm text-gray-600 dark:text-gray-300 tabular-nums">{stream.timeInvestment}</div>
+                <div className="col-span-2 text-right"><span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
+                <div className="col-span-1 text-right text-sm text-stone-600 dark:text-stone-300 tabular-nums">{stream.timeInvestment}</div>
                 <div className="col-span-1 text-right text-sm tabular-nums">
-                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
+                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
                 </div>
                 <div className="col-span-1 flex items-center justify-end gap-1">
-                  <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1 rounded text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               {/* Mobile card */}
               <div className="md:hidden px-4 py-3 space-y-2">
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
-                    {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400">{stream.clientInfo}</p>}
+                    <p className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">{stream.name}</p>
+                    {stream.clientInfo && <p className="text-xs text-stone-500 dark:text-stone-400">{stream.clientInfo}</p>}
                   </div>
                   <div className="flex items-center gap-1 ml-2">
-                    <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1.5 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1.5 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1.5 rounded text-stone-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
-                  <span className="text-xs text-gray-500">{categoryLabel[stream.category] ?? stream.category}</span>
+                  <span className="text-xs text-stone-500">{categoryLabel[stream.category] ?? stream.category}</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">${stream.monthlyRevenue.toLocaleString()}/mo</span>
-                  <span className="text-gray-500">{stream.timeInvestment}h/wk</span>
-                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
+                  <span className="font-medium text-stone-900 dark:text-stone-100">${stream.monthlyRevenue.toLocaleString()}/mo</span>
+                  <span className="text-stone-500">{stream.timeInvestment}h/wk</span>
+                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
                 </div>
               </div>
             </div>
@@ -212,9 +212,9 @@ export default function IncomePage() {
           </div>
           <Field label="Client Info"><input type="text" value={form.clientInfo} onChange={(e) => setForm({ ...form, clientInfo: e.target.value })} className="input-field" placeholder="Client name or info" /></Field>
           <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field resize-none" rows={3} placeholder="Additional notes…" /></Field>
-          <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-2 pt-4 border-t border-stone-200 dark:border-stone-800">
             <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md btn-primary text-sm transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors">Cancel</button>
           </div>
         </div>
       </SlideOver>
@@ -223,5 +223,5 @@ export default function IncomePage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>{children}</label>);
+  return (<label className="block"><span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>{children}</label>);
 }

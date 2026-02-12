@@ -105,20 +105,20 @@ export function SlideOver({
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
             className={cn(
               "relative h-full flex flex-col",
-              "bg-white dark:bg-gray-950",
-              "border-l border-gray-200 dark:border-white/[0.06]",
-              "shadow-2xl",
+              "bg-white dark:bg-stone-950",
+              "border-l border-stone-200 dark:border-white/[0.06]",
+              "shadow-[−24px_0_48px_rgba(0,0,0,0.08)]",
               wide ? "w-full max-w-lg" : "w-full max-w-md"
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-white/[0.06]">
               <h2
                 id={SLIDE_TITLE_ID}
-                className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+                className="text-sm font-semibold text-stone-900 dark:text-stone-100"
               >
                 {title}
               </h2>

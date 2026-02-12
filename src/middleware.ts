@@ -4,7 +4,7 @@ import {
   nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
 
-const isSignInPage = createRouteMatcher(["/sign-in"]);
+const isSignInPage = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
@@ -20,9 +20,9 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
 
 export const config = {
   matcher: [
-    // Run on all routes except static files and Next.js internals
-    "/((?!.*\\..*|_next).*)",
-    "/",
-    "/(api|trpc)(.*)",
+    // Scope auth checks to routes that need them.
+    "/dashboard/:path*",
+    "/sign-in/:path*",
+    "/sign-up/:path*",
   ],
 };

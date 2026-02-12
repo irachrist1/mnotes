@@ -98,14 +98,14 @@ export default function SettingsPage() {
         {/* AI Provider Section */}
         <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-gray-500" />
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                 AI Provider
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 Choose your AI service provider
               </p>
             </div>
@@ -119,13 +119,13 @@ export default function SettingsPage() {
                 value="openrouter"
                 checked={provider === "openrouter"}
                 onChange={(e) => setProvider(e.target.value as "openrouter")}
-                className="rounded-full border-gray-300 dark:border-gray-600 text-gray-900 focus:ring-gray-900"
+                className="rounded-full border-stone-300 dark:border-stone-600 text-stone-900 focus:ring-stone-900"
               />
               <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
                   OpenRouter
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="text-xs text-stone-500 dark:text-stone-400">
                   Access to multiple models (Gemini, Claude, GPT, Llama)
                 </div>
               </div>
@@ -138,13 +138,13 @@ export default function SettingsPage() {
                 value="google"
                 checked={provider === "google"}
                 onChange={(e) => setProvider(e.target.value as "google")}
-                className="rounded-full border-gray-300 dark:border-gray-600 text-gray-900 focus:ring-gray-900"
+                className="rounded-full border-stone-300 dark:border-stone-600 text-stone-900 focus:ring-stone-900"
               />
               <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
                   Google AI Studio
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="text-xs text-stone-500 dark:text-stone-400">
                   Direct access to Gemini models
                 </div>
               </div>
@@ -155,14 +155,14 @@ export default function SettingsPage() {
         {/* Model Selection */}
         <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-gray-500" />
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                 AI Model
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 Select the model for generating insights
               </p>
             </div>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               Or enter a custom model name below
             </p>
             <input
@@ -196,14 +196,14 @@ export default function SettingsPage() {
         {/* API Keys */}
         <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <Key className="w-4 h-4 text-gray-500" />
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Key className="w-4 h-4 text-stone-500" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                 API Keys
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 Your API keys are stored securely and never exposed to the client
               </p>
             </div>
@@ -212,7 +212,7 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {/* OpenRouter API Key */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
                 OpenRouter API Key
               </label>
               <input
@@ -222,13 +222,13 @@ export default function SettingsPage() {
                 placeholder={hasOpenrouterKey ? "Key configured. Enter new key to replace." : "sk-or-v1-..."}
                 className="input-field w-full"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Get your key at{" "}
                 <a
                   href="https://openrouter.ai/keys"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-900 dark:text-gray-100 hover:underline"
+                  className="text-stone-900 dark:text-stone-100 hover:underline"
                 >
                   openrouter.ai/keys
                 </a>
@@ -237,7 +237,7 @@ export default function SettingsPage() {
 
             {/* Google AI Studio API Key */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
                 Google AI Studio API Key
               </label>
               <input
@@ -247,13 +247,13 @@ export default function SettingsPage() {
                 placeholder={hasGoogleKey ? "Key configured. Enter new key to replace." : "AIza..."}
                 className="input-field w-full"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Get your key at{" "}
                 <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-900 dark:text-gray-100 hover:underline"
+                  className="text-stone-900 dark:text-stone-100 hover:underline"
                 >
                   aistudio.google.com/app/apikey
                 </a>

@@ -36,7 +36,7 @@ export default function FAQ() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section ref={ref} className="py-24 bg-white dark:bg-gray-950">
+    <section ref={ref} className="py-24 bg-white dark:bg-stone-950">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
@@ -44,8 +44,8 @@ export default function FAQ() {
           variants={fadeUpVariants}
           className="text-center space-y-4 mb-16"
         >
-          <p className="text-sky-500 dark:text-sky-400 text-sm font-medium tracking-wide uppercase">FAQ</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+          <p className="text-blue-600 dark:text-blue-500 text-sm font-medium tracking-wide uppercase">FAQ</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">
             Common questions
           </h2>
         </motion.div>
@@ -60,15 +60,15 @@ export default function FAQ() {
               <motion.div key={index} variants={fadeUpVariants}>
                 <Accordion.Item
                   value={`item-${index}`}
-                  className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl overflow-hidden"
+                  className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-white/[0.06] rounded-xl overflow-hidden"
                 >
                   <Accordion.Header>
-                    <Accordion.Trigger className="w-full px-5 py-4 text-left flex items-center justify-between group hover:bg-gray-100 dark:hover:bg-white/[0.02] transition-colors">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white pr-8">
+                    <Accordion.Trigger className="w-full px-5 py-4 text-left flex items-center justify-between group hover:bg-stone-100 dark:hover:bg-white/[0.02] transition-colors">
+                      <span className="text-sm font-medium text-stone-900 dark:text-white pr-8">
                         {faq.question}
                       </span>
                       <svg
-                        className="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-300 group-data-[state=open]:rotate-180 flex-shrink-0"
+                        className="w-4 h-4 text-stone-400 dark:text-stone-500 transition-transform duration-300 group-data-[state=open]:rotate-180 flex-shrink-0"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -78,7 +78,7 @@ export default function FAQ() {
                     </Accordion.Trigger>
                   </Accordion.Header>
                   <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                    <div className="px-5 pb-4 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                    <div className="px-5 pb-4 text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                       {faq.answer}
                     </div>
                   </Accordion.Content>

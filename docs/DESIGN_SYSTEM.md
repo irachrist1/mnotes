@@ -1,256 +1,149 @@
-# MNotes Design System v2 — "Sky Blue Premium"
+# MNotes Design System
 
-## Design Philosophy
+> Single source of truth for all visual decisions.
 
-**Think:** Vercel's precision + Linear's polish + Airbnb's warmth + Apple's restraint
+## Principles
 
-The goal is a dashboard that feels like it cost $100M to build. Not because of flashy effects, but because every pixel is intentional. The complexity should be in the engineering, not in the user's face.
-
-### Core Principles
-
-1. **Invisible complexity.** The app feels effortless but the code is meticulous. Micro-interactions, fluid transitions, pixel-perfect spacing.
-2. **Sky blue warmth.** Not corporate navy. Baby blue / sky blue gradients that feel aspirational and calm. Like looking at a clear sky.
-3. **Whitespace is a feature.** Linear and Vercel use generous spacing. Cards breathe. Text doesn't crowd.
-4. **Motion with purpose.** Framer Motion for: page transitions, card entrances, hover states, loading → loaded transitions. Never gratuitous.
-5. **Dark mode first.** The dark theme should be the showcase. Light is the fallback. Think Linear's dark mode.
-
----
+1. **Nothing moves unless it has to.** No hover lifts, no scale presses, no shadow blooms. Hover changes a color. That's it.
+2. **Fast.** Every transition is ≤ 150ms. The app should feel instant.
+3. **Warm monochrome + one accent.** Stone neutrals everywhere. Royal blue only where it earns its place.
+4. **Same language everywhere.** Landing page and dashboard share the same tokens, components, and interaction rules.
 
 ## Color Palette
 
-### Primary — Sky Blue Gradient System
-```
-Sky-50:   #f0f9ff  → backgrounds, hover states
-Sky-100:  #e0f2fe  → selected states, light fills
-Sky-200:  #bae6fd  → borders on hover, progress bars
-Sky-300:  #7dd3fc  → secondary accents
-Sky-400:  #38bdf8  → primary buttons, active states
-Sky-500:  #0ea5e9  → primary actions, links
-Sky-600:  #0284c7  → hover on primary buttons
-```
+Defined as CSS custom properties in `src/app/globals.css`.
 
-### Gradient Tokens
-```css
---gradient-primary: linear-gradient(135deg, #38bdf8, #0ea5e9);        /* sky-400 → sky-500 */
---gradient-subtle:  linear-gradient(135deg, #f0f9ff, #e0f2fe);        /* sky-50 → sky-100 */
---gradient-glow:    linear-gradient(135deg, #7dd3fc20, #38bdf820);    /* transparent sky glow */
---gradient-sidebar: linear-gradient(180deg, #0c1222, #0f172a);        /* deep dark for sidebar */
---gradient-card:    linear-gradient(135deg, #ffffff05, #ffffff02);     /* subtle glass in dark mode */
-```
+### Neutrals (warm stone)
 
-### Neutrals (keep existing gray scale, just update usage)
-- Dark bg: `#0a0f1a` (deeper than current gray-950)
-- Card bg dark: `#111827` with `border: 1px solid rgba(255,255,255,0.06)`
-- Card bg light: `#ffffff` with `border: 1px solid rgba(0,0,0,0.06)`
-- Text primary dark: `#f1f5f9`
-- Text secondary dark: `#94a3b8`
+| Token        | Hex       | Usage                          |
+|--------------|-----------|--------------------------------|
+| `--stone-50` | `#FAFAF9` | Page backgrounds (light)       |
+| `--stone-100`| `#F5F5F4` | Subtle surfaces, subtle fills  |
+| `--stone-200`| `#E7E5E4` | Borders (light)                |
+| `--stone-300`| `#D6D3D1` | Dividers, disabled borders     |
+| `--stone-400`| `#A8A29E` | Placeholder text, muted icons  |
+| `--stone-500`| `#78716C` | Secondary text                 |
+| `--stone-600`| `#57534E` | Tertiary text                  |
 
-### Semantic Colors (unchanged)
-- Success: emerald-500
-- Warning: amber-500
-- Error: red-500
-- Info: sky-500
+### Accent (royal blue)
 
----
+| Token        | Hex       | Usage                          |
+|--------------|-----------|--------------------------------|
+| `--blue-400` | `#60A5FA` | Dark mode accent               |
+| `--blue-500` | `#3B82F6` | Sidebar active, logo gradient  |
+| `--blue-600` | `#2563EB` | Primary accent, input focus    |
+| `--blue-700` | `#1D4ED8` | Hover state for blue elements  |
 
-## Typography
+### Semantic (RGB triplets for opacity support)
 
-- **Font:** Inter (via `next/font/google`). If we want more premium, add `Cal Sans` for headings.
-- **Headings:** font-semibold, tracking-tight (like Linear)
-- **Body:** text-sm, leading-relaxed, text-gray-600 dark:text-gray-400
-- **Numbers:** tabular-nums everywhere (already doing this, keep it)
-- **Labels:** text-xs, uppercase, tracking-wide, font-medium
-
----
-
-## Subtle Patterns
-
-### Dot Grid Background (like Linear)
-```css
-.bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(148,163,184,0.15) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-/* Dark mode */
-.dark .bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(148,163,184,0.07) 1px, transparent 1px);
-}
-```
-
-### Gradient Mesh (for hero / landing page)
-```css
-.bg-gradient-mesh {
-  background:
-    radial-gradient(at 27% 37%, #7dd3fc15 0px, transparent 50%),
-    radial-gradient(at 97% 21%, #38bdf810 0px, transparent 50%),
-    radial-gradient(at 52% 99%, #0ea5e908 0px, transparent 50%);
-}
-```
-
-### Noise Texture (optional, Apple-style)
-A very subtle noise overlay at 2-3% opacity for texture on cards.
-
----
-
-## Component Patterns
-
-### Cards (Vercel-style)
-```
-- rounded-xl (not rounded-lg)
-- border: 1px solid with very low opacity
-- Subtle shadow: shadow-sm in light, none in dark (border does the work)
-- On hover: border brightens slightly, subtle translateY(-1px) + shadow-md
-- Transition: all 200ms ease
-```
+- `--color-primary` / `--color-accent` — blue scale
+- `--color-success` — emerald
+- `--color-warning` — amber (semantic only, not decorative)
+- `--color-error` — red
+- `--color-surface` / `--color-background` / `--color-border`
+- `--color-text-primary` / `--color-text-secondary`
 
 ### Buttons
-```
-Primary:   bg-gradient-to-r from-sky-400 to-sky-500, text-white, rounded-lg
-           hover: from-sky-500 to-sky-600, shadow-lg shadow-sky-500/25
-Secondary: bg-white/5 dark:bg-white/5, border border-white/10, text-gray-300
-           hover: bg-white/10, border-white/20
-Ghost:     text-gray-400, hover:text-white, no bg
-```
 
-### Sidebar (Linear-style)
-```
-- Deep dark background (#0c1222) with no border (or very subtle one)
-- Active item: bg-sky-500/10, text-sky-400, left border accent (2px sky-400)
-- Hover: bg-white/5
-- Icons: 18px, stroke-width 1.5 (thinner = more premium)
-- Logo area: clean wordmark, no icon clutter
-```
+- **Primary:** Charcoal `#1C1917` (light) / `#FAFAF9` (dark). Hover shifts one shade lighter.
+- **Blue CTA (landing only):** `bg-blue-600 hover:bg-blue-500`. No shadow, no lift.
 
-### Stat Cards (Apple-style)
-```
-- Large number: text-3xl font-semibold tracking-tight
-- Subtle sky-blue gradient icon backgrounds (not flat gray)
-- Micro-trend indicators with smooth number animation (framer-motion)
-- On hover: subtle glow effect using box-shadow with sky-blue
-```
+## Interaction Rules
 
-### Charts (Airbnb-style)
-```
-- Smooth curves, not harsh lines
-- Sky blue gradient fills (opacity 0.1 → 0.01 from top to bottom)
-- Minimal gridlines (just horizontal, dashed, very low opacity)
-- Tooltips: rounded-lg, shadow-xl, animate in with scale
-- No axis clutter. Labels only where they add value.
-```
+**These rules are non-negotiable.**
 
-### Tables / Lists
-```
-- No visible borders between rows in dark mode
-- Alternate row highlighting at 2% opacity difference
-- Hover: bg-white/[0.03]
-- Text alignment: numbers right-aligned, names left-aligned
-```
+- **Buttons:** Hover = background color change. No transform, no shadow, no scale.
+- **Cards:** Hover = border-color shift (stone-400 opacity in light, white/10 in dark). No transform, no shadow.
+- **Inputs:** Focus = border turns `#2563EB`. No ring, no glow.
+- **Links/nav:** Hover = text color change. No underline animation.
+- **Nothing uses `translateY`, `scale`, `box-shadow` on hover/active.** Ever.
 
----
+## Motion
 
-## Animation System (Framer Motion)
+All motion config lives in `src/lib/animations.ts`.
 
-### Page Transitions
-```tsx
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  enter: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] } },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.15 } },
-};
-```
+### Allowed
 
-### Card Entrance (staggered)
-```tsx
-const containerVariants = {
-  enter: { transition: { staggerChildren: 0.06 } },
-};
-const itemVariants = {
-  initial: { opacity: 0, y: 12 },
-  enter: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
-};
-```
+- **Page mount:** 200ms opacity fade via `animate-fade-in` CSS class (dashboard content area).
+- **Scroll reveal (landing only):** `fadeUpVariants` — 400ms opacity + 14px y offset, triggered once by `useInView`.
+- **Stagger:** 60ms between siblings via `staggerContainer`.
+- **Panels:** SlideOver slides from right with spring (stiffness 400, damping 35). Backdrop fades 200ms.
+- **Accordion:** 250ms height animation.
 
-### Hover Effects
-```tsx
-whileHover={{ y: -1, transition: { duration: 0.2 } }}
-// Combined with CSS: shadow transition, border color change
-```
+### Forbidden
 
-### Number Counting
-For stat cards, animate from 0 to value on first load using `useMotionValue` + `useTransform`.
+- Infinite animations (no `animate-pulse` on content, no looping glows).
+- `layoutId` on nav items (causes stutter during Next.js page transitions).
+- Hover/active transforms of any kind.
+- Spring animations on page-level content.
+- Any animation > 400ms.
 
-### Loading → Loaded
-Skeleton → Content transition with crossfade (opacity + slight scale).
+### Easing
 
----
+All motion uses `[0.16, 1, 0.3, 1]` (Apple-style deceleration curve).
 
-## Spacing System
+## Utility Classes
 
-Follow Tailwind's 4px grid strictly:
-- Section gaps: `gap-6` (24px)
-- Card padding: `p-6` (24px)
-- Between elements in cards: `space-y-4` (16px)
-- Between label and value: `mb-1` (4px)
-- Icon to text: `gap-3` (12px)
+Defined in `src/app/globals.css`.
 
----
+| Class                | Purpose                                    |
+|----------------------|--------------------------------------------|
+| `card`               | White surface, rounded-xl, 1px border      |
+| `card-hover`         | Adds border-color shift on hover           |
+| `btn-primary`        | Charcoal button, inverts on dark           |
+| `btn-secondary`      | White/transparent with border              |
+| `btn-ghost`          | Text-only, bg on hover                     |
+| `btn-icon`           | 36px square icon button                    |
+| `btn-outline`        | Bordered, bg on hover                      |
+| `input-field`        | Standard text input with focus border      |
+| `focus-ring`         | Blue ring-2 on focus (for non-input elements) |
+| `bg-dot-pattern`     | Subtle dot grid background                 |
+| `bg-gradient-mesh`   | Radial gradient mesh background            |
+| `animate-fade-in`    | 200ms opacity fade on mount                |
+| `animate-shimmer`    | Loading skeleton shimmer                   |
+| `text-gradient`      | Blue gradient text                         |
+| `dashboard-panel`    | Dashboard section container                |
 
-## File Structure for Design System
+## Components
+
+All in `src/components/ui/`.
+
+| Component     | Purpose                              | Animation         |
+|---------------|--------------------------------------|--------------------|
+| `StatCard`    | Metric card with label/value/icon    | 250ms opacity fade |
+| `Badge`       | Status pill (success/warning/info/etc)| None              |
+| `PageHeader`  | Page title + description + action    | 250ms opacity fade |
+| `EmptyState`  | Placeholder for empty data           | 250ms opacity fade |
+| `SlideOver`   | Right-side panel for forms           | Spring slide-in    |
+| `Skeleton`    | Loading placeholder with shimmer     | Shimmer animation  |
+| `Charts`      | Chart.js wrappers (Bar, Doughnut, Line) | None            |
+
+### Layout
+
+| Component       | Location                              |
+|-----------------|---------------------------------------|
+| `Sidebar`       | `src/components/layout/Sidebar.tsx`   |
+| `DashboardShell`| `src/components/layout/DashboardShell.tsx` |
+
+Sidebar uses plain `div` for active indicators (no `motion.div`, no `layoutId`).
+
+## File Map
 
 ```
-src/
-├── styles/
-│   └── design-tokens.css     ← CSS custom properties, gradients, patterns
-├── components/
-│   ├── ui/
-│   │   ├── Button.tsx         ← primary, secondary, ghost, icon variants
-│   │   ├── Card.tsx           ← base card with hover animation
-│   │   ├── StatCard.tsx       ← enhanced with gradient icon bg + number animation
-│   │   ├── Badge.tsx          ← already done ✅
-│   │   ├── Input.tsx          ← styled input with focus ring
-│   │   ├── Select.tsx         ← custom select with sky-blue focus
-│   │   ├── PageHeader.tsx     ← already done ✅
-│   │   ├── EmptyState.tsx     ← already done ✅
-│   │   ├── Skeleton.tsx       ← already done ✅
-│   │   ├── SlideOver.tsx      ← already done ✅
-│   │   ├── AnimatedNumber.tsx ← counting animation for stats
-│   │   └── MotionCard.tsx     ← framer-motion wrapper for stagger
-│   └── layout/
-│       ├── Sidebar.tsx        ← redesigned with gradient + accent
-│       └── DashboardShell.tsx ← add background patterns
+src/app/globals.css          — All design tokens, utility classes, animations
+src/lib/animations.ts        — Framer Motion variants (fadeUp, fadeIn, stagger, scaleIn, slideIn)
+tailwind.config.ts           — Extended colors, animation keyframes
+src/components/ui/           — Reusable UI components
+src/components/layout/       — Sidebar, DashboardShell
+src/app/components/          — Landing page sections (Hero, Features, Problem, etc.)
+src/app/dashboard/           — Dashboard pages (7 routes)
+docs/DESIGN_SYSTEM.md        — This file
 ```
 
----
+## Accessibility
 
-## Work Split
-
-### Jarvis (this agent) — Design System + Dashboard UI
-Owns: sidebar redesign, color system, animations, stat cards, dashboard overview, settings page polish
-Why: UI taste, design decisions, component architecture
-
-### Claude Code — Landing Page Redesign
-Owns: Hero, Features, How It Works, Problem/Solution, CTA, Footer
-Why: lots of components, clear scope, can work in parallel
-Prompt: see `docs/CLAUDE_CODE_PROMPT.md`
-
-### Codex — Backend + Infrastructure + Testing
-Owns: auth system (Clerk), Convex schema validation, test suite, CI/CD, accessibility audit
-Why: long-running, systematic work. Not UI-sensitive.
-Prompt: see `docs/CODEX_PROMPT.md`
-
----
-
-## Implementation Priority
-
-1. **CSS tokens + patterns** (globals.css rewrite) — foundation everything else builds on
-2. **Sidebar** — first thing users see, sets the tone
-3. **StatCard + AnimatedNumber** — immediate wow factor on dashboard
-4. **Card component** — base for all panels
-5. **Button component** — used everywhere
-6. **Page transitions** — the "feel" factor
-7. **Chart styling** — analytics page polish
-8. **Landing page** — Claude Code handles this in parallel
-
----
-
-*This is a living document. Update as we build.*
+- Visible focus styles on all interactive elements (`focus-ring` or `input-field:focus`).
+- Semantic heading hierarchy (`h1` > `h2` > `h3`).
+- `aria-label` on icon-only buttons.
+- Focus trap in `SlideOver` panel.
+- `prefers-reduced-motion` should be respected (TODO: not yet implemented).

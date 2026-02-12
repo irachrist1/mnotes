@@ -114,9 +114,9 @@ export default function IdeasPage() {
       <PageHeader title="Ideas Pipeline" description="Track ideas from conception to launch"
         action={
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-md p-0.5">
-              <button onClick={() => setView("kanban")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "kanban" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>Board</button>
-              <button onClick={() => setView("list")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "list" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>List</button>
+            <div className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-0.5">
+              <button onClick={() => setView("kanban")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "kanban" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm" : "text-stone-500 dark:text-stone-400"}`}>Board</button>
+              <button onClick={() => setView("list")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "list" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm" : "text-stone-500 dark:text-stone-400"}`}>List</button>
             </div>
             <button onClick={() => openCreate()} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Idea</button>
           </div>
@@ -124,7 +124,7 @@ export default function IdeasPage() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-6 gap-3">{stages.map((s) => (<div key={s.key} className="space-y-2"><div className="h-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /><div className="h-24 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></div>))}</div>
+        <div className="grid grid-cols-6 gap-3">{stages.map((s) => (<div key={s.key} className="space-y-2"><div className="h-6 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" /><div className="h-24 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" /></div>))}</div>
       ) : view === "kanban" ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {stages.map((stage) => {
@@ -132,17 +132,17 @@ export default function IdeasPage() {
             return (
               <div key={stage.key} className="min-w-0">
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{stage.label}</span>
-                  <span className="text-xs text-gray-400 tabular-nums">{stageIdeas.length}</span>
+                  <span className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">{stage.label}</span>
+                  <span className="text-xs text-stone-400 tabular-nums">{stageIdeas.length}</span>
                 </div>
                 <div className="space-y-2">
                   {stageIdeas.map((idea) => (
-                    <div key={idea._id} className="card p-3 hover:border-gray-300 dark:hover:border-gray-700 transition-colors group">
+                    <div key={idea._id} className="card p-3 hover:border-stone-300 dark:hover:border-stone-700 transition-colors group">
                       <div className="flex items-start justify-between gap-1 mb-2">
-                        <h4 className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2">{idea.title}</h4>
+                        <h4 className="text-xs font-medium text-stone-900 dark:text-stone-100 line-clamp-2">{idea.title}</h4>
                         <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
-                          <button onClick={() => openEdit(idea)} className="p-0.5 rounded text-gray-400 hover:text-gray-600" aria-label="Edit idea"><Pencil className="w-3 h-3" /></button>
-                          <button onClick={() => handleDelete(idea._id)} className="p-0.5 rounded text-gray-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => openEdit(idea)} className="p-0.5 rounded text-stone-400 hover:text-stone-600" aria-label="Edit idea"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => handleDelete(idea._id)} className="p-0.5 rounded text-stone-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -152,26 +152,26 @@ export default function IdeasPage() {
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => openCreate(stage.key)} className="w-full py-2 rounded-md border border-dashed border-gray-200 dark:border-gray-800 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 transition-colors">+ Add</button>
+                  <button onClick={() => openCreate(stage.key)} className="w-full py-2 rounded-md border border-dashed border-stone-200 dark:border-stone-800 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-stone-700 transition-colors">+ Add</button>
                 </div>
               </div>
             );
           })}
         </div>
       ) : ideas && ideas.length > 0 ? (
-        <div className="card divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="card divide-y divide-stone-100 dark:divide-stone-800">
           {ideas.map((idea) => (
-            <div key={idea._id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <div key={idea._id} className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{idea.title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{idea.description}</p>
+                <p className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">{idea.title}</p>
+                <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{idea.description}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {idea.aiRelevance && <Cpu className="w-3.5 h-3.5 text-violet-500" />}
                 <Badge variant={revenueVariant(idea.potentialRevenue)}>{idea.potentialRevenue}</Badge>
                 <Badge variant="default">{stages.find((s) => s.key === idea.stage)?.label ?? idea.stage}</Badge>
-                <button onClick={() => openEdit(idea)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Edit idea"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleDelete(idea._id)} className="p-1 rounded text-gray-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => openEdit(idea)} className="p-1 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-300" aria-label="Edit idea"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(idea._id)} className="p-1 rounded text-stone-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           ))}
@@ -204,12 +204,12 @@ export default function IdeasPage() {
           <Field label="Next Steps (one per line)"><textarea value={form.nextSteps} onChange={(e) => setForm({ ...form, nextSteps: e.target.value })} className="input-field resize-none" rows={3} /></Field>
           <Field label="Tags (comma-separated)"><input type="text" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} className="input-field" placeholder="ai, saas" /></Field>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" checked={form.aiRelevance} onChange={(e) => setForm({ ...form, aiRelevance: e.target.checked })} className="rounded border-gray-300 dark:border-gray-600" />AI Relevant</label>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" checked={form.hardwareComponent} onChange={(e) => setForm({ ...form, hardwareComponent: e.target.checked })} className="rounded border-gray-300 dark:border-gray-600" />Hardware Component</label>
+            <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300"><input type="checkbox" checked={form.aiRelevance} onChange={(e) => setForm({ ...form, aiRelevance: e.target.checked })} className="rounded border-stone-300 dark:border-stone-600" />AI Relevant</label>
+            <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300"><input type="checkbox" checked={form.hardwareComponent} onChange={(e) => setForm({ ...form, hardwareComponent: e.target.checked })} className="rounded border-stone-300 dark:border-stone-600" />Hardware Component</label>
           </div>
-          <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-2 pt-4 border-t border-stone-200 dark:border-stone-800">
             <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md btn-primary text-sm transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors">Cancel</button>
           </div>
         </div>
       </SlideOver>
@@ -218,5 +218,5 @@ export default function IdeasPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>{children}</label>);
+  return (<label className="block"><span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>{children}</label>);
 }

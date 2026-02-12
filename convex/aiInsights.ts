@@ -48,6 +48,10 @@ export const updateStatus = mutation({
     status: v.union(v.literal("unread"), v.literal("read"), v.literal("dismissed")),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Insight not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.patch(args.id, { status: args.status });
   },
 });
@@ -57,6 +61,10 @@ export const remove = mutation({
     id: v.id("aiInsights"),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Insight not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
     await ctx.db.delete(args.id);
   },
 });

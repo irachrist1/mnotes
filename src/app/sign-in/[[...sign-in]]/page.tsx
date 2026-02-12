@@ -65,7 +65,7 @@ export default function SignInPage() {
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-400 to-sky-500 animate-pulse" />
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 animate-pulse" />
       </div>
     );
   }
@@ -74,8 +74,8 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-mesh relative overflow-hidden">
       {/* Subtle background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-sky-400/[0.07] blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-sky-500/[0.05] blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-blue-600/[0.05] blur-3xl" />
       </div>
 
       <motion.div
@@ -87,10 +87,10 @@ export default function SignInPage() {
         {/* Logo */}
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-400 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/25">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/25">
               <span className="text-white text-base font-bold">M</span>
             </div>
-            <span className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">
+            <span className="text-2xl font-semibold text-stone-900 dark:text-white tracking-tight">
               MNotes
             </span>
           </div>
@@ -99,7 +99,7 @@ export default function SignInPage() {
         {/* Card */}
         <div className="card p-8 shadow-xl dark:shadow-none">
           {/* Flow tabs */}
-          <div className="flex rounded-lg p-1 bg-gray-100 dark:bg-white/[0.04] mb-6">
+          <div className="flex rounded-lg p-1 bg-stone-100 dark:bg-white/[0.04] mb-6">
             {(["signIn", "signUp"] as Flow[]).map((f) => (
               <button
                 key={f}
@@ -112,8 +112,8 @@ export default function SignInPage() {
                 className={`
                   relative flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200
                   ${flow === f
-                    ? "text-gray-900 dark:text-white"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    ? "text-stone-900 dark:text-white"
+                    : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"
                   }
                 `}
               >
@@ -141,10 +141,10 @@ export default function SignInPage() {
               transition={{ duration: 0.2 }}
               className="mb-6"
             >
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
                 {flow === "signIn" ? "Welcome back" : "Create your account"}
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
                 {flow === "signIn"
                   ? "Sign in to continue to your dashboard."
                   : "Get started tracking your business."}
@@ -191,7 +191,7 @@ export default function SignInPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="email" className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 uppercase tracking-wide">
                 Email
               </label>
               <input
@@ -206,7 +206,7 @@ export default function SignInPage() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="password" className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 uppercase tracking-wide">
                 Password
               </label>
               <input
@@ -255,12 +255,12 @@ export default function SignInPage() {
               type="button"
               onClick={switchFlow}
               disabled={submitting || success}
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors disabled:opacity-50"
+              className="text-sm text-stone-500 dark:text-stone-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors disabled:opacity-50"
             >
               {flow === "signIn"
                 ? "Don't have an account? "
                 : "Already have an account? "}
-              <span className="font-medium text-sky-500 dark:text-sky-400">
+              <span className="font-medium text-blue-600 dark:text-blue-500">
                 {flow === "signIn" ? "Sign up" : "Sign in"}
               </span>
             </button>
@@ -268,7 +268,7 @@ export default function SignInPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[11px] text-gray-400 dark:text-gray-600 mt-6">
+        <p className="text-center text-[11px] text-stone-400 dark:text-stone-600 mt-6">
           By continuing, you agree to our terms of service.
         </p>
       </motion.div>

@@ -19,6 +19,7 @@ import type * as incomeStreams from "../incomeStreams.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_validate from "../lib/validate.js";
 import type * as mentorshipSessions from "../mentorshipSessions.js";
+import type * as migrations_migrateIdeasToCamelCase from "../migrations/migrateIdeasToCamelCase.js";
 import type * as userSettings from "../userSettings.js";
 import type * as users from "../users.js";
 
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/validate": typeof lib_validate;
   mentorshipSessions: typeof mentorshipSessions;
+  "migrations/migrateIdeasToCamelCase": typeof migrations_migrateIdeasToCamelCase;
   userSettings: typeof userSettings;
   users: typeof users;
 }>;

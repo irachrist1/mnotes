@@ -270,18 +270,18 @@ export default function AIInsightsPage() {
       <>
         <PageHeader title="AI Insights" description="AI-powered analysis of your business data" />
         <div className="flex flex-col items-center py-16 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-            <Settings className="w-6 h-6 text-gray-400" />
+          <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-4">
+            <Settings className="w-6 h-6 text-stone-400" />
           </div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
             AI Settings Required
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
+          <p className="text-sm text-stone-500 dark:text-stone-400 max-w-sm mb-4">
             Configure your AI provider and API key to start generating insights.
           </p>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-medium hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
           >
             <Settings className="w-3.5 h-3.5" />
             Go to Settings
@@ -323,13 +323,13 @@ export default function AIInsightsPage() {
 
       {!settings ? (
         <div className="flex flex-col items-center py-16 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-            <Settings className="w-6 h-6 text-gray-400" />
+          <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-4">
+            <Settings className="w-6 h-6 text-stone-400" />
           </div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
             AI Settings Required
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
+          <p className="text-sm text-stone-500 dark:text-stone-400 max-w-sm mb-4">
             Configure your AI provider and API key to start generating insights.
           </p>
           <Link
@@ -374,7 +374,7 @@ export default function AIInsightsPage() {
         <div className="mb-6">
           <button
             onClick={() => setShowCharts(!showCharts)}
-            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-3"
+            className="flex items-center gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors mb-3"
           >
             <BarChart3 className="w-3.5 h-3.5" />
             {showCharts ? "Hide" : "Show"} Charts
@@ -382,8 +382,8 @@ export default function AIInsightsPage() {
           </button>
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
                   Insights by Type
                 </h3>
                 <DoughnutChart
@@ -391,8 +391,8 @@ export default function AIInsightsPage() {
                   data={Object.values(insightsByType)}
                 />
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
                   Active Insights by Priority
                 </h3>
                 <BarChart
@@ -408,30 +408,30 @@ export default function AIInsightsPage() {
 
       {/* Filter Tabs */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-0.5">
           {(["all", "revenue", "idea", "mentorship"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 typeFilter === t
-                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
               }`}
             >
               {t === "all" ? "All" : typeLabel(t)}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-0.5">
           {(["active", "all", "dismissed"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 statusFilter === s
-                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
               }`}
             >
               {s === "active" ? "Active" : s === "all" ? "All" : "Dismissed"}
@@ -439,7 +439,7 @@ export default function AIInsightsPage() {
           ))}
         </div>
         {filteredInsights.length > 0 && (
-          <span className="text-xs text-gray-400 ml-auto">
+          <span className="text-xs text-stone-400 ml-auto">
             {filteredInsights.length} insight{filteredInsights.length !== 1 ? "s" : ""}
           </span>
         )}
@@ -454,13 +454,13 @@ export default function AIInsightsPage() {
         />
       ) : filteredInsights.length === 0 && !isInsightsLoading ? (
         <div className="flex flex-col items-center py-16 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-            <Brain className="w-6 h-6 text-gray-400" />
+          <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-4">
+            <Brain className="w-6 h-6 text-stone-400" />
           </div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
             {totalInsights === 0 ? "Ready to analyze" : "No matching insights"}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
+          <p className="text-sm text-stone-500 dark:text-stone-400 max-w-sm mb-4">
             {totalInsights === 0
               ? 'Click "Generate Insights" to get AI-powered analysis of your business data.'
               : "Try adjusting your filters to see more insights."}
@@ -481,12 +481,12 @@ export default function AIInsightsPage() {
                 onClick={() => openDetail(insight._id)}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-gray-500" />
+                  <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-stone-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate">
                         {insight.title}
                       </h3>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -495,7 +495,7 @@ export default function AIInsightsPage() {
                             e.stopPropagation();
                             handleDismiss(insight._id);
                           }}
-                          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                          className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors rounded-md hover:bg-stone-100 dark:hover:bg-stone-800"
                           title="Dismiss"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -509,22 +509,22 @@ export default function AIInsightsPage() {
                       <Badge variant={statusVariant(insight.status)}>
                         {insight.status}
                       </Badge>
-                      <span className="text-xs text-gray-400 tabular-nums">
+                      <span className="text-xs text-stone-400 tabular-nums">
                         {Math.round(insight.confidence * 100)}%
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-stone-400">
                         {insight.model}
                       </span>
-                      <span className="text-xs text-gray-400 ml-auto flex items-center gap-1">
+                      <span className="text-xs text-stone-400 ml-auto flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {timeAgo(insight.createdAt)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+                    <p className="text-sm text-stone-600 dark:text-stone-400 mt-2 line-clamp-2">
                       {insight.body}
                     </p>
                     {insight.actionItems.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-2">
+                      <p className="text-xs text-stone-400 mt-2">
                         {insight.actionItems.length} action item{insight.actionItems.length !== 1 ? "s" : ""}
                       </p>
                     )}
@@ -551,8 +551,8 @@ export default function AIInsightsPage() {
                 {(() => {
                   const Icon = insightIcon(selectedInsight.type);
                   return (
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-gray-500" />
+                    <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-stone-500" />
                     </div>
                   );
                 })()}
@@ -563,10 +563,10 @@ export default function AIInsightsPage() {
                   {typeLabel(selectedInsight.type)}
                 </Badge>
               </div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">
                 {selectedInsight.title}
               </h2>
-              <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+              <div className="flex items-center gap-3 mt-2 text-xs text-stone-400">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {new Date(selectedInsight.createdAt).toLocaleString()}
@@ -580,10 +580,10 @@ export default function AIInsightsPage() {
 
             {/* Body */}
             <div>
-              <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              <h4 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
                 Analysis
               </h4>
-              <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+              <div className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap bg-stone-50 dark:bg-stone-800/50 rounded-lg p-4">
                 {selectedInsight.body}
               </div>
             </div>
@@ -591,16 +591,16 @@ export default function AIInsightsPage() {
             {/* Action Items */}
             {selectedInsight.actionItems.length > 0 && (
               <div>
-                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                <h4 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">
                   Recommended Actions
                 </h4>
                 <ul className="space-y-2">
                   {selectedInsight.actionItems.map((item, j) => (
                     <li
                       key={j}
-                      className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3"
+                      className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/50 rounded-lg p-3"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-stone-400 mt-0.5 flex-shrink-0" />
                       {item}
                     </li>
                   ))}
@@ -609,11 +609,11 @@ export default function AIInsightsPage() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-2 pt-4 border-t border-stone-200 dark:border-stone-800">
               {selectedInsight.status !== "dismissed" && (
                 <button
                   onClick={() => handleDismiss(selectedInsight._id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-sm font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                   Dismiss

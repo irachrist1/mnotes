@@ -9,13 +9,13 @@ interface BadgeProps {
 }
 
 const variantStyles = {
-  default: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  danger: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  purple: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
-  muted: 'bg-gray-50 text-gray-400 dark:bg-gray-900 dark:text-gray-500',
+  default: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300',
+  success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  danger: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  info: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
+  purple: 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  muted: 'bg-stone-50 text-stone-400 dark:bg-stone-900 dark:text-stone-500',
 };
 
 const sizeStyles = {

@@ -153,47 +153,47 @@ export default function AnalyticsPage() {
 
       {/* Charts Row 1: Revenue */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Revenue by Category
           </h3>
           {isLoading ? (
-            <div className="h-[220px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
           ) : Object.keys(revenueByCategory).length > 0 ? (
             <DoughnutChart
               labels={Object.keys(revenueByCategory).map((k) => categoryLabel[k] ?? k)}
               data={Object.values(revenueByCategory)}
             />
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Revenue Projection (6 months)
           </h3>
           {isLoading ? (
-            <div className="h-[220px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
           ) : revenueProjection.datasets.length > 0 && totalRevenue > 0 ? (
             <LineChart
               labels={revenueProjection.labels}
               datasets={revenueProjection.datasets}
             />
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
       </div>
 
       {/* Charts Row 2: Ideas Pipeline + Revenue Efficiency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Ideas Pipeline Funnel
           </h3>
           {isLoading ? (
-            <div className="h-[220px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
           ) : ideas && ideas.length > 0 ? (
             <BarChart
               labels={STAGES_ORDER.map((s) => stageLabel[s])}
@@ -202,16 +202,16 @@ export default function AnalyticsPage() {
               horizontal
             />
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Revenue per Hour ($/hr)
           </h3>
           {isLoading ? (
-            <div className="h-[220px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
           ) : revenueEfficiency.labels.length > 0 ? (
             <BarChart
               labels={revenueEfficiency.labels}
@@ -219,21 +219,21 @@ export default function AnalyticsPage() {
               label="$/hr"
             />
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
       </div>
 
       {/* Detail Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Top Revenue Streams
           </h3>
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
               ))}
             </div>
           ) : topStreams.length > 0 ? (
@@ -241,21 +241,21 @@ export default function AnalyticsPage() {
               {topStreams.map((stream, i) => (
                 <div
                   key={stream._id}
-                  className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-medium text-gray-400 w-5 tabular-nums">
+                    <span className="text-xs font-medium text-stone-400 w-5 tabular-nums">
                       {i + 1}
                     </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
                       {stream.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-stone-400">
                       {stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%
                     </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">
                       ${stream.monthlyRevenue.toLocaleString()}
                     </span>
                   </div>
@@ -263,38 +263,38 @@ export default function AnalyticsPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Mentorship Overview
           </h3>
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
               ))}
             </div>
           ) : sessions && sessions.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Giving</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Giving</p>
+                  <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
                     {sessions.filter((s) => s.sessionType === "giving").length}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Receiving</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Receiving</p>
+                  <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
                     {sessions.filter((s) => s.sessionType === "receiving").length}
                   </p>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
                   Frequent Mentors
                 </p>
                 <div className="flex flex-wrap gap-1">
@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
                   Common Topics
                 </p>
                 <div className="flex flex-wrap gap-1">
@@ -330,7 +330,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 py-4 text-center">No data</p>
+            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
           )}
         </div>
       </div>

@@ -41,8 +41,8 @@ export default function HowItWorks() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section id="how-it-works" ref={ref} className="py-24 bg-gray-50 dark:bg-gray-950 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sky-500/[0.02] to-transparent" />
+    <section id="how-it-works" ref={ref} className="py-24 bg-stone-50 dark:bg-stone-950 relative">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/[0.02] to-transparent" />
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -51,8 +51,8 @@ export default function HowItWorks() {
           variants={fadeUpVariants}
           className="text-center space-y-4 mb-16"
         >
-          <p className="text-sky-500 dark:text-sky-400 text-sm font-medium tracking-wide uppercase">How it works</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+          <p className="text-blue-600 dark:text-blue-500 text-sm font-medium tracking-wide uppercase">How it works</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">
             Three steps to smarter decisions
           </h2>
         </motion.div>
@@ -67,16 +67,16 @@ export default function HowItWorks() {
             <motion.div
               key={step.number}
               variants={fadeUpVariants}
-              className="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.06] rounded-xl p-6 hover:border-sky-500/20 transition-colors"
+              className="group relative bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/[0.06] rounded-xl p-6 hover:border-stone-300 dark:hover:border-white/[0.10] transition-colors duration-150"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 bg-sky-500/10 border border-sky-500/20 rounded-lg flex items-center justify-center text-sky-500 dark:text-sky-400">
+                <div className="w-9 h-9 bg-blue-600/10 border border-blue-600/20 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-500">
                   {step.icon}
                 </div>
-                <span className="text-xs font-mono text-gray-400 dark:text-gray-600">{step.number}</span>
+                <span className="text-xs font-mono text-stone-400 dark:text-stone-600">{step.number}</span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{step.title}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.description}</p>
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-white mb-2">{step.title}</h3>
+              <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">{step.description}</p>
             </motion.div>
           ))}
         </motion.div>

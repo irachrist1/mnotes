@@ -27,14 +27,14 @@ ChartJS.register(
 );
 
 const CHART_COLORS = [
-  "rgb(99, 102, 241)",   // indigo
+  "rgb(37, 99, 235)",    // blue-600 (brand)
   "rgb(16, 185, 129)",   // emerald
-  "rgb(245, 158, 11)",   // amber
+  "rgb(120, 113, 108)",  // stone-500
   "rgb(239, 68, 68)",    // red
-  "rgb(59, 130, 246)",   // blue
+  "rgb(59, 130, 246)",   // blue-500
   "rgb(168, 85, 247)",   // purple
-  "rgb(20, 184, 166)",   // teal
-  "rgb(249, 115, 22)",   // orange
+  "rgb(29, 78, 216)",    // blue-700
+  "rgb(87, 83, 78)",     // stone-600
 ];
 
 const CHART_COLORS_ALPHA = CHART_COLORS.map((c) => c.replace("rgb", "rgba").replace(")", ", 0.15)"));
@@ -119,7 +119,7 @@ export function BarChart({ labels, data, label = "", height = 220, horizontal = 
               ticks: { font: { size: 11 } },
             },
             y: {
-              grid: { color: "rgba(0,0,0,0.06)" },
+              grid: { color: "rgba(168,162,158,0.08)" },
               ticks: { font: { size: 11 } },
               beginAtZero: true,
             },
@@ -180,7 +180,7 @@ export function LineChart({ labels, datasets, height = 220 }: LineChartProps) {
               ticks: { font: { size: 11 } },
             },
             y: {
-              grid: { color: "rgba(0,0,0,0.06)" },
+              grid: { color: "rgba(168,162,158,0.08)" },
               ticks: { font: { size: 11 } },
               beginAtZero: true,
             },
