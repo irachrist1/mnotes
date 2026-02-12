@@ -1,30 +1,27 @@
 "use node";
 
 import { action } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+import { parseAIResponse, ParsedInsight } from "./parseAIResponse";
+import type { Id } from "../_generated/dataModel";
 
 export const analyze = action({
   args: {
-    userId: v.optional(v.string()),
     analysisType: v.string(),
     businessData: v.string(),
     model: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{ id: Id<"aiInsights">; title: string; body: string; actionItems: string[]; priority: "low" | "medium" | "high"; confidence: number }> => {
-    const userId = args.userId || "default";
+  handler: async (ctx, args): Promise<{ id: Id<"aiInsights"> } & ParsedInsight> => {
+    // Use internal query to get unmasked API keys (never exposed to client)
+    const settings = await ctx.runQuery(internal.userSettings.getWithKeys, {});
 
-    // Get user settings for API key and provider
-    const settings: { aiProvider: "openrouter" | "google"; aiModel: string; openrouterApiKey?: string; googleApiKey?: string } | null =
-      await ctx.runQuery(api.userSettings.get, { userId });
-    
     if (!settings) {
       throw new Error("Please configure AI settings first (Settings page)");
     }
 
-    const apiKey = settings.aiProvider === "openrouter" 
-      ? settings.openrouterApiKey 
+    const apiKey = settings.aiProvider === "openrouter"
+      ? settings.openrouterApiKey
       : settings.googleApiKey;
 
     if (!apiKey) {
@@ -35,7 +32,7 @@ export const analyze = action({
     const prompt = buildAnalysisPrompt(args.analysisType, args.businessData);
 
     // Call the AI
-    const model: string = args.model || settings.aiModel;
+    const model = args.model || settings.aiModel;
     const aiResponse = await ctx.runAction(api.ai.generate.generate, {
       prompt,
       model,
@@ -46,9 +43,8 @@ export const analyze = action({
     // Parse the response
     const parsed = parseAIResponse(aiResponse);
 
-    // Save the insight to the database
-    const insightId: Id<"aiInsights"> = await ctx.runMutation(api.aiInsights.create, {
-      userId,
+    // Save the insight to the database (auth handled inside create)
+    const insightId = await ctx.runMutation(api.aiInsights.create, {
       type: args.analysisType,
       title: parsed.title,
       body: parsed.body,
@@ -116,50 +112,3 @@ Provide a general business intelligence insight based on the data provided.
   }
 }
 
-interface ParsedInsight {
-  title: string;
-  body: string;
-  actionItems: string[];
-  priority: "low" | "medium" | "high";
-  confidence: number;
-}
-
-function parseAIResponse(response: string): ParsedInsight {
-  // Try direct JSON parse first
-  try {
-    const parsed = JSON.parse(response);
-    return {
-      title: parsed.title || "AI Insight",
-      body: parsed.body || response,
-      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-      priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
-      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
-    };
-  } catch (e) {
-    // Try to extract JSON from markdown code block
-    const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[1]);
-        return {
-          title: parsed.title || "AI Insight",
-          body: parsed.body || response,
-          actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-          priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
-          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
-        };
-      } catch (e2) {
-        // Fall through to fallback
-      }
-    }
-
-    // Fallback: return raw response with default structure
-    return {
-      title: "AI Insight",
-      body: response,
-      actionItems: [],
-      priority: "medium",
-      confidence: 0.7,
-    };
-  }
-}

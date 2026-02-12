@@ -1,8 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  ...authTables,
+
   incomeStreams: defineTable({
+    userId: v.optional(v.string()),
     name: v.string(),
     category: v.union(
       v.literal("consulting"),
@@ -24,11 +28,13 @@ export default defineSchema({
     clientInfo: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_status", ["status"])
+  }).index("by_user", ["userId"])
+    .index("by_status", ["status"])
     .index("by_category", ["category"])
     .index("by_created_at", ["createdAt"]),
 
   ideas: defineTable({
+    userId: v.optional(v.string()),
     title: v.string(),
     description: v.string(),
     category: v.string(),
@@ -63,11 +69,13 @@ export default defineSchema({
     tags: v.array(v.string()),
     createdDate: v.string(),
     lastUpdated: v.string(),
-  }).index("by_stage", ["stage"])
+  }).index("by_user", ["userId"])
+    .index("by_stage", ["stage"])
     .index("by_category", ["category"])
     .index("by_potential_revenue", ["potentialRevenue"]),
 
   mentorshipSessions: defineTable({
+    userId: v.optional(v.string()),
     mentorName: v.string(),
     date: v.string(),
     duration: v.number(), // minutes
@@ -92,7 +100,8 @@ export default defineSchema({
     rating: v.number(), // 1-10
     notes: v.string(),
     createdAt: v.number(),
-  }).index("by_date", ["date"])
+  }).index("by_user", ["userId"])
+    .index("by_date", ["date"])
     .index("by_session_type", ["sessionType"])
     .index("by_created_at", ["createdAt"]),
 

@@ -17,19 +17,26 @@ export default function SettingsPage() {
   const [googleKey, setGoogleKey] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Load settings when available
+  // Track whether keys are already configured server-side
+  const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
+  const [hasGoogleKey, setHasGoogleKey] = useState(false);
+
+  // Load settings when available (API keys are masked, don't populate inputs)
   useEffect(() => {
     if (settings) {
       setProvider(settings.aiProvider);
       setModel(settings.aiModel);
-      setOpenrouterKey(settings.openrouterApiKey || "");
-      setGoogleKey(settings.googleApiKey || "");
+      setHasOpenrouterKey(!!settings.openrouterApiKey);
+      setHasGoogleKey(!!settings.googleApiKey);
+      // Don't load masked key values into the input fields
     }
   }, [settings]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Only send API keys if user entered new values. Omitting them
+      // preserves the existing key server-side (upsert patches, not replaces).
       await upsertSettings({
         aiProvider: provider,
         aiModel: model,
@@ -37,6 +44,15 @@ export default function SettingsPage() {
         googleApiKey: googleKey || undefined,
       });
       toast.success("Settings saved successfully");
+      // Clear local key state after save so masked placeholder shows again
+      if (openrouterKey) {
+        setHasOpenrouterKey(true);
+        setOpenrouterKey("");
+      }
+      if (googleKey) {
+        setHasGoogleKey(true);
+        setGoogleKey("");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to save settings");
@@ -203,7 +219,7 @@ export default function SettingsPage() {
                 type="password"
                 value={openrouterKey}
                 onChange={(e) => setOpenrouterKey(e.target.value)}
-                placeholder="sk-or-v1-..."
+                placeholder={hasOpenrouterKey ? "Key configured. Enter new key to replace." : "sk-or-v1-..."}
                 className="input-field w-full"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -228,7 +244,7 @@ export default function SettingsPage() {
                 type="password"
                 value={googleKey}
                 onChange={(e) => setGoogleKey(e.target.value)}
-                placeholder="AIza..."
+                placeholder={hasGoogleKey ? "Key configured. Enter new key to replace." : "AIza..."}
                 className="input-field w-full"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -12,6 +12,17 @@ export const generate = action({
     apiKey: v.string(),
   },
   handler: async (ctx, args) => {
+    // Input validation
+    if (args.prompt.length > 50_000) {
+      throw new Error("Prompt is too long (max 50,000 characters)");
+    }
+    if (args.model.length > 200) {
+      throw new Error("Model name is too long");
+    }
+    if (args.apiKey.length > 500) {
+      throw new Error("API key is too long");
+    }
+
     try {
       if (args.provider === "openrouter") {
         return await callOpenRouter(args.prompt, args.model, args.apiKey);

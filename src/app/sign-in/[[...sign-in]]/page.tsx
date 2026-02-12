@@ -1,0 +1,277 @@
+"use client";
+
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+type Flow = "signIn" | "signUp";
+
+export default function SignInPage() {
+  const { signIn } = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const [flow, setFlow] = useState<Flow>("signIn");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const hasRedirected = useRef(false);
+
+  // Redirect when authenticated — full page navigation so the middleware
+  // picks up the freshly-set auth cookie.
+  useEffect(() => {
+    if (isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
+      setSuccess(true);
+      // Small delay to let the cookie propagate, then hard navigate
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 150);
+    }
+  }, [isAuthenticated]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    try {
+      await signIn("password", formData);
+      // Redirect is handled by the useEffect above once isAuthenticated flips
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes("already exists")) {
+        setError("An account with this email already exists. Try signing in instead.");
+      } else if (message.includes("InvalidSecret") || message.includes("Invalid")) {
+        setError("Incorrect password. Please try again.");
+      } else if (flow === "signUp") {
+        setError("Could not create account. Please try again.");
+      } else {
+        setError("Invalid email or password. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const switchFlow = () => {
+    setFlow(flow === "signIn" ? "signUp" : "signIn");
+    setError(null);
+    setSuccess(false);
+  };
+
+  // Show nothing while checking auth (avoids flash)
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-400 to-sky-500 animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-mesh relative overflow-hidden">
+      {/* Subtle background orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-sky-400/[0.07] blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-sky-500/[0.05] blur-3xl" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full max-w-[400px] relative z-10"
+      >
+        {/* Logo */}
+        <div className="flex justify-center mb-10">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-400 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/25">
+              <span className="text-white text-base font-bold">M</span>
+            </div>
+            <span className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">
+              MNotes
+            </span>
+          </div>
+        </div>
+
+        {/* Card */}
+        <div className="card p-8 shadow-xl dark:shadow-none">
+          {/* Flow tabs */}
+          <div className="flex rounded-lg p-1 bg-gray-100 dark:bg-white/[0.04] mb-6">
+            {(["signIn", "signUp"] as Flow[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => {
+                  setFlow(f);
+                  setError(null);
+                  setSuccess(false);
+                }}
+                className={`
+                  relative flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200
+                  ${flow === f
+                    ? "text-gray-900 dark:text-white"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  }
+                `}
+              >
+                {flow === f && (
+                  <motion.div
+                    layoutId="auth-tab"
+                    className="absolute inset-0 bg-white dark:bg-white/10 rounded-md shadow-sm"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">
+                  {f === "signIn" ? "Sign in" : "Sign up"}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Title */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={flow}
+              initial={{ opacity: 0, x: flow === "signIn" ? -8 : 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: flow === "signIn" ? 8 : -8 }}
+              transition={{ duration: 0.2 }}
+              className="mb-6"
+            >
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+                {flow === "signIn" ? "Welcome back" : "Create your account"}
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {flow === "signIn"
+                  ? "Sign in to continue to your dashboard."
+                  : "Get started tracking your business."}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Error */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-sm text-red-700 dark:text-red-400">
+                  {error}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Success */}
+          <AnimatePresence>
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-sm text-emerald-700 dark:text-emerald-400">
+                  {flow === "signUp"
+                    ? "Account created! Redirecting..."
+                    : "Signed in! Redirecting..."}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                disabled={submitting || success}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete={flow === "signIn" ? "current-password" : "new-password"}
+                placeholder={flow === "signIn" ? "Enter your password" : "Create a password (8+ characters)"}
+                minLength={8}
+                disabled={submitting || success}
+                className="input-field"
+              />
+            </div>
+            <input name="flow" type="hidden" value={flow} />
+
+            <button
+              type="submit"
+              disabled={submitting || success}
+              className="btn-primary w-full relative"
+            >
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {flow === "signIn" ? "Signing in..." : "Creating account..."}
+                </span>
+              ) : success ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Redirecting...
+                </span>
+              ) : (
+                flow === "signIn" ? "Sign in" : "Create account"
+              )}
+            </button>
+          </form>
+
+          {/* Switch flow link */}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={switchFlow}
+              disabled={submitting || success}
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors disabled:opacity-50"
+            >
+              {flow === "signIn"
+                ? "Don't have an account? "
+                : "Already have an account? "}
+              <span className="font-medium text-sky-500 dark:text-sky-400">
+                {flow === "signIn" ? "Sign up" : "Sign in"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-[11px] text-gray-400 dark:text-gray-600 mt-6">
+          By continuing, you agree to our terms of service.
+        </p>
+      </motion.div>
+    </div>
+  );
+}

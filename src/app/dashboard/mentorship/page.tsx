@@ -141,8 +141,8 @@ export default function MentorshipPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(session); }} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(session._id); }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button aria-label="Edit session" onClick={(e) => { e.stopPropagation(); openEdit(session); }} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button aria-label="Delete session" onClick={(e) => { e.stopPropagation(); handleDelete(session._id); }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                   </div>
                 </div>
@@ -202,5 +202,5 @@ export default function MentorshipPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>{children}</div>);
+  return (<label className="block"><span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>{children}</label>);
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
+import { ConvexReactClient } from "convex/react";
 import { createContext, ReactNode, useContext, useMemo } from "react";
 
 const ConvexAvailableContext = createContext(false);
@@ -9,21 +10,29 @@ export function useConvexAvailable() {
   return useContext(ConvexAvailableContext);
 }
 
+function getConvexUrl(): string | null {
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!url || url.includes("placeholder")) return null;
+  return url;
+}
+
 export default function ConvexClientProvider({
   children,
 }: {
   children: ReactNode;
 }) {
+  const convexUrl = getConvexUrl();
+
   const convex = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-    if (!url || url.includes("placeholder")) return null;
+    if (!convexUrl) return null;
     try {
-      return new ConvexReactClient(url);
+      return new ConvexReactClient(convexUrl);
     } catch {
       return null;
     }
-  }, []);
+  }, [convexUrl]);
 
+  // No Convex URL: render without providers
   if (!convex) {
     return (
       <ConvexAvailableContext.Provider value={false}>
@@ -32,9 +41,12 @@ export default function ConvexClientProvider({
     );
   }
 
+  // Convex available: wrap with Next.js-aware auth provider
   return (
     <ConvexAvailableContext.Provider value={true}>
-      <ConvexProvider client={convex}>{children}</ConvexProvider>
+      <ConvexAuthNextjsProvider client={convex}>
+        {children}
+      </ConvexAuthNextjsProvider>
     </ConvexAvailableContext.Provider>
   );
 }

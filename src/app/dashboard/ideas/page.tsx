@@ -141,8 +141,8 @@ export default function IdeasPage() {
                       <div className="flex items-start justify-between gap-1 mb-2">
                         <h4 className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2">{idea.title}</h4>
                         <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
-                          <button onClick={() => openEdit(idea)} className="p-0.5 rounded text-gray-400 hover:text-gray-600"><Pencil className="w-3 h-3" /></button>
-                          <button onClick={() => handleDelete(idea._id)} className="p-0.5 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => openEdit(idea)} className="p-0.5 rounded text-gray-400 hover:text-gray-600" aria-label="Edit idea"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => handleDelete(idea._id)} className="p-0.5 rounded text-gray-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -170,8 +170,8 @@ export default function IdeasPage() {
                 {idea.aiRelevance && <Cpu className="w-3.5 h-3.5 text-violet-500" />}
                 <Badge variant={revenueVariant(idea.potentialRevenue)}>{idea.potentialRevenue}</Badge>
                 <Badge variant="default">{stages.find((s) => s.key === idea.stage)?.label ?? idea.stage}</Badge>
-                <button onClick={() => openEdit(idea)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleDelete(idea._id)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => openEdit(idea)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Edit idea"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(idea._id)} className="p-1 rounded text-gray-400 hover:text-red-500" aria-label="Delete idea"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           ))}
@@ -218,5 +218,5 @@ export default function IdeasPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>{children}</div>);
+  return (<label className="block"><span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>{children}</label>);
 }

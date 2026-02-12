@@ -157,8 +157,8 @@ export default function IncomePage() {
                   <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
                 </div>
                 <div className="col-span-1 flex items-center justify-end gap-1">
-                  <button onClick={() => openEdit(stream)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDelete(stream._id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               {/* Mobile card */}
@@ -169,8 +169,8 @@ export default function IncomePage() {
                     {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400">{stream.clientInfo}</p>}
                   </div>
                   <div className="flex items-center gap-1 ml-2">
-                    <button onClick={() => openEdit(stream)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(stream._id)} className="p-1.5 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => openEdit(stream)} aria-label="Edit income stream" className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDelete(stream._id)} aria-label="Delete income stream" className="p-1.5 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -223,5 +223,5 @@ export default function IncomePage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>{children}</div>);
+  return (<label className="block"><span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</span>{children}</label>);
 }

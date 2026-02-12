@@ -15,7 +15,12 @@ import {
   Menu,
   X,
   ChevronRight,
+  LogOut,
+  User,
 } from 'lucide-react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { api } from '../../../convex/_generated/api';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -29,6 +34,50 @@ const navigation = [
 const bottomNav = [
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
+
+function UserProfile() {
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const user = useQuery(api.users.me);
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <div className="px-3 mt-3">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03]">
+        {user?.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={user.name || "User avatar"}
+            className="h-7 w-7 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-7 w-7 rounded-full bg-sky-500/10 flex items-center justify-center">
+            <User className="h-3.5 w-3.5 text-sky-400" strokeWidth={1.5} />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+            {user?.name || "User"}
+          </p>
+          {user?.email && (
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+              {user.email}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => void signOut()}
+          className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -109,6 +158,7 @@ export function Sidebar() {
         <button
           onClick={() => setMobileOpen(false)}
           className="lg:hidden ml-auto p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+          aria-label="Close navigation menu"
         >
           <X className="h-4 w-4" />
         </button>
@@ -142,6 +192,9 @@ export function Sidebar() {
             />
           ))}
         </ul>
+
+        {/* User profile */}
+        <UserProfile />
 
         {/* Version badge */}
         <div className="px-3 mt-4">

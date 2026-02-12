@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { motion, AnimatePresence } from "framer-motion";
+
+const SLIDE_TITLE_ID = "slide-over-title";
 
 export function SlideOver({
   open,
@@ -19,25 +21,74 @@ export function SlideOver({
   wide?: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus trap: cycle focus within the panel
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key !== "Tab" || !panelRef.current) return;
+
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+      );
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    },
+    [onClose]
+  );
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
     if (open) {
-      document.addEventListener("keydown", handleEsc);
+      // Save previous focus to restore later
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+
+      // Focus the close button after animation
+      requestAnimationFrame(() => {
+        const closeBtn = panelRef.current?.querySelector<HTMLElement>(
+          'button[aria-label="Close panel"]'
+        );
+        closeBtn?.focus();
+      });
     }
     return () => {
-      document.removeEventListener("keydown", handleEsc);
+      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
+
+      // Restore focus to previous element
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus();
+        previousFocusRef.current = null;
+      }
     };
-  }, [open, onClose]);
+  }, [open, handleKeyDown]);
 
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={SLIDE_TITLE_ID}
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -46,6 +97,7 @@ export function SlideOver({
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm"
             onClick={onClose}
+            aria-hidden="true"
           />
           {/* Panel */}
           <motion.div
@@ -64,7 +116,10 @@ export function SlideOver({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06]">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h2
+                id={SLIDE_TITLE_ID}
+                className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+              >
                 {title}
               </h2>
               <button
