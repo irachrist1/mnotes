@@ -3,6 +3,7 @@
 import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { api } from "../_generated/api";
+import { parseAIResponse } from "./parseAIResponse";
 
 export const analyze = action({
   args: {
@@ -110,50 +111,3 @@ Provide a general business intelligence insight based on the data provided.
   }
 }
 
-interface ParsedInsight {
-  title: string;
-  body: string;
-  actionItems: string[];
-  priority: "low" | "medium" | "high";
-  confidence: number;
-}
-
-function parseAIResponse(response: string): ParsedInsight {
-  // Try direct JSON parse first
-  try {
-    const parsed = JSON.parse(response);
-    return {
-      title: parsed.title || "AI Insight",
-      body: parsed.body || response,
-      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-      priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
-      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
-    };
-  } catch {
-    // Try to extract JSON from markdown code block
-    const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[1]);
-        return {
-          title: parsed.title || "AI Insight",
-          body: parsed.body || response,
-          actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-          priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
-          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
-        };
-      } catch {
-        // Fall through to fallback
-      }
-    }
-
-    // Fallback: return raw response with default structure
-    return {
-      title: "AI Insight",
-      body: response,
-      actionItems: [],
-      priority: "medium",
-      confidence: 0.7,
-    };
-  }
-}
