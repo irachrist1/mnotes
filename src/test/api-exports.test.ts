@@ -77,9 +77,8 @@ describe("API export name validation", () => {
   });
 
   describe("convex/users.ts exports", () => {
-    it("exports getOrCreate and me", async () => {
+    it("exports me", async () => {
       const mod = await import("@convex/users");
-      expect(mod.getOrCreate).toBeDefined();
       expect(mod.me).toBeDefined();
     });
   });
