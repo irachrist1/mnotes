@@ -1,19 +1,26 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./lib/auth";
 
-// Get all income streams
+// Get all income streams for the current user
 export const list = query({
   handler: async (ctx) => {
-    return await ctx.db.query("incomeStreams").collect();
+    const userId = await getUserId(ctx);
+    return await ctx.db
+      .query("incomeStreams")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
   },
 });
 
-// Get income streams by status
+// Get income streams by status for the current user
 export const byStatus = query({
   args: { status: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     return await ctx.db
       .query("incomeStreams")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.eq(q.field("status"), args.status))
       .collect();
   },
@@ -43,9 +50,11 @@ export const create = mutation({
     clientInfo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const now = Date.now();
     return await ctx.db.insert("incomeStreams", {
       ...args,
+      userId,
       createdAt: now,
       updatedAt: now,
     });

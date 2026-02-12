@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "MNotes — Entrepreneurial Dashboard",
+  title: "MNotes - Entrepreneurial Dashboard",
   description:
     "Intelligent dashboard for modern tech entrepreneurs to visualize and optimize their multi-stream business operations",
 };
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         <ConvexClientProvider>
           <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
             {children}

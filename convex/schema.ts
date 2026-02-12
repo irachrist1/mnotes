@@ -2,7 +2,19 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // User profiles synced from Clerk
+  users: defineTable({
+    clerkId: v.string(), // Clerk user ID (subject)
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    plan: v.optional(v.string()), // "free" | "pro" | "enterprise"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_clerk_id", ["clerkId"]),
+
   incomeStreams: defineTable({
+    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
     name: v.string(),
     category: v.union(
       v.literal("consulting"),
@@ -24,11 +36,13 @@ export default defineSchema({
     clientInfo: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_status", ["status"])
+  }).index("by_user", ["userId"])
+    .index("by_status", ["status"])
     .index("by_category", ["category"])
     .index("by_creation_time", ["createdAt"]),
 
   ideas: defineTable({
+    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
     title: v.string(),
     description: v.string(),
     category: v.string(),
@@ -63,11 +77,13 @@ export default defineSchema({
     tags: v.array(v.string()),
     createdDate: v.string(),
     lastUpdated: v.string(),
-  }).index("by_stage", ["stage"])
+  }).index("by_user", ["userId"])
+    .index("by_stage", ["stage"])
     .index("by_category", ["category"])
     .index("by_potential_revenue", ["potentialRevenue"]),
 
   mentorshipSessions: defineTable({
+    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
     mentorName: v.string(),
     date: v.string(),
     duration: v.number(), // minutes
@@ -92,7 +108,8 @@ export default defineSchema({
     rating: v.number(), // 1-10
     notes: v.string(),
     createdAt: v.number(),
-  }).index("by_date", ["date"])
+  }).index("by_user", ["userId"])
+    .index("by_date", ["date"])
     .index("by_session_type", ["sessionType"])
     .index("by_creation_time", ["createdAt"]),
 
@@ -100,6 +117,8 @@ export default defineSchema({
     userId: v.string(),
     aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
     aiModel: v.string(),
+    // WARNING: API keys are stored in plaintext. Full encryption requires
+    // Convex environment variables configured in the Convex dashboard.
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
     updatedAt: v.number(),

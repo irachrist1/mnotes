@@ -6,23 +6,20 @@ import { api } from "../_generated/api";
 
 export const analyze = action({
   args: {
-    userId: v.optional(v.string()),
     analysisType: v.string(),
     businessData: v.string(),
     model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = args.userId || "default";
+    // Get user settings for API key and provider (auth handled inside get)
+    const settings = await ctx.runQuery(api.userSettings.get, {});
 
-    // Get user settings for API key and provider
-    const settings = await ctx.runQuery(api.userSettings.get, { userId });
-    
     if (!settings) {
       throw new Error("Please configure AI settings first (Settings page)");
     }
 
-    const apiKey = settings.aiProvider === "openrouter" 
-      ? settings.openrouterApiKey 
+    const apiKey = settings.aiProvider === "openrouter"
+      ? settings.openrouterApiKey
       : settings.googleApiKey;
 
     if (!apiKey) {
@@ -44,9 +41,8 @@ export const analyze = action({
     // Parse the response
     const parsed = parseAIResponse(aiResponse);
 
-    // Save the insight to the database
+    // Save the insight to the database (auth handled inside create)
     const insightId = await ctx.runMutation(api.aiInsights.create, {
-      userId,
       type: args.analysisType,
       title: parsed.title,
       body: parsed.body,
@@ -133,7 +129,7 @@ function parseAIResponse(response: string): ParsedInsight {
       priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
     };
-  } catch (e) {
+  } catch {
     // Try to extract JSON from markdown code block
     const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
     if (jsonMatch) {
@@ -146,7 +142,7 @@ function parseAIResponse(response: string): ParsedInsight {
           priority: ["low", "medium", "high"].includes(parsed.priority) ? parsed.priority : "medium",
           confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
         };
-      } catch (e2) {
+      } catch {
         // Fall through to fallback
       }
     }

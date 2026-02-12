@@ -1,12 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getUserId } from "./lib/auth";
 
 export const get = query({
-  args: {
-    userId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = args.userId || "default";
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getUserId(ctx);
     const settings = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -17,15 +16,14 @@ export const get = query({
 
 export const upsert = mutation({
   args: {
-    userId: v.optional(v.string()),
     aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
     aiModel: v.string(),
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = args.userId || "default";
-    
+    const userId = await getUserId(ctx);
+
     const existing = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))

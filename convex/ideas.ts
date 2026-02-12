@@ -1,19 +1,26 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./lib/auth";
 
-// Get all ideas
+// Get all ideas for the current user
 export const list = query({
   handler: async (ctx) => {
-    return await ctx.db.query("ideas").collect();
+    const userId = await getUserId(ctx);
+    return await ctx.db
+      .query("ideas")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
   },
 });
 
-// Get ideas by stage
+// Get ideas by stage for the current user
 export const byStage = query({
   args: { stage: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     return await ctx.db
       .query("ideas")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.eq(q.field("stage"), args.stage))
       .collect();
   },
@@ -56,9 +63,11 @@ export const create = mutation({
     tags: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     const now = new Date().toISOString();
     return await ctx.db.insert("ideas", {
       ...args,
+      userId,
       createdDate: now,
       lastUpdated: now,
     });

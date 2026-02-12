@@ -1,22 +1,27 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getUserId } from "./lib/auth";
 
-// Get all mentorship sessions
+// Get all mentorship sessions for the current user
 export const list = query({
   handler: async (ctx) => {
+    const userId = await getUserId(ctx);
     return await ctx.db
       .query("mentorshipSessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
   },
 });
 
-// Get sessions by type
+// Get sessions by type for the current user
 export const byType = query({
   args: { sessionType: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     return await ctx.db
       .query("mentorshipSessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.eq(q.field("sessionType"), args.sessionType))
       .collect();
   },
@@ -47,8 +52,10 @@ export const create = mutation({
     notes: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
     return await ctx.db.insert("mentorshipSessions", {
       ...args,
+      userId,
       createdAt: Date.now(),
     });
   },
