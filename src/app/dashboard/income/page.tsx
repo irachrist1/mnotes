@@ -1,32 +1,201 @@
-'use client';
+"use client";
 
-import { Header } from '@/components/layout/Header';
-import { IncomeStreamsList } from '@/components/income/IncomeStreamsList';
-import { IncomeStreamsSummary } from '@/components/income/IncomeStreamsSummary';
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { Badge } from "@/components/ui/Badge";
+import { SlideOver } from "@/components/ui/SlideOver";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton, CardSkeleton } from "@/components/ui/Skeleton";
+import { DollarSign, Plus, Clock, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
-export default function IncomeStreamsPage() {
+type StreamStatus = "active" | "developing" | "planned" | "paused";
+type StreamCategory = "consulting" | "employment" | "content" | "product" | "project-based";
+
+const statusVariant = (s: string) => {
+  switch (s) {
+    case "active": return "success" as const;
+    case "developing": return "info" as const;
+    case "planned": return "default" as const;
+    case "paused": return "warning" as const;
+    default: return "default" as const;
+  }
+};
+
+const categoryLabel: Record<string, string> = {
+  consulting: "Consulting",
+  employment: "Employment",
+  content: "Content",
+  product: "Product",
+  "project-based": "Project-Based",
+};
+
+type FormData = {
+  name: string;
+  category: StreamCategory;
+  status: StreamStatus;
+  monthlyRevenue: string;
+  timeInvestment: string;
+  growthRate: string;
+  notes: string;
+  clientInfo: string;
+};
+
+const emptyForm: FormData = {
+  name: "",
+  category: "consulting",
+  status: "active",
+  monthlyRevenue: "0",
+  timeInvestment: "0",
+  growthRate: "0",
+  notes: "",
+  clientInfo: "",
+};
+
+export default function IncomePage() {
+  const streams = useQuery(api.incomeStreams.list);
+  const createStream = useMutation(api.incomeStreams.create);
+  const updateStream = useMutation(api.incomeStreams.update);
+  const deleteStream = useMutation(api.incomeStreams.remove);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<Id<"incomeStreams"> | null>(null);
+  const [form, setForm] = useState<FormData>(emptyForm);
+  const [filter, setFilter] = useState<"all" | StreamStatus>("all");
+  const [saving, setSaving] = useState(false);
+
+  const isLoading = streams === undefined;
+  const totalRevenue = streams?.reduce((s, i) => s + i.monthlyRevenue, 0) ?? 0;
+  const activeStreams = streams?.filter((i) => i.status === "active").length ?? 0;
+  const totalTime = streams?.reduce((s, i) => s + i.timeInvestment, 0) ?? 0;
+  const avgGrowth = streams && streams.length > 0 ? (streams.reduce((s, i) => s + i.growthRate, 0) / streams.length).toFixed(1) : "0";
+  const filtered = filter === "all" ? streams : streams?.filter((s) => s.status === filter);
+
+  const openCreate = () => { setEditingId(null); setForm(emptyForm); setShowForm(true); };
+  const openEdit = (stream: NonNullable<typeof streams>[number]) => {
+    setEditingId(stream._id);
+    setForm({
+      name: stream.name, category: stream.category, status: stream.status,
+      monthlyRevenue: String(stream.monthlyRevenue), timeInvestment: String(stream.timeInvestment),
+      growthRate: String(stream.growthRate), notes: stream.notes ?? "", clientInfo: stream.clientInfo ?? "",
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error("Name is required"); return; }
+    setSaving(true);
+    try {
+      const data = {
+        name: form.name.trim(), category: form.category, status: form.status,
+        monthlyRevenue: parseFloat(form.monthlyRevenue) || 0,
+        timeInvestment: parseFloat(form.timeInvestment) || 0,
+        growthRate: parseFloat(form.growthRate) || 0,
+        notes: form.notes || undefined, clientInfo: form.clientInfo || undefined,
+      };
+      if (editingId) { await updateStream({ id: editingId, ...data }); toast.success("Stream updated"); }
+      else { await createStream(data); toast.success("Stream created"); }
+      setShowForm(false);
+    } catch { toast.error("Failed to save"); } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: Id<"incomeStreams">) => {
+    if (!confirm("Delete this income stream?")) return;
+    try { await deleteStream({ id }); toast.success("Stream deleted"); } catch { toast.error("Failed to delete"); }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Income Streams Management
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Detailed overview and management of all your revenue sources
-          </p>
-        </div>
+    <>
+      <PageHeader title="Income Streams" description="Manage and track all your revenue sources"
+        action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
+      />
 
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <IncomeStreamsSummary />
-          
-          {/* Income Streams List with integrated filters */}
-          <IncomeStreamsList />
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard label="Monthly Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} />
+          <StatCard label="Active Streams" value={activeStreams} detail={`${streams?.length ?? 0} total`} icon={TrendingUp} />
+          <StatCard label="Time / Week" value={`${totalTime}h`} icon={Clock} />
+          <StatCard label="Avg Growth" value={`${avgGrowth}%`} icon={TrendingUp} />
         </div>
-      </main>
-    </div>
+      )}
+
+      <div className="flex items-center gap-1.5 mb-4">
+        {(["all", "active", "developing", "planned", "paused"] as const).map((s) => (
+          <button key={s} onClick={() => setFilter(s)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === s ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900" : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+            {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (<TableSkeleton />) : filtered && filtered.length > 0 ? (
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <span className="col-span-4">Name</span><span className="col-span-2">Category</span><span className="col-span-1">Status</span>
+            <span className="col-span-2 text-right">Revenue</span><span className="col-span-1 text-right">Hrs/wk</span><span className="col-span-1 text-right">Growth</span><span className="col-span-1" />
+          </div>
+          {filtered.map((stream) => (
+            <div key={stream._id} className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <div className="col-span-4 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
+                {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stream.clientInfo}</p>}
+              </div>
+              <div className="col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
+              <div className="col-span-1"><Badge variant={statusVariant(stream.status)}>{stream.status}</Badge></div>
+              <div className="col-span-2 text-right"><span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
+              <div className="col-span-1 text-right text-sm text-gray-600 dark:text-gray-300 tabular-nums">{stream.timeInvestment}</div>
+              <div className="col-span-1 text-right text-sm tabular-nums">
+                <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
+              </div>
+              <div className="col-span-1 flex items-center justify-end gap-1">
+                <button onClick={() => openEdit(stream)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(stream._id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon={DollarSign} title="No income streams" description="Add your first income stream to start tracking revenue."
+          action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
+        />
+      )}
+
+      <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editingId ? "Edit Income Stream" : "New Income Stream"}>
+        <div className="space-y-4">
+          <Field label="Name"><input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Stream name" /></Field>
+          <Field label="Category">
+            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as StreamCategory })} className="input-field">
+              <option value="consulting">Consulting</option><option value="employment">Employment</option><option value="content">Content</option><option value="product">Product</option><option value="project-based">Project-Based</option>
+            </select>
+          </Field>
+          <Field label="Status">
+            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as StreamStatus })} className="input-field">
+              <option value="active">Active</option><option value="developing">Developing</option><option value="planned">Planned</option><option value="paused">Paused</option>
+            </select>
+          </Field>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Revenue ($/mo)"><input type="number" value={form.monthlyRevenue} onChange={(e) => setForm({ ...form, monthlyRevenue: e.target.value })} className="input-field" /></Field>
+            <Field label="Hrs/week"><input type="number" value={form.timeInvestment} onChange={(e) => setForm({ ...form, timeInvestment: e.target.value })} className="input-field" /></Field>
+            <Field label="Growth %"><input type="number" value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} className="input-field" /></Field>
+          </div>
+          <Field label="Client Info"><input type="text" value={form.clientInfo} onChange={(e) => setForm({ ...form, clientInfo: e.target.value })} className="input-field" placeholder="Client name or info" /></Field>
+          <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field resize-none" rows={3} placeholder="Additional notes…" /></Field>
+          <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+          </div>
+        </div>
+      </SlideOver>
+    </>
   );
-} 
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (<div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>{children}</div>);
+}
