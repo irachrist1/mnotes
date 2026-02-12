@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ConvexAuthNextjsServerProvider>
+    <ConvexAuthNextjsServerProvider storageNamespace="mnotes-auth">
       <html lang="en" suppressHydrationWarning className={inter.variable}>
         <body className="font-sans antialiased">
           <ConvexClientProvider>
