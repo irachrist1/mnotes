@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 // Get all mentorship sessions
-export const getAll = query({
+export const list = query({
   handler: async (ctx) => {
     return await ctx.db
       .query("mentorshipSessions")
@@ -12,7 +12,7 @@ export const getAll = query({
 });
 
 // Get sessions by type
-export const getByType = query({
+export const byType = query({
   args: { sessionType: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -96,7 +96,7 @@ export const remove = mutation({
 });
 
 // Update action item completion
-export const updateActionItem = mutation({
+export const toggleActionItem = mutation({
   args: {
     id: v.id("mentorshipSessions"),
     actionItemIndex: v.number(),

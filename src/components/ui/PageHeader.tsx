@@ -8,7 +8,7 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
       <div>
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
           {title}
@@ -19,7 +19,7 @@ export function PageHeader({
           </p>
         )}
       </div>
-      {action && <div>{action}</div>}
+      {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }

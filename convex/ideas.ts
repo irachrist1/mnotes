@@ -2,14 +2,14 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 // Get all ideas
-export const getAll = query({
+export const list = query({
   handler: async (ctx) => {
     return await ctx.db.query("ideas").collect();
   },
 });
 
 // Get ideas by stage
-export const getByStage = query({
+export const byStage = query({
   args: { stage: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db

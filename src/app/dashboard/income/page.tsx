@@ -136,26 +136,52 @@ export default function IncomePage() {
 
       {isLoading ? (<TableSkeleton />) : filtered && filtered.length > 0 ? (
         <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
-          <div className="grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          {/* Desktop table header */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             <span className="col-span-4">Name</span><span className="col-span-2">Category</span><span className="col-span-1">Status</span>
             <span className="col-span-2 text-right">Revenue</span><span className="col-span-1 text-right">Hrs/wk</span><span className="col-span-1 text-right">Growth</span><span className="col-span-1" />
           </div>
           {filtered.map((stream) => (
-            <div key={stream._id} className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-              <div className="col-span-4 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
-                {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stream.clientInfo}</p>}
+            <div key={stream._id}>
+              {/* Desktop row */}
+              <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <div className="col-span-4 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
+                  {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stream.clientInfo}</p>}
+                </div>
+                <div className="col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
+                <div className="col-span-1"><Badge variant={statusVariant(stream.status)}>{stream.status}</Badge></div>
+                <div className="col-span-2 text-right"><span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
+                <div className="col-span-1 text-right text-sm text-gray-600 dark:text-gray-300 tabular-nums">{stream.timeInvestment}</div>
+                <div className="col-span-1 text-right text-sm tabular-nums">
+                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
+                </div>
+                <div className="col-span-1 flex items-center justify-end gap-1">
+                  <button onClick={() => openEdit(stream)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(stream._id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
               </div>
-              <div className="col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
-              <div className="col-span-1"><Badge variant={statusVariant(stream.status)}>{stream.status}</Badge></div>
-              <div className="col-span-2 text-right"><span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
-              <div className="col-span-1 text-right text-sm text-gray-600 dark:text-gray-300 tabular-nums">{stream.timeInvestment}</div>
-              <div className="col-span-1 text-right text-sm tabular-nums">
-                <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
-              </div>
-              <div className="col-span-1 flex items-center justify-end gap-1">
-                <button onClick={() => openEdit(stream)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleDelete(stream._id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+              {/* Mobile card */}
+              <div className="md:hidden px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</p>
+                    {stream.clientInfo && <p className="text-xs text-gray-500 dark:text-gray-400">{stream.clientInfo}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 ml-2">
+                    <button onClick={() => openEdit(stream)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDelete(stream._id)} className="p-1.5 rounded text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
+                  <span className="text-xs text-gray-500">{categoryLabel[stream.category] ?? stream.category}</span>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">${stream.monthlyRevenue.toLocaleString()}/mo</span>
+                  <span className="text-gray-500">{stream.timeInvestment}h/wk</span>
+                  <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
+                </div>
               </div>
             </div>
           ))}

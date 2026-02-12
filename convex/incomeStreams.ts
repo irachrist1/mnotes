@@ -2,14 +2,14 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 // Get all income streams
-export const getAll = query({
+export const list = query({
   handler: async (ctx) => {
     return await ctx.db.query("incomeStreams").collect();
   },
 });
 
 // Get income streams by status
-export const getByStatus = query({
+export const byStatus = query({
   args: { status: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
