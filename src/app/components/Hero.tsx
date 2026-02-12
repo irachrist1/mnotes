@@ -3,6 +3,26 @@
 import { motion } from 'framer-motion'
 import { fadeUpVariants, staggerContainer } from '@/lib/animations'
 
+// Precomputed SVG path for revenue line chart
+// Data: [40, 55, 45, 60, 50, 70, 65, 80, 75, 90, 85, 95] (% height), viewBox 180×52
+// Smooth cubic bezier — each segment: C midx,y0 midx,y1 x1,y1
+const CHART_LINE = [
+  'M 0,31.2',
+  'C 8.2,31.2 8.2,23.4 16.4,23.4',
+  'C 24.5,23.4 24.5,28.6 32.7,28.6',
+  'C 40.9,28.6 40.9,20.8 49.1,20.8',
+  'C 57.3,20.8 57.3,26 65.5,26',
+  'C 73.6,26 73.6,15.6 81.8,15.6',
+  'C 90,15.6 90,18.2 98.2,18.2',
+  'C 106.3,18.2 106.3,10.4 114.5,10.4',
+  'C 122.7,10.4 122.7,13 130.9,13',
+  'C 139.1,13 139.1,5.2 147.3,5.2',
+  'C 155.5,5.2 155.5,7.8 163.6,7.8',
+  'C 171.8,7.8 171.8,2.6 180,2.6',
+].join(' ')
+
+const CHART_AREA = CHART_LINE + ' L 180,52 L 0,52 Z'
+
 export default function Hero() {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -14,7 +34,7 @@ export default function Hero() {
       <div className="absolute inset-0">
         <div className="absolute top-[-20%] left-[15%] w-[600px] h-[600px] bg-blue-600/10 dark:bg-blue-600/20 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-500/15 rounded-full blur-[100px]" />
-        <div className="absolute top-[30%] right-[25%] w-[400px] h-[400px] bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] right-[25%] w-[400px] h-[400px] bg-blue-400/5 dark:bg-blue-400/10 rounded-full blur-[100px]" />
         <div className="absolute bottom-[20%] left-[5%] w-[300px] h-[300px] bg-blue-700/5 dark:bg-blue-700/10 rounded-full blur-[80px]" />
         {/* Subtle grid overlay */}
         <div
@@ -36,7 +56,7 @@ export default function Hero() {
           {/* Eyebrow */}
           <motion.div variants={fadeUpVariants}>
             <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600/10 border border-blue-600/20 text-blue-700 dark:text-blue-500 rounded-full text-xs font-medium tracking-wide">
-              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-500 rounded-full animate-pulse" />
+              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
               Now in early access
             </span>
           </motion.div>
@@ -48,7 +68,7 @@ export default function Hero() {
           >
             The intelligence layer
             <br />
-            <span className="bg-gradient-to-r from-blue-600 to-cyan-400 dark:from-blue-500 dark:to-cyan-300 bg-clip-text text-transparent">
+            <span className="text-gradient">
               for everything you build
             </span>
           </motion.h1>
@@ -89,9 +109,10 @@ export default function Hero() {
             variants={fadeUpVariants}
             className="pt-16 max-w-4xl mx-auto"
           >
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-cyan-500/10 to-blue-600/20 rounded-xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-blue-500/10 to-blue-600/20 rounded-xl blur-xl opacity-60" />
               <div className="relative bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-white/[0.08] overflow-hidden shadow-2xl">
+
                 {/* Browser chrome */}
                 <div className="bg-stone-100 dark:bg-stone-900 px-4 py-3 flex items-center gap-2 border-b border-stone-200 dark:border-white/[0.06]">
                   <div className="flex gap-1.5">
@@ -105,61 +126,97 @@ export default function Hero() {
                     </div>
                   </div>
                 </div>
-                {/* Dashboard mockup content */}
-                <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-4 gap-3">
-                    {[
-                      { label: 'Monthly Revenue', value: '$12,450', accent: 'text-emerald-600 dark:text-emerald-400' },
-                      { label: 'Active Ideas', value: '23', accent: 'text-blue-700 dark:text-blue-500' },
-                      { label: 'Growth Rate', value: '+18.2%', accent: 'text-blue-700 dark:text-blue-500' },
-                      { label: 'AI Insights', value: '5 new', accent: 'text-violet-600 dark:text-violet-400' },
-                    ].map((stat) => (
-                      <div key={stat.label} className="bg-white dark:bg-stone-800/50 rounded-lg p-3 border border-stone-100 dark:border-white/[0.04]">
-                        <p className="text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider">{stat.label}</p>
-                        <p className={`text-lg font-semibold ${stat.accent} mt-0.5 tabular-nums`}>{stat.value}</p>
+
+                {/* App shell: mini sidebar + main content */}
+                <div className="flex">
+
+                  {/* Mini sidebar — mirrors the real 64px icon-only sidebar */}
+                  <div className="w-10 bg-white dark:bg-stone-950/60 border-r border-stone-200 dark:border-white/[0.06] flex flex-col items-center pt-3 pb-3 gap-2 shrink-0">
+                    {/* Logo mark */}
+                    <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-1">
+                      <span className="text-white font-bold" style={{ fontSize: '7px', lineHeight: 1 }}>M</span>
+                    </div>
+                    {/* Nav icons */}
+                    {[true, false, false, false, false, false].map((active, i) => (
+                      <div
+                        key={i}
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center ${active ? 'bg-blue-600/10' : ''}`}
+                      >
+                        <div className={`w-3 h-3 rounded-md ${active ? 'bg-blue-500/60' : 'bg-stone-200 dark:bg-stone-700'}`} />
                       </div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2 bg-white dark:bg-stone-800/50 rounded-lg p-4 border border-stone-100 dark:border-white/[0.04] h-32">
-                      <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Revenue Trend</p>
-                      <div className="flex items-end gap-1.5 h-16">
-                        {[40, 55, 45, 60, 50, 70, 65, 80, 75, 90, 85, 95].map((h, i) => (
-                          <div key={i} className="flex-1 bg-gradient-to-t from-blue-600/40 to-blue-500/60 rounded-sm" style={{ height: `${h}%` }} />
-                        ))}
-                      </div>
+
+                  {/* Main content */}
+                  <div className="flex-1 p-4 space-y-3 min-w-0">
+
+                    {/* Stat cards row */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: 'Monthly Revenue', value: '$12,450', accent: 'text-emerald-600 dark:text-emerald-400' },
+                        { label: 'Active Ideas', value: '23', accent: 'text-blue-700 dark:text-blue-500' },
+                        { label: 'Growth Rate', value: '+18.2%', accent: 'text-blue-700 dark:text-blue-500' },
+                        { label: 'AI Insights', value: '5 new', accent: 'text-violet-600 dark:text-violet-400' },
+                      ].map((stat) => (
+                        <div key={stat.label} className="bg-white dark:bg-stone-800/50 rounded-lg p-2.5 border border-stone-100 dark:border-white/[0.04]">
+                          <p className="text-[9px] text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">{stat.label}</p>
+                          <p className={`text-sm font-bold ${stat.accent} mt-0.5 tabular-nums`}>{stat.value}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="bg-gradient-to-br from-blue-600/10 to-cyan-500/10 rounded-lg p-4 border border-blue-600/20">
-                      <p className="text-xs text-blue-700 dark:text-blue-500 font-medium mb-2">AI Insight</p>
-                      <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                        Your consulting revenue grew 23% this quarter. Consider raising rates for new clients.
-                      </p>
+
+                    {/* SVG line chart + AI insight */}
+                    <div className="grid grid-cols-3 gap-2">
+
+                      {/* Revenue trend — SVG line chart */}
+                      <div className="col-span-2 bg-white dark:bg-stone-800/50 rounded-lg p-3 border border-stone-100 dark:border-white/[0.04]">
+                        <p className="text-[10px] text-stone-400 dark:text-stone-500 mb-2">Revenue Trend</p>
+                        <svg
+                          viewBox="0 0 180 52"
+                          className="w-full h-14"
+                          preserveAspectRatio="none"
+                          aria-hidden="true"
+                        >
+                          <defs>
+                            <linearGradient id="heroAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="rgb(37,99,235)" stopOpacity="0.22" />
+                              <stop offset="100%" stopColor="rgb(37,99,235)" stopOpacity="0.02" />
+                            </linearGradient>
+                          </defs>
+                          {/* Area fill */}
+                          <path d={CHART_AREA} fill="url(#heroAreaGrad)" />
+                          {/* Line */}
+                          <path
+                            d={CHART_LINE}
+                            fill="none"
+                            stroke="rgb(37,99,235)"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          {/* Terminal dot */}
+                          <circle cx="180" cy="2.6" r="2.5" fill="rgb(37,99,235)" />
+                        </svg>
+                      </div>
+
+                      {/* AI insight card */}
+                      <div className="bg-blue-600/[0.07] dark:bg-blue-500/[0.08] rounded-lg p-3 border border-blue-600/15 dark:border-blue-500/10 flex flex-col justify-between">
+                        <p className="text-[10px] text-blue-700 dark:text-blue-500 font-medium mb-1.5">AI Insight</p>
+                        <p className="text-[10px] text-stone-600 dark:text-stone-300 leading-relaxed">
+                          Consulting revenue grew 23% this quarter. Consider raising rates for new clients.
+                        </p>
+                      </div>
+
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           </motion.div>
+
         </motion.div>
       </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 6, 0] }}
-          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          className="text-stone-300 dark:text-stone-600"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-        </motion.div>
-      </motion.div>
     </section>
   )
 }

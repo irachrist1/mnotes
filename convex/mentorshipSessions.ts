@@ -9,7 +9,7 @@ export const list = query({
     const userId = await getUserId(ctx);
     return await ctx.db
       .query("mentorshipSessions")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
   },
@@ -59,7 +59,7 @@ export const create = mutation({
     validateArray(args.topics, "Topics");
     validateArray(args.keyInsights, "Key insights");
     validateArray(args.actionItems, "Action items");
-    validateNumber(args.rating, "Rating", 1, 5);
+    validateNumber(args.rating, "Rating", 1, 10);
     validateMediumText(args.notes, "Notes");
     return await ctx.db.insert("mentorshipSessions", {
       ...args,
@@ -102,6 +102,8 @@ export const update = mutation({
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Session not found");
     if (existing.userId !== userId) throw new Error("Unauthorized");
+    if (updates.rating !== undefined) validateNumber(updates.rating, "Rating", 1, 10);
+    if (updates.duration !== undefined) validateNumber(updates.duration, "Duration", 1, 480);
     await ctx.db.patch(id, updates);
   },
 });

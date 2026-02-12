@@ -67,12 +67,12 @@ const features = [
   {
     title: 'AI Insights',
     description: 'Generate analysis across all your data. Revenue optimization, idea scoring, mentorship patterns. Powered by your choice of model.',
-    accent: 'from-blue-600/20 to-cyan-500/5',
+    accent: 'from-blue-600/20 to-blue-500/5',
     border: 'hover:border-blue-600/20',
     iconColor: 'text-blue-600 dark:text-blue-500',
     span: 'md:col-span-2',
     preview: (
-      <div className="mt-4 bg-gradient-to-br from-blue-600/10 to-cyan-500/5 rounded-lg p-3 border border-blue-600/10">
+      <div className="mt-4 bg-blue-600/[0.07] dark:bg-blue-500/[0.06] rounded-lg p-3 border border-blue-600/10">
         <div className="flex items-start gap-2">
           <div className="w-6 h-6 bg-blue-600/20 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,7 +167,7 @@ export default function Features() {
               className={`group relative bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-white/[0.06] rounded-xl p-5 ${feature.border} transition-colors duration-150 overflow-hidden ${feature.span}`}
             >
               {/* Gradient overlay on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-150`} />
               <div className="relative">
                 <h3 className={`text-sm font-semibold ${feature.iconColor} mb-1.5`}>
                   {feature.title}

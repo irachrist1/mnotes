@@ -10,18 +10,18 @@ type MutationCtx = GenericMutationCtx<DataModel>;
 type ActionCtx = GenericActionCtx<DataModel>;
 
 /**
- * Get the current user ID from Convex Auth, or fall back to "default"
- * for development without auth configured.
+ * Get the current user ID from Convex Auth, or fall back to "default".
  *
- * - With auth: returns the user's tokenIdentifier (stable user ID)
- * - Without auth: returns "default" so dev mode still functions
+ * @convex-dev/auth stores sessions in the JWT subject as "<userId>|<sessionId>".
+ * We take only the first segment so the ID is stable across login sessions.
  */
 export async function getUserId(
   ctx: QueryCtx | MutationCtx | ActionCtx
 ): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
   if (identity) {
-    return identity.tokenIdentifier;
+    // Strip the session suffix added by @convex-dev/auth (format: userId|sessionId)
+    return identity.subject.split("|")[0];
   }
   // Fallback for dev mode without auth
   return "default";

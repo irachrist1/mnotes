@@ -73,3 +73,17 @@ export const upsert = mutation({
     }
   },
 });
+
+/**
+ * Internal query that returns settings by userId directly.
+ * Used by scheduled actions that don't have an auth context.
+ */
+export const getForUser = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+  },
+});

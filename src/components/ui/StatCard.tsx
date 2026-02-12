@@ -83,7 +83,7 @@ export function StatCard({
         )}
       </div>
       <div className="flex items-end gap-2">
-        <span className="text-2xl font-semibold text-stone-900 dark:text-stone-100 tracking-tight tabular-nums">
+        <span className="text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight tabular-nums">
           {canAnimate ? (
             <>
               {prefix}

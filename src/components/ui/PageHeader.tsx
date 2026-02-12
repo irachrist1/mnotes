@@ -19,7 +19,7 @@ export function PageHeader({
       className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8"
     >
       <div>
-        <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
+        <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
           {title}
         </h1>
         {description && (

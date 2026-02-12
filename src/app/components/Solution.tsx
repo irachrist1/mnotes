@@ -22,7 +22,7 @@ export default function Solution() {
           <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">
             One place for your data.
             <br />
-            <span className="bg-gradient-to-r from-blue-600 to-cyan-400 dark:from-blue-500 dark:to-cyan-300 bg-clip-text text-transparent">
+            <span className="text-gradient">
               One AI that understands it.
             </span>
           </h2>

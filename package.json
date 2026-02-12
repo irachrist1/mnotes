@@ -15,6 +15,7 @@
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.90",
     "@google/generative-ai": "^0.24.1",
+    "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-accordion": "^1.2.12",
     "chart.js": "^4.4.9",
     "convex": "^1.31.7",
@@ -27,6 +28,8 @@
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.69.0",
     "react-intersection-observer": "^10.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7"
   },
   "devDependencies": {

@@ -28,7 +28,7 @@ export default function WaitlistCTA() {
       {/* Gradient mesh */}
       <div className="absolute inset-0">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -73,7 +73,7 @@ export default function WaitlistCTA() {
                     })}
                     type="email"
                     placeholder="you@example.com"
-                    className="w-full px-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/[0.08] rounded-lg text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600/50 transition-colors"
+                    className="w-full px-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/[0.08] rounded-lg text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-500 text-sm focus:outline-none focus:border-blue-600 transition-colors"
                   />
                   {errors.email && (
                     <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 text-left">{errors.email.message}</p>

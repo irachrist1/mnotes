@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Lightbulb, Plus, Pencil, Trash2, Cpu, Wrench } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 
 type Stage = "raw-thought" | "researching" | "validating" | "developing" | "testing" | "launched";
@@ -44,7 +45,7 @@ type IdeaForm = {
 
 const emptyForm: IdeaForm = {
   title: "", description: "", category: "", stage: "raw-thought",
-  potentialRevenue: "medium", implementationComplexity: "3", timeToMarket: "",
+  potentialRevenue: "medium", implementationComplexity: "", timeToMarket: "",
   requiredSkills: "", marketSize: "", competitionLevel: "medium",
   aiRelevance: false, hardwareComponent: false, sourceOfInspiration: "",
   nextSteps: "", tags: "",
@@ -99,7 +100,7 @@ export default function IdeasPage() {
         lastUpdated: now,
       };
       if (editingId) { await updateIdea({ id: editingId, ...data }); toast.success("Idea updated"); }
-      else { await createIdea({ ...data, createdDate: now }); toast.success("Idea created"); }
+      else { await createIdea({ ...data }); toast.success("Idea created"); }
       setShowForm(false);
     } catch { toast.error("Failed to save"); } finally { setSaving(false); }
   };
@@ -124,7 +125,7 @@ export default function IdeasPage() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-6 gap-3">{stages.map((s) => (<div key={s.key} className="space-y-2"><div className="h-6 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" /><div className="h-24 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" /></div>))}</div>
+        <div className="grid grid-cols-6 gap-3">{stages.map((s) => (<div key={s.key} className="space-y-2"><div className="h-6 skeleton" /><div className="h-24 skeleton" /></div>))}</div>
       ) : view === "kanban" ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {stages.map((stage) => {
@@ -147,8 +148,8 @@ export default function IdeasPage() {
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
                         <Badge variant={revenueVariant(idea.potentialRevenue)}>{idea.potentialRevenue}</Badge>
-                        {idea.aiRelevance && <Cpu className="w-3 h-3 text-violet-500" title="AI Relevant" />}
-                        {idea.hardwareComponent && <Wrench className="w-3 h-3 text-amber-500" title="Hardware" />}
+                        {idea.aiRelevance && <Cpu className="w-3 h-3 text-violet-500" aria-label="AI Relevant" />}
+                        {idea.hardwareComponent && <Wrench className="w-3 h-3 text-amber-500" aria-label="Hardware" />}
                       </div>
                     </div>
                   ))}
@@ -188,12 +189,39 @@ export default function IdeasPage() {
           <Field label="Description"><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field resize-none" rows={3} placeholder="Describe the idea…" /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category"><input type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field" placeholder="e.g. SaaS" /></Field>
-            <Field label="Stage"><select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as Stage })} className="input-field">{stages.map((s) => (<option key={s.key} value={s.key}>{s.label}</option>))}</select></Field>
+            <Field label="Stage">
+              <Select
+                value={form.stage}
+                onChange={(val) => setForm({ ...form, stage: val as Stage })}
+                options={stages.map((s) => ({ value: s.key, label: s.label }))}
+              />
+            </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Revenue Potential"><select value={form.potentialRevenue} onChange={(e) => setForm({ ...form, potentialRevenue: e.target.value as Revenue })} className="input-field"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="very-high">Very High</option></select></Field>
-            <Field label="Complexity (1-5)"><input type="number" min={1} max={5} value={form.implementationComplexity} onChange={(e) => setForm({ ...form, implementationComplexity: e.target.value })} className="input-field" /></Field>
-            <Field label="Competition"><select value={form.competitionLevel} onChange={(e) => setForm({ ...form, competitionLevel: e.target.value as Competition })} className="input-field"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></Field>
+            <Field label="Revenue Potential">
+              <Select
+                value={form.potentialRevenue}
+                onChange={(val) => setForm({ ...form, potentialRevenue: val as Revenue })}
+                options={[
+                  { value: "low", label: "Low" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "High" },
+                  { value: "very-high", label: "Very High" },
+                ]}
+              />
+            </Field>
+            <Field label="Complexity (1-10)"><input type="number" min={1} max={10} value={form.implementationComplexity} onChange={(e) => setForm({ ...form, implementationComplexity: e.target.value })} className="input-field" placeholder="5" /></Field>
+            <Field label="Competition">
+              <Select
+                value={form.competitionLevel}
+                onChange={(val) => setForm({ ...form, competitionLevel: val as Competition })}
+                options={[
+                  { value: "low", label: "Low" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "High" },
+                ]}
+              />
+            </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Time to Market"><input type="text" value={form.timeToMarket} onChange={(e) => setForm({ ...form, timeToMarket: e.target.value })} className="input-field" placeholder="e.g. 3 months" /></Field>
@@ -218,5 +246,10 @@ export default function IdeasPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>{children}</label>);
+  return (
+    <div className="block">
+      <span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>
+      {children}
+    </div>
+  );
 }

@@ -17,6 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import Link from "next/link";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
 const container = {
   enter: { transition: { staggerChildren: 0.05 } },
@@ -87,9 +88,7 @@ export default function DashboardPage() {
           <StatCard
             label="Monthly Revenue"
             value={`$${totalRevenue.toLocaleString()}`}
-            detail={`${activeStreams} active streams`}
             icon={DollarSign}
-            trend={totalRevenue > 0 ? { value: `${totalTime}h/wk`, positive: true } : undefined}
           />
           <StatCard
             label="Active Streams"
@@ -106,7 +105,7 @@ export default function DashboardPage() {
           <StatCard
             label="Mentorship"
             value={totalSessions}
-            detail={`avg rating ${avgRating}`}
+            detail={`avg rating ${avgRating}/10`}
             icon={Users}
           />
         </motion.div>
@@ -135,9 +134,14 @@ export default function DashboardPage() {
                       </span>
                       <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
                     </div>
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">
-                      ${stream.monthlyRevenue.toLocaleString()}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums block">
+                        ${stream.monthlyRevenue.toLocaleString()}
+                      </span>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
+                        ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -265,7 +269,7 @@ function OverviewPanel({
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-9 rounded-lg bg-stone-100 dark:bg-white/[0.03] animate-pulse" />
+            <div key={i} className="h-9 skeleton" />
           ))}
         </div>
       ) : (

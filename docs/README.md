@@ -6,6 +6,7 @@ This folder intentionally contains only docs that are still useful for the curre
 
 - `DESIGN_SYSTEM.md`: Practical UI rules and tokens used by the current app.
 - `MIGRATION.md`: Legacy ideas-field migration notes for older Convex deployments.
+- `OPENCLAW_LEARNINGS.md`: Extracted, sanitized architecture and memory/prompt patterns from the OpenClaw/Jarvis setup for reuse by other agents.
 
 ## Why this was cleaned
 

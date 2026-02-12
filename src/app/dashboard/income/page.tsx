@@ -11,7 +11,9 @@ import { SlideOver } from "@/components/ui/SlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton, CardSkeleton } from "@/components/ui/Skeleton";
 import { DollarSign, Plus, Clock, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
 type StreamStatus = "active" | "developing" | "planned" | "paused";
 type StreamCategory = "consulting" | "employment" | "content" | "product" | "project-based";
@@ -49,9 +51,9 @@ const emptyForm: FormData = {
   name: "",
   category: "consulting",
   status: "active",
-  monthlyRevenue: "0",
-  timeInvestment: "0",
-  growthRate: "0",
+  monthlyRevenue: "",
+  timeInvestment: "",
+  growthRate: "",
   notes: "",
   clientInfo: "",
 };
@@ -70,10 +72,13 @@ export default function IncomePage() {
 
   const isLoading = streams === undefined;
   const totalRevenue = streams?.reduce((s, i) => s + i.monthlyRevenue, 0) ?? 0;
+  const totalWeeklyRevenue = totalRevenue / WEEKS_PER_MONTH;
   const activeStreams = streams?.filter((i) => i.status === "active").length ?? 0;
   const totalTime = streams?.reduce((s, i) => s + i.timeInvestment, 0) ?? 0;
   const avgGrowth = streams && streams.length > 0 ? (streams.reduce((s, i) => s + i.growthRate, 0) / streams.length).toFixed(1) : "0";
   const filtered = filter === "all" ? streams : streams?.filter((s) => s.status === filter);
+  const monthlyInput = parseFloat(form.monthlyRevenue);
+  const weeklyEstimate = Number.isFinite(monthlyInput) && monthlyInput > 0 ? monthlyInput / WEEKS_PER_MONTH : null;
 
   const openCreate = () => { setEditingId(null); setForm(emptyForm); setShowForm(true); };
   const openEdit = (stream: NonNullable<typeof streams>[number]) => {
@@ -118,7 +123,12 @@ export default function IncomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard label="Monthly Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} />
+          <StatCard
+            label="Monthly Revenue"
+            value={`$${totalRevenue.toLocaleString()}`}
+            detail={`~$${totalWeeklyRevenue.toFixed(2)}/wk`}
+            icon={DollarSign}
+          />
           <StatCard label="Active Streams" value={activeStreams} detail={`${streams?.length ?? 0} total`} icon={TrendingUp} />
           <StatCard label="Time / Week" value={`${totalTime}h`} icon={Clock} />
           <StatCard label="Avg Growth" value={`${avgGrowth}%`} icon={TrendingUp} />
@@ -151,7 +161,14 @@ export default function IncomePage() {
                 </div>
                 <div className="col-span-2"><span className="text-xs text-stone-600 dark:text-stone-300">{categoryLabel[stream.category] ?? stream.category}</span></div>
                 <div className="col-span-1"><Badge variant={statusVariant(stream.status)}>{stream.status}</Badge></div>
-                <div className="col-span-2 text-right"><span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span></div>
+                <div className="col-span-2 text-right">
+                  <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">
+                    ${stream.monthlyRevenue.toLocaleString()}
+                  </span>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
+                    ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
+                  </p>
+                </div>
                 <div className="col-span-1 text-right text-sm text-stone-600 dark:text-stone-300 tabular-nums">{stream.timeInvestment}</div>
                 <div className="col-span-1 text-right text-sm tabular-nums">
                   <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
@@ -178,7 +195,10 @@ export default function IncomePage() {
                   <span className="text-xs text-stone-500">{categoryLabel[stream.category] ?? stream.category}</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="font-medium text-stone-900 dark:text-stone-100">${stream.monthlyRevenue.toLocaleString()}/mo</span>
+                  <span className="font-medium text-stone-900 dark:text-stone-100">
+                    ${stream.monthlyRevenue.toLocaleString()}/mo
+                  </span>
+                  <span className="text-stone-500">~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk</span>
                   <span className="text-stone-500">{stream.timeInvestment}h/wk</span>
                   <span className={stream.growthRate > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500"}>{stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%</span>
                 </div>
@@ -196,19 +216,48 @@ export default function IncomePage() {
         <div className="space-y-4">
           <Field label="Name"><input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Stream name" /></Field>
           <Field label="Category">
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as StreamCategory })} className="input-field">
-              <option value="consulting">Consulting</option><option value="employment">Employment</option><option value="content">Content</option><option value="product">Product</option><option value="project-based">Project-Based</option>
-            </select>
+            <Select
+              value={form.category}
+              onChange={(val) => setForm({ ...form, category: val as StreamCategory })}
+              options={[
+                { value: "consulting", label: "Consulting" },
+                { value: "employment", label: "Employment" },
+                { value: "content", label: "Content" },
+                { value: "product", label: "Product" },
+                { value: "project-based", label: "Project-Based" },
+              ]}
+            />
           </Field>
           <Field label="Status">
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as StreamStatus })} className="input-field">
-              <option value="active">Active</option><option value="developing">Developing</option><option value="planned">Planned</option><option value="paused">Paused</option>
-            </select>
+            <Select
+              value={form.status}
+              onChange={(val) => setForm({ ...form, status: val as StreamStatus })}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "developing", label: "Developing" },
+                { value: "planned", label: "Planned" },
+                { value: "paused", label: "Paused" },
+              ]}
+            />
           </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Revenue ($/mo)"><input type="number" min="0" value={form.monthlyRevenue} onChange={(e) => setForm({ ...form, monthlyRevenue: e.target.value })} className="input-field" /></Field>
-            <Field label="Hrs/week"><input type="number" min="0" value={form.timeInvestment} onChange={(e) => setForm({ ...form, timeInvestment: e.target.value })} className="input-field" /></Field>
-            <Field label="Growth %"><input type="number" value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} className="input-field" /></Field>
+            <Field label="Revenue ($/mo)">
+              <input
+                type="number"
+                min="0"
+                value={form.monthlyRevenue}
+                onChange={(e) => setForm({ ...form, monthlyRevenue: e.target.value })}
+                className="input-field"
+                placeholder="0"
+              />
+              {weeklyEstimate !== null && (
+                <p className="mt-1 text-[11px] text-stone-500 dark:text-stone-400">
+                  Auto weekly estimate: ~${weeklyEstimate.toFixed(2)}/wk
+                </p>
+              )}
+            </Field>
+            <Field label="Hrs/week"><input type="number" min="0" value={form.timeInvestment} onChange={(e) => setForm({ ...form, timeInvestment: e.target.value })} className="input-field" placeholder="0" /></Field>
+            <Field label="Growth %"><input type="number" value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} className="input-field" placeholder="0" /></Field>
           </div>
           <Field label="Client Info"><input type="text" value={form.clientInfo} onChange={(e) => setForm({ ...form, clientInfo: e.target.value })} className="input-field" placeholder="Client name or info" /></Field>
           <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field resize-none" rows={3} placeholder="Additional notes…" /></Field>
@@ -223,5 +272,10 @@ export default function IncomePage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>{children}</label>);
+  return (
+    <div className="block">
+      <span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>
+      {children}
+    </div>
+  );
 }

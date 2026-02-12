@@ -121,7 +121,7 @@
   }
 
   .dashboard-panel {
-    @apply bg-white dark:bg-stone-900 rounded-lg shadow-sm border border-stone-200 dark:border-stone-800 p-6;
+    @apply bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6;
   }
 
   .bg-gradient-mesh {
@@ -257,7 +257,16 @@
 
   /* ─── Loading ─── */
   .skeleton {
-    @apply animate-pulse bg-stone-200 dark:bg-stone-800 rounded-lg;
+    @apply bg-stone-100 dark:bg-stone-800 rounded-lg relative overflow-hidden;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
   }
 
   /* ─── Focus States ─── */
@@ -308,9 +317,9 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent 25%, rgba(37, 99, 235, 0.04) 50%, transparent 75%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
     background-size: 200% 100%;
-    animation: shimmer 2s infinite;
+    animation: shimmer 1.8s ease-in-out infinite;
   }
 
   /* ─── Gradient Text ─── */
@@ -319,5 +328,28 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+}
+
+/* Dark mode skeleton shimmer */
+@media (prefers-color-scheme: dark) {
+  .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.07) 50%, transparent 100%);
+    background-size: 200% 100%;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.07) 50%, transparent 100%);
+    background-size: 200% 100%;
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

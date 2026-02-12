@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ConvexGuard } from "@/components/ConvexGuard";
@@ -11,8 +12,10 @@ export default function DashboardClientLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const claimLegacyData = useMutation(api.users.claimLegacyData);
   const hasAttemptedClaim = useRef(false);
+  const soulFile = useQuery(api.soulFile.get, {});
 
   useEffect(() => {
     if (hasAttemptedClaim.current) return;
@@ -21,6 +24,29 @@ export default function DashboardClientLayout({
       // Non-blocking background migration; UI should continue to load.
     });
   }, [claimLegacyData]);
+
+  // Redirect to onboarding if no soul file yet (but wait for query to load)
+  useEffect(() => {
+    if (soulFile === null) {
+      router.replace("/onboarding");
+    }
+  }, [soulFile, router]);
+
+  // Show nothing while checking soul file (avoids flash)
+  if (soulFile === undefined) {
+    return (
+      <DashboardShell>
+        <div className="flex items-center justify-center py-32">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (soulFile === null) {
+    // Redirecting to onboarding
+    return null;
+  }
 
   return (
     <DashboardShell>

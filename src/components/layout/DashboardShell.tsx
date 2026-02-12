@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { CommandPalette } from "@/components/layout/CommandPalette";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import { ChatButton } from "@/components/chat/ChatButton";
 import { Toaster } from "sonner";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-dot-pattern" style={{ background: 'rgb(var(--color-background))' }}>
       {/* Dot pattern overlay */}
@@ -22,11 +28,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         }}
       />
       <Sidebar />
-      <div className="relative lg:pl-56 min-h-screen transition-all duration-200">
+      <CommandPalette />
+      <div className="relative lg:pl-16">
         <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
           {children}
         </main>
       </div>
+
+      {/* Chat */}
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
     </div>
   );
 }

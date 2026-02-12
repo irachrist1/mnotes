@@ -53,12 +53,34 @@ describe("API export name validation", () => {
   });
 
   describe("convex/aiInsights.ts exports", () => {
-    it("exports list, create, updateStatus, remove", async () => {
+    it("exports listGenerated, list, create, saveGenerated, updateStatus, remove", async () => {
       const mod = await import("@convex/aiInsights");
+      expect(mod.listGenerated).toBeDefined();
       expect(mod.list).toBeDefined();
       expect(mod.create).toBeDefined();
+      expect(mod.saveGenerated).toBeDefined();
       expect(mod.updateStatus).toBeDefined();
       expect(mod.remove).toBeDefined();
+    });
+  });
+
+  describe("convex/savedInsights.ts exports", () => {
+    it("exports list, search, getById, archive, togglePin, remove, touchUsage", async () => {
+      const mod = await import("@convex/savedInsights");
+      expect(mod.list).toBeDefined();
+      expect(mod.search).toBeDefined();
+      expect(mod.getById).toBeDefined();
+      expect(mod.archive).toBeDefined();
+      expect(mod.togglePin).toBeDefined();
+      expect(mod.remove).toBeDefined();
+      expect(mod.touchUsage).toBeDefined();
+    });
+  });
+
+  describe("convex/commandPalette.ts exports", () => {
+    it("exports search", async () => {
+      const mod = await import("@convex/commandPalette");
+      expect(mod.search).toBeDefined();
     });
   });
 
@@ -66,6 +88,20 @@ describe("API export name validation", () => {
     it("exports analyze", async () => {
       const mod = await import("@convex/ai/analyze");
       expect(mod.analyze).toBeDefined();
+    });
+  });
+
+  describe("convex/ai/embed.ts exports", () => {
+    it("exports embedText", async () => {
+      const mod = await import("@convex/ai/embed");
+      expect(mod.embedText).toBeDefined();
+    });
+  });
+
+  describe("convex/ai/contextBuilder.ts exports", () => {
+    it("exports buildContextPacket", async () => {
+      const mod = await import("@convex/ai/contextBuilder");
+      expect(mod.buildContextPacket).toBeDefined();
     });
   });
 

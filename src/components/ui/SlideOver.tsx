@@ -22,12 +22,17 @@ export function SlideOver({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Focus trap: cycle focus within the panel
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -50,7 +55,7 @@ export function SlideOver({
         first.focus();
       }
     },
-    [onClose]
+    []
   );
 
   useEffect(() => {
@@ -110,7 +115,6 @@ export function SlideOver({
               "relative h-full flex flex-col",
               "bg-white dark:bg-stone-950",
               "border-l border-stone-200 dark:border-white/[0.06]",
-              "shadow-[−24px_0_48px_rgba(0,0,0,0.08)]",
               wide ? "w-full max-w-lg" : "w-full max-w-md"
             )}
           >
@@ -131,7 +135,7 @@ export function SlideOver({
               </button>
             </div>
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
           </motion.div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Save, Key, Sparkles } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -62,17 +63,21 @@ export default function SettingsPage() {
   };
 
   const commonOpenRouterModels = [
-    { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Fast, cheap)" },
-    { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Better quality)" },
+    { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (Newest, fast)" },
+    { value: "google/gemini-3-pro-preview", label: "Gemini 3 Pro (Newest, powerful)" },
+    { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Stable, cheap)" },
+    { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Deep reasoning)" },
     { value: "anthropic/claude-sonnet-4", label: "Claude Sonnet 4 (Best for analysis)" },
     { value: "openai/gpt-4o", label: "GPT-4o (Good all-rounder)" },
     { value: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick (Open source)" },
   ];
 
   const commonGoogleModels = [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+    { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Newest, fast)" },
+    { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (Newest, powerful)" },
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Stable)" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite (Ultra fast)" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Deep reasoning)" },
   ];
 
   const modelOptions = provider === "openrouter" ? commonOpenRouterModels : commonGoogleModels;
@@ -169,17 +174,11 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <select
+            <Select
               value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="input-field w-full"
-            >
-              {modelOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={setModel}
+              options={modelOptions}
+            />
             <p className="text-xs text-stone-500 dark:text-stone-400">
               Or enter a custom model name below
             </p>

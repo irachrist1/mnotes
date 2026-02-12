@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { DoughnutChart, BarChart, LineChart } from "@/components/ui/Charts";
 import { DollarSign, TrendingUp, Lightbulb, Users, Target, Clock } from "lucide-react";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
 const stageLabel: Record<string, string> = {
   "raw-thought": "Raw Thought",
@@ -27,6 +28,7 @@ const categoryLabel: Record<string, string> = {
 };
 
 const STAGES_ORDER = ["raw-thought", "researching", "validating", "developing", "testing", "launched"] as const;
+const CATEGORY_ORDER = ["consulting", "employment", "content", "product", "project-based"] as const;
 
 export default function AnalyticsPage() {
   const streams = useQuery(api.incomeStreams.list);
@@ -35,13 +37,14 @@ export default function AnalyticsPage() {
   const isLoading = streams === undefined || ideas === undefined || sessions === undefined;
 
   const totalRevenue = streams?.reduce((s, i) => s + i.monthlyRevenue, 0) ?? 0;
+  const totalWeeklyRevenue = totalRevenue / WEEKS_PER_MONTH;
   const activeStreams = streams?.filter((i) => i.status === "active").length ?? 0;
   const avgGrowth = streams && streams.length > 0
     ? (streams.reduce((s, i) => s + i.growthRate, 0) / streams.length).toFixed(1)
     : "0";
   const totalTime = streams?.reduce((s, i) => s + i.timeInvestment, 0) ?? 0;
   const revenuePerHour = totalTime > 0
-    ? (totalRevenue / (totalTime * 4.33)).toFixed(2)
+    ? (totalRevenue / (totalTime * WEEKS_PER_MONTH)).toFixed(2)
     : "0";
 
   const revenueByCategory = useMemo(() => {
@@ -76,14 +79,14 @@ export default function AnalyticsPage() {
     const sorted = [...streams]
       .filter((s) => s.timeInvestment > 0)
       .sort((a, b) => {
-        const effA = a.monthlyRevenue / (a.timeInvestment * 4.33);
-        const effB = b.monthlyRevenue / (b.timeInvestment * 4.33);
+        const effA = a.monthlyRevenue / (a.timeInvestment * WEEKS_PER_MONTH);
+        const effB = b.monthlyRevenue / (b.timeInvestment * WEEKS_PER_MONTH);
         return effB - effA;
       })
       .slice(0, 6);
     return {
       labels: sorted.map((s) => s.name.length > 15 ? s.name.slice(0, 12) + "..." : s.name),
-      data: sorted.map((s) => Math.round(s.monthlyRevenue / (s.timeInvestment * 4.33))),
+      data: sorted.map((s) => Math.round(s.monthlyRevenue / (s.timeInvestment * WEEKS_PER_MONTH))),
     };
   }, [streams]);
 
@@ -98,6 +101,15 @@ export default function AnalyticsPage() {
       datasets: [{ label: "Projected Revenue", data: projected }],
     };
   }, [streams, totalRevenue]);
+
+  const revenueCategoryEntries = useMemo(() => {
+    return CATEGORY_ORDER
+      .filter((key) => revenueByCategory[key] !== undefined)
+      .map((key) => ({
+        label: categoryLabel[key] ?? key,
+        value: revenueByCategory[key],
+      }));
+  }, [revenueByCategory]);
 
   return (
     <>
@@ -115,7 +127,7 @@ export default function AnalyticsPage() {
           <StatCard
             label="Monthly Revenue"
             value={`$${totalRevenue.toLocaleString()}`}
-            detail={`${activeStreams} active streams`}
+            detail={`${activeStreams} active streams • ~$${totalWeeklyRevenue.toFixed(2)}/wk`}
             icon={DollarSign}
           />
           <StatCard
@@ -159,10 +171,10 @@ export default function AnalyticsPage() {
           </h3>
           {isLoading ? (
             <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-          ) : Object.keys(revenueByCategory).length > 0 ? (
+          ) : revenueCategoryEntries.length > 0 ? (
             <DoughnutChart
-              labels={Object.keys(revenueByCategory).map((k) => categoryLabel[k] ?? k)}
-              data={Object.values(revenueByCategory)}
+              labels={revenueCategoryEntries.map((entry) => entry.label)}
+              data={revenueCategoryEntries.map((entry) => entry.value)}
             />
           ) : (
             <p className="text-sm text-stone-400 py-4 text-center">No data</p>
@@ -251,12 +263,15 @@ export default function AnalyticsPage() {
                       {stream.name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="text-right">
                     <span className="text-xs text-stone-400">
                       {stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%
                     </span>
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums">
+                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums block">
                       ${stream.monthlyRevenue.toLocaleString()}
+                    </span>
+                    <span className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
+                      ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
                     </span>
                   </div>
                 </div>

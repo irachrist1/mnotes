@@ -52,7 +52,7 @@ async function callOpenRouter(
       "X-Title": "MNotes AI",
     },
     body: JSON.stringify({
-      model: model || "google/gemini-2.5-flash",
+      model: model || "google/gemini-3-flash-preview",
       messages: [
         {
           role: "user",
@@ -82,7 +82,7 @@ async function callGoogleAI(
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const generativeModel = genAI.getGenerativeModel({
-    model: model || "gemini-2.5-flash",
+    model: model || "gemini-3-flash-preview",
   });
 
   const result = await generativeModel.generateContent({

@@ -5,7 +5,7 @@ import {
 } from "@convex-dev/auth/nextjs/server";
 
 const isSignInPage = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   // Redirect authenticated users away from sign-in page
@@ -22,7 +22,10 @@ export const config = {
   matcher: [
     // Scope auth checks to routes that need them.
     "/dashboard/:path*",
+    "/onboarding/:path*",
     "/sign-in/:path*",
     "/sign-up/:path*",
+    // Required by ConvexAuthNextjsServerProvider, which POSTs to /api/auth.
+    "/api/auth/:path*",
   ],
 };

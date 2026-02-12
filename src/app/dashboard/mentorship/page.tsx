@@ -11,6 +11,7 @@ import { SlideOver } from "@/components/ui/SlideOver";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Users, Plus, Clock, Star, CheckCircle2, Circle, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 
 type SessionType = "giving" | "receiving";
@@ -26,8 +27,8 @@ type SessionForm = {
 };
 
 const emptyForm: SessionForm = {
-  mentorName: "", date: new Date().toISOString().split("T")[0], duration: "60",
-  sessionType: "receiving", topics: "", keyInsights: "", actionItems: [], rating: "8", notes: "",
+  mentorName: "", date: new Date().toISOString().split("T")[0], duration: "",
+  sessionType: "receiving", topics: "", keyInsights: "", actionItems: [], rating: "", notes: "",
 };
 
 export default function MentorshipPage() {
@@ -169,10 +170,19 @@ export default function MentorshipPage() {
           <Field label="Mentor Name"><input type="text" value={form.mentorName} onChange={(e) => setForm({ ...form, mentorName: e.target.value })} className="input-field" placeholder="Name" /></Field>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="input-field" /></Field>
-            <Field label="Duration (min)"><input type="number" min="0" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input-field" /></Field>
-            <Field label="Type"><select value={form.sessionType} onChange={(e) => setForm({ ...form, sessionType: e.target.value as SessionType })} className="input-field"><option value="receiving">Receiving</option><option value="giving">Giving</option></select></Field>
+            <Field label="Duration (min)"><input type="number" min="0" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input-field" placeholder="60" /></Field>
+            <Field label="Type">
+              <Select
+                value={form.sessionType}
+                onChange={(val) => setForm({ ...form, sessionType: val as SessionType })}
+                options={[
+                  { value: "receiving", label: "Receiving" },
+                  { value: "giving", label: "Giving" },
+                ]}
+              />
+            </Field>
           </div>
-          <Field label="Rating (1-10)"><input type="number" min={1} max={10} value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} className="input-field" /></Field>
+          <Field label="Rating (1-10)"><input type="number" min={1} max={10} value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} className="input-field" placeholder="8" /></Field>
           <Field label="Topics (comma-separated)"><input type="text" value={form.topics} onChange={(e) => setForm({ ...form, topics: e.target.value })} className="input-field" placeholder="Leadership, AI strategy" /></Field>
           <Field label="Key Insights (one per line)"><textarea value={form.keyInsights} onChange={(e) => setForm({ ...form, keyInsights: e.target.value })} className="input-field resize-none" rows={3} /></Field>
           <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field resize-none" rows={3} /></Field>
@@ -185,7 +195,16 @@ export default function MentorshipPage() {
               {form.actionItems.map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input type="text" value={item.task} onChange={(e) => updateActionItem(i, "task", e.target.value)} className="input-field flex-1" placeholder="Task" />
-                  <select value={item.priority} onChange={(e) => updateActionItem(i, "priority", e.target.value)} className="input-field w-24"><option value="low">Low</option><option value="medium">Med</option><option value="high">High</option></select>
+                  <Select
+                    value={item.priority}
+                    onChange={(val) => updateActionItem(i, "priority", val)}
+                    options={[
+                      { value: "low", label: "Low" },
+                      { value: "medium", label: "Med" },
+                      { value: "high", label: "High" },
+                    ]}
+                    className="w-24"
+                  />
                   <button onClick={() => removeActionItem(i)} className="p-1 text-stone-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               ))}
@@ -202,5 +221,10 @@ export default function MentorshipPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>{children}</label>);
+  return (
+    <div className="block">
+      <span className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">{label}</span>
+      {children}
+    </div>
+  );
 }

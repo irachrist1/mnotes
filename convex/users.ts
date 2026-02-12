@@ -35,6 +35,7 @@ export const claimLegacyData = mutation({
         | "ideas"
         | "mentorshipSessions"
         | "aiInsights"
+        | "savedInsights"
     ) => {
       const docs = await ctx.db
         .query(table)
@@ -50,6 +51,7 @@ export const claimLegacyData = mutation({
     await moveTable("ideas");
     await moveTable("mentorshipSessions");
     await moveTable("aiInsights");
+    await moveTable("savedInsights");
 
     // userSettings has required userId and can block settings from appearing.
     const legacySettings = await ctx.db

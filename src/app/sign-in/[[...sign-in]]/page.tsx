@@ -35,20 +35,35 @@ export default function SignInPage() {
     setSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    const normalizedEmail = String(formData.get("email") ?? "")
+      .trim()
+      .toLowerCase();
+    formData.set("email", normalizedEmail);
     try {
       await signIn("password", formData);
       // Redirect is handled by the useEffect above once isAuthenticated flips
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error("Auth error:", err);
 
       if (message.includes("already exists")) {
         setError("An account with this email already exists. Try signing in instead.");
+      } else if (message.includes("Invalid password")) {
+        setError("Password must be at least 8 characters.");
       } else if (message.includes("InvalidSecret") || message.includes("Invalid")) {
         setError("Incorrect password. Please try again.");
       } else if (flow === "signUp") {
-        setError("Could not create account. Please try again.");
+        setError(
+          process.env.NODE_ENV === "development"
+            ? `Could not create account: ${message}`
+            : "Could not create account. Please try again."
+        );
       } else {
-        setError("Invalid email or password. Please try again.");
+        setError(
+          process.env.NODE_ENV === "development"
+            ? `Sign in failed: ${message}`
+            : "Invalid email or password. Please try again."
+        );
       }
     } finally {
       setSubmitting(false);

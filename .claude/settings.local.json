@@ -9,7 +9,15 @@
       "Bash(test:*)",
       "Bash(cat:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx next build:*)",
+      "Bash(python3:*)",
+      "Bash(npx convex run:*)",
+      "Bash(npx convex deploy:*)",
+      "Bash(npx convex dev:*)",
+      "Bash(USERID=\"https://glorious-bloodhound-537.convex.site|js794m79x0b9dmtha03fprrg2581171z\")",
+      "Bash(CORRECT_UID=\"js794m79x0b9dmtha03fprrg2581171z\")",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

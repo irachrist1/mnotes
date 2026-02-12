@@ -9,7 +9,8 @@ export const list = query({
     const userId = await getUserId(ctx);
     return await ctx.db
       .query("ideas")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .order("desc")
       .collect();
   },
 });
