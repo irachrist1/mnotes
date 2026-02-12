@@ -12,8 +12,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.60.0",
-    "@clerk/nextjs": "^6.37.3",
+    "@auth/core": "^0.37.0",
+    "@convex-dev/auth": "^0.0.90",
     "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "chart.js": "^4.4.9",

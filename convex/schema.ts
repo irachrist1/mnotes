@@ -1,20 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // User profiles synced from Clerk
-  users: defineTable({
-    clerkId: v.string(), // Clerk user ID (subject)
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
-    plan: v.optional(v.string()), // "free" | "pro" | "enterprise"
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_clerk_id", ["clerkId"]),
+  ...authTables,
 
   incomeStreams: defineTable({
-    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
+    userId: v.optional(v.string()),
     name: v.string(),
     category: v.union(
       v.literal("consulting"),
@@ -39,10 +31,10 @@ export default defineSchema({
   }).index("by_user", ["userId"])
     .index("by_status", ["status"])
     .index("by_category", ["category"])
-    .index("by_creation_time", ["createdAt"]),
+    .index("by_created_at", ["createdAt"]),
 
   ideas: defineTable({
-    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
+    userId: v.optional(v.string()),
     title: v.string(),
     description: v.string(),
     category: v.string(),
@@ -83,7 +75,7 @@ export default defineSchema({
     .index("by_potential_revenue", ["potentialRevenue"]),
 
   mentorshipSessions: defineTable({
-    userId: v.optional(v.string()), // Clerk user ID, optional for backward compat
+    userId: v.optional(v.string()),
     mentorName: v.string(),
     date: v.string(),
     duration: v.number(), // minutes
@@ -111,14 +103,12 @@ export default defineSchema({
   }).index("by_user", ["userId"])
     .index("by_date", ["date"])
     .index("by_session_type", ["sessionType"])
-    .index("by_creation_time", ["createdAt"]),
+    .index("by_created_at", ["createdAt"]),
 
   userSettings: defineTable({
     userId: v.string(),
     aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
     aiModel: v.string(),
-    // WARNING: API keys are stored in plaintext. Full encryption requires
-    // Convex environment variables configured in the Convex dashboard.
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
     updatedAt: v.number(),

@@ -3,7 +3,8 @@
 import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "../_generated/api";
-import { parseAIResponse } from "./parseAIResponse";
+import { parseAIResponse, ParsedInsight } from "./parseAIResponse";
+import type { Id } from "../_generated/dataModel";
 
 export const analyze = action({
   args: {
@@ -11,7 +12,7 @@ export const analyze = action({
     businessData: v.string(),
     model: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ id: Id<"aiInsights"> } & ParsedInsight> => {
     // Use internal query to get unmasked API keys (never exposed to client)
     const settings = await ctx.runQuery(internal.userSettings.getWithKeys, {});
 

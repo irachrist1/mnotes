@@ -18,7 +18,9 @@ import {
   LogOut,
   User,
 } from 'lucide-react';
-import { useClerkAvailable } from '@/components/ConvexClientProvider';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { api } from '../../../convex/_generated/api';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -34,35 +36,19 @@ const bottomNav = [
 ];
 
 function UserProfile() {
-  const clerkAvailable = useClerkAvailable();
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const user = useQuery(api.users.me);
 
-  if (!clerkAvailable) return null;
-
-  // Dynamically import Clerk components only when available
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useUser, useClerk } = require('@clerk/clerk-react');
-  return <UserProfileInner useUser={useUser} useClerk={useClerk} />;
-}
-
-function UserProfileInner({
-  useUser,
-  useClerk,
-}: {
-  useUser: () => { user: { fullName?: string | null; primaryEmailAddress?: { emailAddress: string } | null; imageUrl?: string } | null | undefined; isLoaded: boolean };
-  useClerk: () => { signOut: () => void };
-}) {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
-
-  if (!isLoaded || !user) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="px-3 mt-3">
       <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03]">
-        {user.imageUrl ? (
+        {user?.avatarUrl ? (
           <img
-            src={user.imageUrl}
-            alt={user.fullName || "User avatar"}
+            src={user.avatarUrl}
+            alt={user.name || "User avatar"}
             className="h-7 w-7 rounded-full object-cover"
           />
         ) : (
@@ -72,16 +58,16 @@ function UserProfileInner({
         )}
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-            {user.fullName || "User"}
+            {user?.name || "User"}
           </p>
-          {user.primaryEmailAddress && (
+          {user?.email && (
             <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-              {user.primaryEmailAddress.emailAddress}
+              {user.email}
             </p>
           )}
         </div>
         <button
-          onClick={() => signOut()}
+          onClick={() => void signOut()}
           className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
           aria-label="Sign out"
           title="Sign out"
@@ -207,7 +193,7 @@ export function Sidebar() {
           ))}
         </ul>
 
-        {/* User profile (shown when Clerk is configured) */}
+        {/* User profile */}
         <UserProfile />
 
         {/* Version badge */}
