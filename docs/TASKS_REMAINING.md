@@ -1,83 +1,45 @@
 # MNotes - Remaining Tasks & Issues
 
-**Last Updated**: January 3, 2026
-**Status**: Landing Page Complete, Dashboard Needs Fixes
+**Last Updated**: February 12, 2026
+**Status**: Landing Page Complete, Dashboard Needs Fixes, AI Service Fixed
 
 ---
 
 ## 🚨 Critical Issues
 
-### 1. Migrate from Supabase to Convex
-**Priority**: CRITICAL 🔥
-**Status**: ❌ Not Started
-
-**Reason**: Transitioning to Convex for better real-time capabilities and developer experience
-
-**Migration Tasks**:
-- [ ] Set up Convex project and account
-- [ ] Install Convex dependencies (`npm install convex`)
-- [ ] Design Convex schema based on current Supabase tables:
-  - [ ] Income Streams schema
-  - [ ] Ideas Pipeline schema
-  - [ ] Mentorship Insights schema
-  - [ ] Analytics data schema
-  - [ ] User data schema
-- [ ] Migrate database structure to Convex
-- [ ] Export existing data from Supabase
-- [ ] Import data to Convex
-- [ ] Rewrite service layer to use Convex:
-  - [ ] `incomeStreams.service.ts` → Convex mutations/queries
-  - [ ] `ideas.service.ts` → Convex mutations/queries
-  - [ ] `mentorship.service.ts` → Convex mutations/queries
-  - [ ] `analytics.service.ts` → Convex queries
-- [ ] Update all components to use Convex hooks (`useQuery`, `useMutation`)
-- [ ] Replace `src/utils/supabase.ts` with Convex setup
-- [ ] Implement Convex authentication
-- [ ] Update environment variables (remove Supabase vars)
-- [ ] Test all CRUD operations with Convex
-- [ ] Remove Supabase dependencies from package.json
-- [ ] Update documentation to reflect Convex usage
-
-**References**:
-- Convex docs: https://docs.convex.dev
-- Migration guide: https://docs.convex.dev/database/import
-
----
-
-### 2. Upgrade AI Model to Gemini 2.0 Flash Experimental
+### 1. Upgrade AI Model (DONE in PR #1)
 **Priority**: HIGH ⚡
-**Status**: ❌ Not Started
+**Status**: ✅ Fixed
 
-**Current**: `gemini-2.0-flash` (stable version)
-**Target**: `gemini-2.0-flash-exp` (experimental with enhanced capabilities)
-
-**Migration Tasks**:
-- [x] ~~Check current Gemini model version in codebase~~ → Found: `gemini-2.0-flash` in `src/services/ai.service.ts:9`
-- [ ] Review Gemini 2.0 Flash Experimental documentation
-- [ ] Update `src/services/ai.service.ts` to use new model:
-  - Current: `model: "gemini-2.0-flash"`
-  - New: `model: "gemini-2.0-flash-exp"`
-- [ ] Update Google AI API dependency if needed
-- [ ] Test AI insights generation with new model
-- [ ] Compare response quality and latency
-- [ ] Update prompt engineering for better results with new model
-- [ ] Test Ultra Mode with Gemini 2.0 Flash
-- [ ] Update environment variables if needed
-- [ ] Monitor token usage and costs with new model
-- [ ] Update documentation to reflect model version
-
-**Expected Benefits**:
-- Improved response quality
-- Better context understanding
-- Enhanced reasoning capabilities
-- Potentially lower latency
-
-**References**:
-- Gemini 2.0 Flash docs: https://ai.google.dev/gemini-api/docs/models/gemini-v2
+**What was done:**
+- AI service now supports dual providers: OpenRouter and Google AI Studio
+- Set `NEXT_PUBLIC_OPENROUTER_API_KEY` or `NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY` in `.env.local`
+- OpenRouter uses `google/gemini-2.0-flash-exp:free` by default
+- Removed hardcoded API key (security fix)
 
 ---
 
-### 3. Dashboard Alignment Errors
+### 2. Dashboard Alignment Errors (DONE in PR #1)
+**Priority**: HIGH
+**Status**: ✅ Fixed
+
+**What was done:**
+- Removed conflicting col-span classes from all dashboard panel components
+- Panels now use h-full and let parent grid handle positioning
+
+---
+
+### 3. Production Build (DONE in PR #1)
+**Priority**: HIGH
+**Status**: ✅ Fixed
+
+**What was done:**
+- Added 'use client' to all dashboard pages
+- Made Supabase client initialization safe without env vars
+- Consolidated next.config.js and next.config.ts into single TS config
+- Build passes clean, all 10 pages prerender successfully
+
+---
 **Priority**: HIGH
 **Status**: ❌ Not Started
 
@@ -397,27 +359,14 @@
 
 ## 📋 Immediate Next Steps (Priority Order)
 
-1. **Migrate from Supabase to Convex** 🔥 (CRITICAL)
-   - Set up Convex project
-   - Design schemas based on existing tables
-   - Migrate service layer to Convex mutations/queries
-   - Update all components to use Convex hooks
-   - Export data from Supabase and import to Convex
-   - Remove Supabase dependencies
+1. ~~**Migrate from Supabase to Convex**~~ — CANCELLED. Staying on Supabase.
 
-2. **Upgrade to Gemini 2.0 Flash Experimental** ⚡ (HIGH)
-   - Check current model version in `ai.service.ts`
-   - Update to `gemini-2.0-flash-exp`
-   - Test all AI features with new model
-   - Update prompt engineering if needed
+2. ~~**Upgrade AI Model**~~ — ✅ DONE (PR #1). Dual provider support added.
 
-3. **Fix Dashboard Alignment Issues** (HIGH)
-   - Audit all components
-   - Standardize spacing and layouts
-   - Test responsive design
+3. ~~**Fix Dashboard Alignment Issues**~~ — ✅ DONE (PR #1).
 
-4. **Implement Authentication with Convex** (HIGH)
-   - Add Convex Auth (replaces Supabase Auth)
+4. **Implement Authentication** (HIGH)
+   - Add Supabase Auth
    - Protect routes
    - Create login/signup pages
 
@@ -426,9 +375,7 @@
    - Test form submission
    - Set up email notifications
 
-6. **Fix Build Process** (HIGH)
-   - Resolve production build errors
-   - Update environment variables for Convex
+6. ~~**Fix Build Process**~~ — ✅ DONE (PR #1).
 
 7. **Complete Content Metrics Module** (MEDIUM)
    - Design and implement
@@ -451,19 +398,29 @@
 
 ## 📊 Progress Tracking
 
-**Overall Completion**: ~65%
+**Overall Completion**: ~70%
 
 - Landing Page: 95% ✅
-- Dashboard Core: 70% ⚠️
-- AI Features: 40% ⚠️
+- Dashboard Core: 75% ⚠️ (alignment fixed)
+- AI Features: 60% ⚠️ (dual provider working, needs more analysis types)
 - Authentication: 0% ❌
 - Testing: 0% ❌
 - Deployment: 0% ❌
-- Documentation: 60% ⚠️
+- Documentation: 65% ⚠️
 
 ---
 
 ## 🔄 Changelog
+
+### February 12, 2026
+- ✅ **AI service refactored** — dual provider support (OpenRouter + Google AI Studio)
+- ✅ **Production build fixed** — all 10 pages prerender clean
+- ✅ **Dashboard alignment fixed** — removed conflicting col-span from 7 components
+- ✅ **Config consolidated** — merged next.config.js + next.config.ts
+- ✅ **npm vulnerabilities fixed** — 0 remaining
+- ✅ **Created .env.example** — documented all required env vars
+- ❌ **Cancelled Convex migration** — staying on Supabase permanently
+- 🔒 **Removed hardcoded API key** — security fix
 
 ### January 3, 2026 (Updated)
 - ✅ Completed landing page (11 components)
@@ -472,8 +429,6 @@
 - ✅ Moved documentation to `/docs`
 - ⚠️ Identified dashboard alignment issues
 - 📝 Created this task tracking document
-- 🔥 **Added CRITICAL task: Migrate from Supabase to Convex**
-- ⚡ **Added HIGH priority task: Upgrade to Gemini 2.0 Flash Experimental**
 - 📋 Updated priority order for immediate next steps
 
 ---
