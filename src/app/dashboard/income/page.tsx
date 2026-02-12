@@ -111,7 +111,7 @@ export default function IncomePage() {
   return (
     <>
       <PageHeader title="Income Streams" description="Manage and track all your revenue sources"
-        action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
+        action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
       />
 
       {isLoading ? (
@@ -135,7 +135,7 @@ export default function IncomePage() {
       </div>
 
       {isLoading ? (<TableSkeleton />) : filtered && filtered.length > 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-800">
           {/* Desktop table header */}
           <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             <span className="col-span-4">Name</span><span className="col-span-2">Category</span><span className="col-span-1">Status</span>
@@ -188,7 +188,7 @@ export default function IncomePage() {
         </div>
       ) : (
         <EmptyState icon={DollarSign} title="No income streams" description="Add your first income stream to start tracking revenue."
-          action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
+          action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
         />
       )}
 
@@ -213,7 +213,7 @@ export default function IncomePage() {
           <Field label="Client Info"><input type="text" value={form.clientInfo} onChange={(e) => setForm({ ...form, clientInfo: e.target.value })} className="input-field" placeholder="Client name or info" /></Field>
           <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field resize-none" rows={3} placeholder="Additional notes…" /></Field>
           <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md btn-primary text-sm transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
             <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
           </div>
         </div>

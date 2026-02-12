@@ -97,7 +97,7 @@ export default function MentorshipPage() {
   return (
     <>
       <PageHeader title="Mentorship" description="Track sessions, insights, and action items"
-        action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"><Plus className="w-3.5 h-3.5" />Add Session</button>}
+        action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Session</button>}
       />
 
       {isLoading ? (
@@ -127,7 +127,7 @@ export default function MentorshipPage() {
           {filtered.map((session) => {
             const isExpanded = expandedId === session._id;
             return (
-              <div key={session._id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+              <div key={session._id} className="card">
                 <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors" onClick={() => setExpandedId(isExpanded ? null : session._id)}>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function MentorshipPage() {
         </div>
       ) : (
         <EmptyState icon={Users} title="No mentorship sessions" description="Log your first mentorship session to start tracking insights."
-          action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium"><Plus className="w-3.5 h-3.5" />Add Session</button>}
+          action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm font-medium"><Plus className="w-3.5 h-3.5" />Add Session</button>}
         />
       )}
 
@@ -192,7 +192,7 @@ export default function MentorshipPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 rounded-md btn-primary text-sm transition-colors disabled:opacity-50">{saving ? "Saving…" : editingId ? "Update" : "Create"}</button>
             <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
           </div>
         </div>

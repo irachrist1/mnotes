@@ -4,7 +4,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-gray-200 dark:bg-gray-800",
+        "animate-pulse rounded-lg bg-gray-100 dark:bg-white/[0.04]",
         className
       )}
     />
@@ -13,7 +13,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function CardSkeleton() {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+    <div className="card p-5">
       <div className="space-y-3">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-8 w-32" />
@@ -29,7 +29,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800"
+          className="flex items-center gap-4 px-4 py-3 card"
         >
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-4 w-20" />

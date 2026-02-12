@@ -6,14 +6,30 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { motion } from "framer-motion";
 import {
   DollarSign,
   Lightbulb,
   Users,
   TrendingUp,
   ArrowRight,
+  Clock,
+  Target,
 } from "lucide-react";
 import Link from "next/link";
+
+const container = {
+  enter: { transition: { staggerChildren: 0.06 } },
+};
+
+const item = {
+  initial: { opacity: 0, y: 12 },
+  enter: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
+  },
+};
 
 const statusVariant = (s: string) => {
   switch (s) {
@@ -43,110 +59,258 @@ export default function DashboardPage() {
 
   const totalRevenue = incomeStreams?.reduce((s, i) => s + i.monthlyRevenue, 0) ?? 0;
   const activeStreams = incomeStreams?.filter((i) => i.status === "active").length ?? 0;
+  const totalTime = incomeStreams?.reduce((s, i) => s + i.timeInvestment, 0) ?? 0;
   const totalIdeas = ideas?.length ?? 0;
   const totalSessions = sessions?.length ?? 0;
   const avgRating = sessions && sessions.length > 0
     ? (sessions.reduce((s, m) => s + m.rating, 0) / sessions.length).toFixed(1)
     : "—";
+  const pendingActions = sessions
+    ? sessions.reduce((s, m) => s + m.actionItems.filter((a) => !a.completed).length, 0)
+    : 0;
 
   return (
     <>
-      <PageHeader title="Overview" description="Your entrepreneurial business at a glance" />
+      <PageHeader title="Overview" description="Your business at a glance" />
 
+      {/* Stats Grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => (<CardSkeleton key={i} />))}
+          {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Monthly Revenue" value={`$${totalRevenue.toLocaleString()}`} detail={`${activeStreams} active streams`} icon={DollarSign} />
-          <StatCard label="Active Streams" value={activeStreams} detail={`${incomeStreams?.length ?? 0} total`} icon={TrendingUp} />
-          <StatCard label="Ideas" value={totalIdeas} detail="in pipeline" icon={Lightbulb} />
-          <StatCard label="Mentorship" value={totalSessions} detail={`avg rating ${avgRating}`} icon={Users} />
-        </div>
+        <motion.div
+          variants={container}
+          initial="initial"
+          animate="enter"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+        >
+          <StatCard
+            label="Monthly Revenue"
+            value={`$${totalRevenue.toLocaleString()}`}
+            detail={`${activeStreams} active streams`}
+            icon={DollarSign}
+            trend={totalRevenue > 0 ? { value: `${totalTime}h/wk`, positive: true } : undefined}
+          />
+          <StatCard
+            label="Active Streams"
+            value={activeStreams}
+            detail={`${incomeStreams?.length ?? 0} total`}
+            icon={TrendingUp}
+          />
+          <StatCard
+            label="Ideas"
+            value={totalIdeas}
+            detail={`${ideas?.filter((i) => i.stage === "launched").length ?? 0} launched`}
+            icon={Lightbulb}
+          />
+          <StatCard
+            label="Mentorship"
+            value={totalSessions}
+            detail={`avg rating ${avgRating}`}
+            icon={Users}
+          />
+        </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <OverviewPanel title="Income Streams" href="/dashboard/income" loading={isLoading}>
-          {incomeStreams && incomeStreams.length > 0 ? (
-            <div className="space-y-2">
-              {incomeStreams.slice(0, 5).map((stream) => (
-                <div key={stream._id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{stream.name}</span>
-                    <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
+      {/* Panels Grid */}
+      <motion.div
+        variants={container}
+        initial="initial"
+        animate="enter"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
+        {/* Income Streams */}
+        <motion.div variants={item}>
+          <OverviewPanel title="Income Streams" href="/dashboard/income" loading={isLoading}>
+            {incomeStreams && incomeStreams.length > 0 ? (
+              <div className="space-y-1">
+                {incomeStreams.slice(0, 5).map((stream) => (
+                  <div
+                    key={stream._id}
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {stream.name}
+                      </span>
+                      <Badge variant={statusVariant(stream.status)}>{stream.status}</Badge>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                      ${stream.monthlyRevenue.toLocaleString()}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">${stream.monthlyRevenue.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          ) : (<p className="text-sm text-gray-400 py-4 text-center">No income streams yet</p>)}
-        </OverviewPanel>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 py-6 text-center">No income streams yet</p>
+            )}
+          </OverviewPanel>
+        </motion.div>
 
-        <OverviewPanel title="Ideas Pipeline" href="/dashboard/ideas" loading={isLoading}>
-          {ideas && ideas.length > 0 ? (
-            <div className="space-y-2">
-              {ideas.slice(0, 5).map((idea) => (
-                <div key={idea._id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{idea.title}</span>
-                  <Badge variant="default">{stageLabel[idea.stage] ?? idea.stage}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (<p className="text-sm text-gray-400 py-4 text-center">No ideas yet</p>)}
-        </OverviewPanel>
-
-        <OverviewPanel title="Recent Mentorship" href="/dashboard/mentorship" loading={isLoading}>
-          {sessions && sessions.length > 0 ? (
-            <div className="space-y-2">
-              {sessions.slice(0, 5).map((session) => (
-                <div key={session._id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{session.mentorName}</span>
-                    <Badge variant={session.sessionType === "giving" ? "purple" : "info"}>{session.sessionType}</Badge>
+        {/* Ideas Pipeline */}
+        <motion.div variants={item}>
+          <OverviewPanel title="Ideas Pipeline" href="/dashboard/ideas" loading={isLoading}>
+            {ideas && ideas.length > 0 ? (
+              <div className="space-y-1">
+                {ideas.slice(0, 5).map((idea) => (
+                  <div
+                    key={idea._id}
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {idea.title}
+                    </span>
+                    <Badge variant="default">{stageLabel[idea.stage] ?? idea.stage}</Badge>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">{session.rating}/10</span>
-                </div>
-              ))}
-            </div>
-          ) : (<p className="text-sm text-gray-400 py-4 text-center">No sessions yet</p>)}
-        </OverviewPanel>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 py-6 text-center">No ideas yet</p>
+            )}
+          </OverviewPanel>
+        </motion.div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Quick Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <MiniStat label="Avg Growth Rate" value={incomeStreams && incomeStreams.length > 0 ? `${(incomeStreams.reduce((s, i) => s + i.growthRate, 0) / incomeStreams.length).toFixed(1)}%` : "—"} />
-            <MiniStat label="Total Time/wk" value={incomeStreams ? `${incomeStreams.reduce((s, i) => s + i.timeInvestment, 0)}h` : "—"} />
-            <MiniStat label="Ideas Launched" value={ideas ? ideas.filter((i) => i.stage === "launched").length.toString() : "—"} />
-            <MiniStat label="Action Items" value={sessions ? sessions.reduce((s, m) => s + m.actionItems.filter((a) => !a.completed).length, 0).toString() : "—"} />
+        {/* Recent Mentorship */}
+        <motion.div variants={item}>
+          <OverviewPanel title="Recent Mentorship" href="/dashboard/mentorship" loading={isLoading}>
+            {sessions && sessions.length > 0 ? (
+              <div className="space-y-1">
+                {sessions.slice(0, 5).map((session) => (
+                  <div
+                    key={session._id}
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {session.mentorName}
+                      </span>
+                      <Badge variant={session.sessionType === "giving" ? "purple" : "info"}>
+                        {session.sessionType}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                      {session.rating}/10
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 py-6 text-center">No sessions yet</p>
+            )}
+          </OverviewPanel>
+        </motion.div>
+
+        {/* Quick Stats */}
+        <motion.div variants={item}>
+          <div className="card p-5">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Quick Stats
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <MiniStat
+                label="Avg Growth Rate"
+                value={
+                  incomeStreams && incomeStreams.length > 0
+                    ? `${(incomeStreams.reduce((s, i) => s + i.growthRate, 0) / incomeStreams.length).toFixed(1)}%`
+                    : "—"
+                }
+                icon={TrendingUp}
+              />
+              <MiniStat
+                label="Total Time/wk"
+                value={incomeStreams ? `${totalTime}h` : "—"}
+                icon={Clock}
+              />
+              <MiniStat
+                label="Ideas Launched"
+                value={ideas ? ideas.filter((i) => i.stage === "launched").length.toString() : "—"}
+                icon={Target}
+              />
+              <MiniStat
+                label="Action Items"
+                value={pendingActions.toString()}
+                icon={Lightbulb}
+                highlight={pendingActions > 0}
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </>
   );
 }
 
-function OverviewPanel({ title, href, loading, children }: { title: string; href: string; loading: boolean; children: React.ReactNode }) {
+function OverviewPanel({
+  title,
+  href,
+  loading,
+  children,
+}: {
+  title: string;
+  href: string;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        <Link href={href} className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+        <Link
+          href={href}
+          className="flex items-center gap-1 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
+        >
           View all <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
       {loading ? (
-        <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="h-8 rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse" />))}</div>
-      ) : children}
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-9 rounded-lg bg-gray-100 dark:bg-white/[0.03] animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function MiniStat({
+  label,
+  value,
+  icon: Icon,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  icon?: typeof TrendingUp;
+  highlight?: boolean;
+}) {
   return (
-    <div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{label}</p>
-      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{value}</p>
+    <div className="py-3 px-3 rounded-lg bg-gray-50 dark:bg-white/[0.02]">
+      <div className="flex items-center gap-1.5 mb-1">
+        {Icon && (
+          <Icon
+            className={`w-3 h-3 ${
+              highlight ? "text-sky-500" : "text-gray-400 dark:text-gray-500"
+            }`}
+            strokeWidth={1.5}
+          />
+        )}
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">
+          {label}
+        </p>
+      </div>
+      <p
+        className={`text-lg font-semibold tabular-nums ${
+          highlight
+            ? "text-sky-500 dark:text-sky-400"
+            : "text-gray-900 dark:text-gray-100"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

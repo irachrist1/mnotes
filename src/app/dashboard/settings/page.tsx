@@ -70,7 +70,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
             {saving ? "Saving…" : "Save"}
@@ -80,7 +80,7 @@ export default function SettingsPage() {
 
       <div className="max-w-2xl space-y-6">
         {/* AI Provider Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-4 h-4 text-gray-500" />
@@ -137,7 +137,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Model Selection */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-4 h-4 text-gray-500" />
@@ -178,7 +178,7 @@ export default function SettingsPage() {
         </div>
 
         {/* API Keys */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
               <Key className="w-4 h-4 text-gray-500" />

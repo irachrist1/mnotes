@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Revenue by Category */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Revenue by Category
           </h3>
@@ -201,7 +201,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Ideas Pipeline Funnel */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Ideas Pipeline
           </h3>
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Revenue Efficiency */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
             Revenue Efficiency
           </h3>
@@ -294,7 +294,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Stream Status Breakdown */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Streams by Status
           </h3>
@@ -339,7 +339,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Revenue Streams */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Top Revenue Streams
           </h3>
@@ -393,7 +393,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Mentorship Overview */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Mentorship Overview
           </h3>
@@ -456,7 +456,7 @@ export default function AnalyticsPage() {
 
       {/* Pending Action Items */}
       {pendingActions.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+        <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Pending Action Items
           </h3>

@@ -176,7 +176,7 @@ export default function AIInsightsPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/settings"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-secondary text-sm transition-colors"
             >
               <Settings className="w-3.5 h-3.5" />
               Settings
@@ -184,7 +184,7 @@ export default function AIInsightsPage() {
             <button
               onClick={generateInsights}
               disabled={loading || !hasData || !settings}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -210,7 +210,7 @@ export default function AIInsightsPage() {
           </p>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"
           >
             <Settings className="w-3.5 h-3.5" />
             Go to Settings
@@ -241,7 +241,7 @@ export default function AIInsightsPage() {
             return (
               <div
                 key={insight._id}
-                className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5"
+                className="card p-5"
                 onClick={() => {
                   if (insight.status === "unread") {
                     handleMarkRead(insight._id);
