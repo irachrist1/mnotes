@@ -139,31 +139,34 @@ convex/
 
 ### Feature Roadmap
 
-#### Sprint 1: Fix Foundations (1-2 days)
-- [ ] Move AI calls to Convex actions (server-side)
-- [ ] Update models to current (Gemini 3 Flash, etc.)
-- [ ] Add model selector + settings page
-- [ ] Remove hardcoded "Christian" from prompts
-- [ ] Kill fake "regular mode" insights
-- [ ] Add proper input validation (min/max on numbers)
-- [ ] Add error boundary component for dashboard
+#### Sprint 1: Fix Foundations ✅ DONE
+- [x] Move AI calls to Convex actions (server-side)
+- [x] Update models to current (Gemini 2.5 Flash default)
+- [x] Add model selector + settings page
+- [x] Remove hardcoded "Christian" from prompts
+- [x] Kill fake "regular mode" insights
+- [x] Add proper input validation (min/max on numbers)
+- [x] Add error boundary component for dashboard
 
-#### Sprint 2: Persistent AI Insights (2-3 days)
-- [ ] Create `aiInsights` table in Convex
-- [ ] Save generated insights to DB (not just React state)
+#### Sprint 2: Persistent AI Insights ✅ DONE
+- [x] Create `aiInsights` table in Convex
+- [x] Save generated insights to DB (not just React state)
 - [ ] Insights feed: show history of all AI analyses
 - [ ] Mark insights as read/dismissed/acted
 - [ ] Insight detail view with source data context
 
-#### Sprint 3: Settings & Configuration (1-2 days)
-- [ ] Settings page: AI provider, model, API keys
-- [ ] Store settings in Convex (encrypted keys via action)
+#### Sprint 3: Settings & Configuration ✅ DONE
+- [x] Settings page: AI provider, model, API keys
+- [x] Store settings in Convex (encrypted keys via action)
 - [ ] Timezone, notification preferences
 - [ ] Theme toggle (currently implicit via system preference)
 
-#### Sprint 4: Smart Analytics (2-3 days)
-- [ ] Real charts (recharts or chart.js — already installed)
-- [ ] Revenue over time chart
+#### Sprint 4: Smart Analytics ✅ DONE
+- [x] Revenue efficiency chart ($/hr ranking)
+- [x] Streams by status breakdown
+- [x] Top topics from mentorship
+- [x] Pending action items feed
+- [ ] Revenue over time chart (needs historical data)
 - [ ] Ideas pipeline velocity
 - [ ] Date range filtering
 - [ ] Period comparison (this month vs last)
