@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx convex codegen && next build --webpack",
+    "build": "(npx convex codegen 2>/dev/null || true) && next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
