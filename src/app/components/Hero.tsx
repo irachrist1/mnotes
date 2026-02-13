@@ -53,14 +53,6 @@ export default function Hero() {
           animate="visible"
           className="text-center space-y-6"
         >
-          {/* Eyebrow */}
-          <motion.div variants={fadeUpVariants}>
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600/10 border border-blue-600/20 text-blue-700 dark:text-blue-500 rounded-full text-xs font-medium tracking-wide">
-              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-500 rounded-full" />
-              Now in early access
-            </span>
-          </motion.div>
-
           {/* Headline */}
           <motion.h1
             variants={fadeUpVariants}
