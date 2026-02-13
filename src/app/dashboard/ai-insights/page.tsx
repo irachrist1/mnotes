@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { CardSkeleton } from "@/components/ui/Skeleton";
-import { DoughnutChart, BarChart } from "@/components/ui/Charts";
+import { DoughnutChart, BarChart } from "@/components/ui/LazyCharts";
 import {
   Sparkles,
   RefreshCw,

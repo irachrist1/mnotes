@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
-import { DoughnutChart, BarChart, LineChart } from "@/components/ui/Charts";
+import { DoughnutChart, BarChart, LineChart } from "@/components/ui/LazyCharts";
 import { DollarSign, TrendingUp, Lightbulb, Users, Target, Clock } from "lucide-react";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
 

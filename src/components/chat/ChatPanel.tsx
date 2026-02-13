@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Send, X, MessageSquare, Sparkles, Plus, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmationCard } from "./ConfirmationCard";
-import { MarkdownMessage } from "@/components/ui/MarkdownMessage";
+import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
 import type { Id } from "@convex/_generated/dataModel";
 
 function relativeTime(ts: number): string {
@@ -197,7 +197,7 @@ export function ChatPanel({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-20 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] max-h-[min(600px,calc(100vh-8rem))] flex flex-col rounded-2xl shadow-2xl dark:shadow-none overflow-hidden"
+          className="fixed inset-0 sm:inset-auto sm:bottom-20 sm:right-6 z-50 sm:w-[400px] sm:max-h-[min(600px,calc(100vh-8rem))] flex flex-col sm:rounded-2xl shadow-2xl dark:shadow-none overflow-hidden"
           style={{
             background: "rgb(var(--color-surface))",
             border: "1px solid rgb(var(--color-border))",

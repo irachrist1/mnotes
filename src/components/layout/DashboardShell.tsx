@@ -1,12 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { CommandPalette } from "@/components/layout/CommandPalette";
-import { ChatPanel } from "@/components/chat/ChatPanel";
+import dynamic from "next/dynamic";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { Toaster } from "sonner";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
+
+const Sidebar = dynamic(
+  () => import("@/components/layout/Sidebar").then((m) => m.Sidebar),
+  { ssr: false }
+);
+
+const CommandPalette = dynamic(
+  () => import("@/components/layout/CommandPalette").then((m) => m.CommandPalette),
+  { ssr: false }
+);
+
+const ChatPanel = dynamic(
+  () => import("@/components/chat/ChatPanel").then((m) => m.ChatPanel),
+  { ssr: false }
+);
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);

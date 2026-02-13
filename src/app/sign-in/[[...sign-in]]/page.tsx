@@ -3,7 +3,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
 type Flow = "signIn" | "signUp";
@@ -51,13 +50,10 @@ function ConnectedSignInPage() {
   const [success, setSuccess] = useState(false);
   const hasRedirected = useRef(false);
 
-  // Redirect when authenticated — full page navigation so the middleware
-  // picks up the freshly-set auth cookie.
   useEffect(() => {
     if (isAuthenticated && !hasRedirected.current) {
       hasRedirected.current = true;
       setSuccess(true);
-      // Small delay to let the cookie propagate, then hard navigate
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 150);
@@ -76,7 +72,6 @@ function ConnectedSignInPage() {
     formData.set("email", normalizedEmail);
     try {
       await signIn("password", formData);
-      // Redirect is handled by the useEffect above once isAuthenticated flips
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("Auth error:", err);
@@ -105,13 +100,6 @@ function ConnectedSignInPage() {
     }
   };
 
-  const switchFlow = () => {
-    setFlow(flow === "signIn" ? "signUp" : "signIn");
-    setError(null);
-    setSuccess(false);
-  };
-
-  // Show nothing while checking auth (avoids flash)
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -122,18 +110,12 @@ function ConnectedSignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-mesh relative overflow-hidden">
-      {/* Subtle background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-blue-600/[0.05] blur-3xl" />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-[400px] relative z-10"
-      >
+      <div className="w-full max-w-[400px] relative z-10 animate-fade-in">
         {/* Logo */}
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-3">
@@ -168,11 +150,7 @@ function ConnectedSignInPage() {
                 `}
               >
                 {flow === f && (
-                  <motion.div
-                    layoutId="auth-tab"
-                    className="absolute inset-0 bg-white dark:bg-white/10 rounded-md shadow-sm"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
+                  <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-md shadow-sm transition-all duration-200" />
                 )}
                 <span className="relative z-10">
                   {f === "signIn" ? "Sign in" : "Sign up"}
@@ -182,61 +160,36 @@ function ConnectedSignInPage() {
           </div>
 
           {/* Title */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={flow}
-              initial={{ opacity: 0, x: flow === "signIn" ? -8 : 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: flow === "signIn" ? 8 : -8 }}
-              transition={{ duration: 0.2 }}
-              className="mb-6"
-            >
-              <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
-                {flow === "signIn" ? "Welcome back" : "Create your account"}
-              </h1>
-              <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                {flow === "signIn"
-                  ? "Sign in to continue to your dashboard."
-                  : "Get started tracking your business."}
-              </p>
-            </motion.div>
-          </AnimatePresence>
+          <div className="mb-6">
+            <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
+              {flow === "signIn" ? "Welcome back" : "Create your account"}
+            </h1>
+            <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+              {flow === "signIn"
+                ? "Sign in to continue to your dashboard."
+                : "Get started tracking your business."}
+            </p>
+          </div>
 
           {/* Error */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="mb-4 overflow-hidden"
-              >
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-sm text-red-700 dark:text-red-400">
-                  {error}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {error && (
+            <div className="mb-4 overflow-hidden animate-fade-in">
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-sm text-red-700 dark:text-red-400">
+                {error}
+              </div>
+            </div>
+          )}
 
           {/* Success */}
-          <AnimatePresence>
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="mb-4 overflow-hidden"
-              >
-                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-sm text-emerald-700 dark:text-emerald-400">
-                  {flow === "signUp"
-                    ? "Account created! Redirecting..."
-                    : "Signed in! Redirecting..."}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {success && (
+            <div className="mb-4 overflow-hidden animate-fade-in">
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-sm text-emerald-700 dark:text-emerald-400">
+                {flow === "signUp"
+                  ? "Account created! Redirecting..."
+                  : "Signed in! Redirecting..."}
+              </div>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -303,7 +256,11 @@ function ConnectedSignInPage() {
           <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={switchFlow}
+              onClick={() => {
+                setFlow(flow === "signIn" ? "signUp" : "signIn");
+                setError(null);
+                setSuccess(false);
+              }}
               disabled={submitting || success}
               className="text-sm text-stone-500 dark:text-stone-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors disabled:opacity-50"
             >
@@ -321,7 +278,7 @@ function ConnectedSignInPage() {
         <p className="text-center text-[11px] text-stone-400 dark:text-stone-600 mt-6">
           By continuing, you agree to our terms of service.
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { api } from "@convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Send, Sparkles, Check } from "lucide-react";
-import { MarkdownMessage } from "@/components/ui/MarkdownMessage";
+import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
 // Pre-designed avatar options for the assistant
