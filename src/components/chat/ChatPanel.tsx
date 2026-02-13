@@ -278,17 +278,6 @@ export function ChatPanel({
 
   const currentThread = threads?.find((t) => t._id === currentThreadId);
 
-  if (!open) return null;
-
-  const panelStyleMobile: CSSProperties | undefined = isMobile
-    ? vv
-      ? { top: vv.top, height: vv.height, bottom: "auto" }
-      : { top: 0, height: "100dvh" }
-    : undefined;
-
-  const backdropStyleMobile: CSSProperties | undefined =
-    vv ? { top: vv.top, height: vv.height, bottom: "auto" } : undefined;
-
   const renderedMessages = useMemo(() => {
     const base = messages ?? [];
     if (!optimisticUserMsg) return base;
@@ -304,6 +293,17 @@ export function ChatPanel({
       },
     ];
   }, [messages, optimisticUserMsg]);
+
+  if (!open) return null;
+
+  const panelStyleMobile: CSSProperties | undefined = isMobile
+    ? vv
+      ? { top: vv.top, height: vv.height, bottom: "auto" }
+      : { top: 0, height: "100dvh" }
+    : undefined;
+
+  const backdropStyleMobile: CSSProperties | undefined =
+    vv ? { top: vv.top, height: vv.height, bottom: "auto" } : undefined;
 
   return (
     <>
