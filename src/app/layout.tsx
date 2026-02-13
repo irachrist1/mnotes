@@ -21,17 +21,27 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const hasConvexUrl = Boolean(convexUrl && !convexUrl.includes("placeholder"));
+
+  const doc = (
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <body className="font-sans antialiased">
+        <ConvexClientProvider>
+          <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+            {children}
+          </div>
+        </ConvexClientProvider>
+      </body>
+    </html>
+  );
+
+  // Avoid hard-crashing production when Convex env vars are missing.
+  if (!hasConvexUrl) return doc;
+
   return (
     <ConvexAuthNextjsServerProvider storageNamespace="mnotes-auth">
-      <html lang="en" suppressHydrationWarning className={inter.variable}>
-        <body className="font-sans antialiased">
-          <ConvexClientProvider>
-            <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-              {children}
-            </div>
-          </ConvexClientProvider>
-        </body>
-      </html>
+      {doc}
     </ConvexAuthNextjsServerProvider>
   );
 }

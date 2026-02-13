@@ -1,5 +1,3 @@
-"use client";
-
 import { redirect } from "next/navigation";
 
 // Redirect to sign-in page which handles both sign-in and sign-up flows

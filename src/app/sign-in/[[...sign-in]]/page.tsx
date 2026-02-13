@@ -4,10 +4,45 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
 type Flow = "signIn" | "signUp";
 
-export default function SignInPage() {
+function DisconnectedAuthPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-mesh relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-blue-600/[0.05] blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-[420px] relative z-10">
+        <div className="flex justify-center mb-10">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/25">
+              <span className="text-white text-base font-bold">M</span>
+            </div>
+            <span className="text-2xl font-semibold text-stone-900 dark:text-white tracking-tight">
+              MNotes
+            </span>
+          </div>
+        </div>
+
+        <div className="card p-8 shadow-xl dark:shadow-none text-center">
+          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
+            Convex not connected
+          </h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">
+            This deployment is missing <code className="px-1 py-0.5 bg-stone-100 dark:bg-stone-800 rounded text-xs">NEXT_PUBLIC_CONVEX_URL</code>,
+            so sign-in is disabled.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectedSignInPage() {
   const { signIn } = useAuthActions();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const [flow, setFlow] = useState<Flow>("signIn");
@@ -289,4 +324,10 @@ export default function SignInPage() {
       </motion.div>
     </div>
   );
+}
+
+export default function SignInPage() {
+  const convexAvailable = useConvexAvailable();
+  if (!convexAvailable) return <DisconnectedAuthPage />;
+  return <ConnectedSignInPage />;
 }
