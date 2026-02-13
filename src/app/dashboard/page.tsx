@@ -19,6 +19,18 @@ import {
 import Link from "next/link";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
 
+function asFiniteNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const n = typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function formatCurrency(value: unknown, options?: Intl.NumberFormatOptions): string {
+  const n = asFiniteNumber(value, 0);
+  const formatted = n.toLocaleString(undefined, options);
+  return `$${formatted}`;
+}
+
 const container = {
   enter: { transition: { staggerChildren: 0.05 } },
 };
@@ -57,16 +69,16 @@ export default function DashboardPage() {
 
   const isLoading = incomeStreams === undefined || ideas === undefined || sessions === undefined;
 
-  const totalRevenue = incomeStreams?.reduce((s, i) => s + i.monthlyRevenue, 0) ?? 0;
+  const totalRevenue = incomeStreams?.reduce((s, i) => s + asFiniteNumber(i.monthlyRevenue, 0), 0) ?? 0;
   const activeStreams = incomeStreams?.filter((i) => i.status === "active").length ?? 0;
-  const totalTime = incomeStreams?.reduce((s, i) => s + i.timeInvestment, 0) ?? 0;
+  const totalTime = incomeStreams?.reduce((s, i) => s + asFiniteNumber(i.timeInvestment, 0), 0) ?? 0;
   const totalIdeas = ideas?.length ?? 0;
   const totalSessions = sessions?.length ?? 0;
   const avgRating = sessions && sessions.length > 0
-    ? (sessions.reduce((s, m) => s + m.rating, 0) / sessions.length).toFixed(1)
+    ? (sessions.reduce((s, m) => s + asFiniteNumber(m.rating, 0), 0) / sessions.length).toFixed(1)
     : "—";
   const pendingActions = sessions
-    ? sessions.reduce((s, m) => s + m.actionItems.filter((a) => !a.completed).length, 0)
+    ? sessions.reduce((s, m) => s + (Array.isArray(m.actionItems) ? m.actionItems.filter((a) => !a?.completed).length : 0), 0)
     : 0;
 
   return (
@@ -87,7 +99,7 @@ export default function DashboardPage() {
         >
           <StatCard
             label="Monthly Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
+            value={formatCurrency(totalRevenue)}
             icon={DollarSign}
           />
           <StatCard
@@ -136,10 +148,13 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums block">
-                        ${stream.monthlyRevenue.toLocaleString()}
+                        {formatCurrency(stream.monthlyRevenue)}
                       </span>
                       <span className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
-                        ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
+                        ~{formatCurrency(asFiniteNumber(stream.monthlyRevenue, 0) / WEEKS_PER_MONTH, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}/wk
                       </span>
                     </div>
                   </div>
@@ -193,7 +208,7 @@ export default function DashboardPage() {
                       </Badge>
                     </div>
                     <span className="text-xs text-stone-500 dark:text-stone-400 tabular-nums">
-                      {session.rating}/10
+                      {asFiniteNumber(session.rating, 0)}/10
                     </span>
                   </div>
                 ))}
@@ -215,7 +230,7 @@ export default function DashboardPage() {
                 label="Avg Growth Rate"
                 value={
                   incomeStreams && incomeStreams.length > 0
-                    ? `${(incomeStreams.reduce((s, i) => s + i.growthRate, 0) / incomeStreams.length).toFixed(1)}%`
+                    ? `${(incomeStreams.reduce((s, i) => s + asFiniteNumber(i.growthRate, 0), 0) / incomeStreams.length).toFixed(1)}%`
                     : "—"
                 }
                 icon={TrendingUp}

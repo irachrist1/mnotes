@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ConvexGuard } from "@/components/ConvexGuard";
+import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
-export default function DashboardClientLayout({
+function DashboardConnectedLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -53,4 +54,22 @@ export default function DashboardClientLayout({
       <ConvexGuard>{children}</ConvexGuard>
     </DashboardShell>
   );
+}
+
+export default function DashboardClientLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const convexAvailable = useConvexAvailable();
+
+  if (!convexAvailable) {
+    return (
+      <DashboardShell>
+        <ConvexGuard>{children}</ConvexGuard>
+      </DashboardShell>
+    );
+  }
+
+  return <DashboardConnectedLayout>{children}</DashboardConnectedLayout>;
 }

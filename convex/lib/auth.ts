@@ -18,7 +18,15 @@ type ActionCtx = GenericActionCtx<DataModel>;
 export async function getUserId(
   ctx: QueryCtx | MutationCtx | ActionCtx
 ): Promise<string> {
-  const identity = await ctx.auth.getUserIdentity();
+  let identity: { subject: string } | null = null;
+  try {
+    identity = await ctx.auth.getUserIdentity();
+  } catch {
+    // Auth config can be missing/misconfigured in a Convex deployment.
+    // Treat as "not authenticated" so queries don't crash the app.
+    identity = null;
+  }
+
   if (identity) {
     // Strip the session suffix added by @convex-dev/auth (format: userId|sessionId)
     return identity.subject.split("|")[0];
@@ -33,5 +41,9 @@ export async function getUserId(
 export async function getUserIdentity(
   ctx: QueryCtx | MutationCtx | ActionCtx
 ) {
-  return await ctx.auth.getUserIdentity();
+  try {
+    return await ctx.auth.getUserIdentity();
+  } catch {
+    return null;
+  }
 }
