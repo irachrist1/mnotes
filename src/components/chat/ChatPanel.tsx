@@ -87,7 +87,10 @@ export function ChatPanel({
   // Focus input when panel opens
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 200);
+      // Avoid iOS "scroll-to-focus" flicker; user can tap to focus.
+      const mq = window.matchMedia("(max-width: 639px)");
+      if (mq.matches) return;
+      setTimeout(() => inputRef.current?.focus(), 120);
     }
   }, [open]);
 
