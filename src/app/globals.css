@@ -257,7 +257,7 @@
 
   /* ─── Loading ─── */
   .skeleton {
-    @apply bg-stone-100 dark:bg-stone-800 rounded-lg relative overflow-hidden;
+    @apply bg-stone-100 dark:bg-white/[0.06] rounded-lg relative overflow-hidden;
   }
 
   .skeleton::after {
@@ -322,6 +322,36 @@
     animation: shimmer 1.8s ease-in-out infinite;
   }
 
+  /* ─── Chat Panel ─── */
+  @keyframes chat-slide-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes chat-pop-in {
+    from { transform: translateY(12px) scale(0.96); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .chat-panel-enter {
+    animation: chat-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (min-width: 640px) {
+    .chat-panel-enter {
+      animation: chat-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
+
+  /* Safe area insets for notched devices */
+  .safe-area-top {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
   /* ─── Gradient Text ─── */
   .text-gradient {
     background: linear-gradient(135deg, #3B82F6, #2563EB);
@@ -331,17 +361,15 @@
   }
 }
 
-/* Dark mode skeleton shimmer */
-@media (prefers-color-scheme: dark) {
-  .skeleton::after {
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.07) 50%, transparent 100%);
-    background-size: 200% 100%;
-  }
+/* Dark mode skeleton shimmer (class-based dark mode) */
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+}
 
-  .animate-shimmer {
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.07) 50%, transparent 100%);
-    background-size: 200% 100%;
-  }
+.dark .animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
 }
 
 /* Respect reduced motion preferences */

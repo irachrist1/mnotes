@@ -11,7 +11,8 @@ describe("Badge", () => {
   it("renders with default variant", () => {
     const { container } = render(<Badge>test</Badge>);
     const badge = container.querySelector("span");
-    expect(badge).toHaveClass("bg-gray-100");
+    expect(badge).toHaveClass("bg-stone-100");
+    expect(badge).toHaveClass("text-stone-700");
   });
 
   it("renders all 7 variants", () => {
@@ -37,14 +38,14 @@ describe("Badge", () => {
   it("renders success variant with green classes", () => {
     const { container } = render(<Badge variant="success">ok</Badge>);
     const badge = container.querySelector("span");
-    expect(badge).toHaveClass("bg-green-100");
-    expect(badge).toHaveClass("text-green-700");
+    expect(badge).toHaveClass("bg-emerald-50");
+    expect(badge).toHaveClass("text-emerald-700");
   });
 
   it("renders danger variant with red classes", () => {
     const { container } = render(<Badge variant="danger">error</Badge>);
     const badge = container.querySelector("span");
-    expect(badge).toHaveClass("bg-red-100");
+    expect(badge).toHaveClass("bg-red-50");
     expect(badge).toHaveClass("text-red-700");
   });
 

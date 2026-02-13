@@ -34,6 +34,7 @@ import Link from "next/link";
 import type { Id } from "@convex/_generated/dataModel";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
 import { useSearchParams } from "next/navigation";
+import { getSaveButtonLabel } from "./saveButtonLabel";
 
 type InsightType = "all" | "revenue" | "idea" | "mentorship";
 type StatusFilter = "active" | "all" | "dismissed";
@@ -53,17 +54,6 @@ function timeAgo(timestamp: number): string {
     month: "short",
     day: "numeric",
   });
-}
-
-export function getSaveButtonLabel(args: {
-  isSaved: boolean;
-  isSaving: boolean;
-  isNearDuplicate: boolean;
-}): string {
-  if (args.isSaved) return "Saved";
-  if (args.isSaving) return "Saving...";
-  if (args.isNearDuplicate) return "Similar exists";
-  return "Save";
 }
 
 export default function AIInsightsPage() {

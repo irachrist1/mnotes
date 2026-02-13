@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import type { CSSProperties, RefObject } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { AnimatePresence, motion } from "framer-motion";
 import { Send, X, MessageSquare, Sparkles, Plus, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmationCard } from "./ConfirmationCard";
@@ -34,6 +34,9 @@ export function ChatPanel({
   const [sending, setSending] = useState(false);
   const [committingId, setCommittingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [optimisticUserMsg, setOptimisticUserMsg] = useState<{ id: string; content: string } | null>(null);
+  const [vv, setVv] = useState<{ height: number; top: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const threads = useQuery(api.chat.listThreads, open ? {} : "skip");
   const messages = useQuery(
@@ -48,10 +51,11 @@ export function ChatPanel({
   const createThread = useMutation(api.chat.createThread);
   const deleteThread = useMutation(api.chat.deleteThread);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const prevSoulVersionRef = useRef<number | null>(null);
   const threadInitRef = useRef(false);
+  const scrollPosRef = useRef(0);
 
   // Auto-create or auto-select thread when panel first opens
   useEffect(() => {
@@ -69,21 +73,100 @@ export function ChatPanel({
     }
   }, [open, threads, createThread]);
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages or optimistic message
   useEffect(() => {
     if (open && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({
+        behavior: optimisticUserMsg || sending ? "auto" : "smooth",
+      });
     }
-  }, [messages?.length, open]);
+  }, [messages?.length, open, optimisticUserMsg]);
 
   // Focus input when panel opens
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => inputRef.current?.focus(), 200);
     }
   }, [open]);
 
-  // Soul file version watcher — toast when AI evolves the profile
+  // Lock body scroll on mobile when chat is open (iOS-safe)
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    if (!mq.matches) return;
+
+    scrollPosRef.current = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    html.style.height = "100%";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollPosRef.current}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
+    return () => {
+      html.style.overflow = "";
+      html.style.height = "";
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.width = "";
+      body.style.overflow = "";
+      window.scrollTo(0, scrollPosRef.current);
+    };
+  }, [open]);
+
+  // VisualViewport sizing: prevents iOS keyboard gaps + "scroll behind" artifacts.
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    const applyMobile = () => setIsMobile(mq.matches);
+    applyMobile();
+    mq.addEventListener("change", applyMobile);
+    if (!mq.matches) setVv(null);
+
+    const vvp = window.visualViewport;
+    if (!vvp) {
+      return () => mq.removeEventListener("change", applyMobile);
+    }
+
+    const update = () => {
+      if (!mq.matches) {
+        setVv(null);
+        return;
+      }
+      setVv({
+        height: Math.round(vvp.height),
+        top: Math.round(vvp.offsetTop),
+      });
+    };
+
+    update();
+    vvp.addEventListener("resize", update);
+    vvp.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      vvp.removeEventListener("resize", update);
+      vvp.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
+      mq.removeEventListener("change", applyMobile);
+    };
+  }, [open]);
+
+  // Clear optimistic message when real message arrives from Convex
+  useEffect(() => {
+    if (!optimisticUserMsg || !messages) return;
+    const match = messages.some(
+      (m) => m.role === "user" && m.content === optimisticUserMsg.content
+    );
+    if (match) setOptimisticUserMsg(null);
+  }, [messages, optimisticUserMsg]);
+
+  // Soul file version watcher
   useEffect(() => {
     if (!open || !soulFile) return;
     const version = soulFile.version;
@@ -135,7 +218,6 @@ export function ChatPanel({
     const text = input.trim();
     if (!text || sending) return;
 
-    // Ensure we have a thread
     let threadId = currentThreadId;
     if (!threadId) {
       try {
@@ -148,6 +230,12 @@ export function ChatPanel({
       }
     }
 
+    // Show user message instantly (optimistic)
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setOptimisticUserMsg({ id, content: text });
     setInput("");
     setSending(true);
     setError(null);
@@ -156,6 +244,7 @@ export function ChatPanel({
       await sendMessage({ message: text, threadId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
+      setOptimisticUserMsg(null);
     } finally {
       setSending(false);
     }
@@ -189,222 +278,305 @@ export function ChatPanel({
 
   const currentThread = threads?.find((t) => t._id === currentThreadId);
 
+  if (!open) return null;
+
+  const panelStyleMobile: CSSProperties | undefined = isMobile
+    ? vv
+      ? { top: vv.top, height: vv.height, bottom: "auto" }
+      : { top: 0, height: "100dvh" }
+    : undefined;
+
+  const backdropStyleMobile: CSSProperties | undefined =
+    vv ? { top: vv.top, height: vv.height, bottom: "auto" } : undefined;
+
+  const renderedMessages = useMemo(() => {
+    const base = messages ?? [];
+    if (!optimisticUserMsg) return base;
+    // Render the optimistic message last; server messages will replace it.
+    return [
+      ...base,
+      {
+        _id: optimisticUserMsg.id as unknown as Id<"chatMessages">,
+        role: "user" as const,
+        content: optimisticUserMsg.content,
+        intent: null,
+        intentStatus: null,
+      },
+    ];
+  }, [messages, optimisticUserMsg]);
+
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 sm:inset-auto sm:bottom-20 sm:right-6 z-50 sm:w-[400px] sm:max-h-[min(600px,calc(100vh-8rem))] flex flex-col sm:rounded-2xl shadow-2xl dark:shadow-none overflow-hidden"
-          style={{
-            background: "rgb(var(--color-surface))",
-            border: "1px solid rgb(var(--color-border))",
-          }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-white/[0.06] shrink-0">
-            {/* Thread title / dropdown toggle */}
-            <button
-              onClick={() => setShowThreadList((v) => !v)}
-              className="flex items-center gap-2 min-w-0 hover:opacity-70 transition-opacity duration-150"
-              aria-label="Toggle conversation list"
-            >
-              <div className="w-7 h-7 shrink-0 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
-              </div>
-              <div className="flex items-center gap-1 min-w-0">
-                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate max-w-[140px]">
-                  {currentThread?.title || "MNotes"}
-                </span>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-150 ${showThreadList ? "rotate-180" : ""}`}
-                />
-              </div>
-            </button>
+    <>
+      {/* Backdrop - mobile only, blocks all interaction behind */}
+      <div
+        className="fixed inset-0 z-[55] bg-black/50 sm:hidden animate-fade-in"
+        onClick={onClose}
+        style={{ touchAction: "none", ...backdropStyleMobile }}
+        onTouchMove={(e) => e.preventDefault()}
+        aria-hidden="true"
+      />
 
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => void handleNewChat()}
-                className="btn-icon w-7 h-7"
-                aria-label="New chat"
-                title="New chat"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button onClick={onClose} className="btn-icon w-7 h-7" aria-label="Close chat">
-                <X className="w-4 h-4" />
-              </button>
+      {/* Panel */}
+      <div
+        className={[
+          "fixed z-[60] flex flex-col overflow-hidden",
+          // Mobile: true full-screen
+          "inset-0",
+          // Desktop: popover
+          "sm:inset-auto sm:bottom-20 sm:right-6 sm:w-[400px] sm:max-h-[min(600px,calc(100vh-8rem))] sm:rounded-2xl sm:shadow-2xl",
+          // Animation
+          "chat-panel-enter",
+        ].join(" ")}
+        style={{
+          background: "rgb(var(--color-surface))",
+          borderWidth: "0px",
+          /* VisualViewport-driven sizing on mobile prevents keyboard gaps */
+          ...panelStyleMobile,
+          overscrollBehavior: "contain",
+        }}
+      >
+        {/* Desktop-only border */}
+        <div className="hidden sm:block absolute inset-0 rounded-2xl pointer-events-none" style={{ border: "1px solid rgb(var(--color-border))" }} />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-white/[0.06] shrink-0 safe-area-top">
+          <button
+            onClick={() => setShowThreadList((v) => !v)}
+            className="flex items-center gap-2 min-w-0 hover:opacity-70 transition-opacity duration-150"
+            aria-label="Toggle conversation list"
+          >
+            <div className="w-8 h-8 sm:w-7 sm:h-7 shrink-0 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-white" />
             </div>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-base sm:text-sm font-semibold text-stone-900 dark:text-stone-100 truncate max-w-[180px] sm:max-w-[140px]">
+                {currentThread?.title || "MNotes"}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 sm:w-3.5 sm:h-3.5 text-stone-400 shrink-0 transition-transform duration-150 ${showThreadList ? "rotate-180" : ""}`}
+              />
+            </div>
+          </button>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => void handleNewChat()}
+              className="btn-icon w-8 h-8 sm:w-7 sm:h-7"
+              aria-label="New chat"
+              title="New chat"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="btn-icon w-8 h-8 sm:w-7 sm:h-7" aria-label="Close chat">
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
+            </button>
           </div>
+        </div>
 
-          {/* Thread list (collapsible) */}
-          <AnimatePresence>
-            {showThreadList && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="border-b border-stone-200 dark:border-white/[0.06] overflow-hidden shrink-0"
-              >
-                <div className="max-h-48 overflow-y-auto py-1">
-                  {(!threads || threads.length === 0) && (
-                    <p className="text-xs text-stone-400 px-4 py-3 text-center">
-                      No conversations yet
-                    </p>
-                  )}
-                  {threads?.map((thread) => (
-                    <div
-                      key={thread._id}
-                      onClick={() => {
-                        setCurrentThreadId(thread._id);
-                        setShowThreadList(false);
-                      }}
-                      className={`group flex items-center justify-between gap-2 px-4 py-2.5 cursor-pointer transition-colors duration-150 ${
-                        thread._id === currentThreadId
-                          ? "bg-blue-50 dark:bg-blue-500/[0.08]"
-                          : "hover:bg-stone-50 dark:hover:bg-white/[0.03]"
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-xs font-medium truncate ${
-                          thread._id === currentThreadId
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-stone-700 dark:text-stone-300"
-                        }`}>
-                          {thread.title}
-                        </p>
-                        <p className="text-[10px] text-stone-400 dark:text-stone-500 tabular-nums mt-0.5">
-                          {relativeTime(thread.lastMessageAt)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={(e) => void handleDeleteThread(e, thread._id)}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded text-stone-400 hover:text-red-500 transition-colors duration-150"
-                        aria-label="Delete conversation"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
-            {(!messages || messages.length === 0) && !sending && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
-                  <MessageSquare className="w-5 h-5 text-stone-400" />
-                </div>
-                <p className="text-sm font-medium text-stone-600 dark:text-stone-400">
-                  Chat with MNotes
+        {/* Thread list (collapsible) */}
+        {showThreadList && (
+          <div className="border-b border-stone-200 dark:border-white/[0.06] shrink-0 animate-fade-in">
+            <div className="max-h-48 overflow-y-auto py-1">
+              {(!threads || threads.length === 0) && (
+                <p className="text-xs text-stone-400 px-4 py-3 text-center">
+                  No conversations yet
                 </p>
-                <p className="text-xs text-stone-400 dark:text-stone-500 mt-1 max-w-[240px]">
-                  Tell it about a deal you closed, an idea you had, or ask how your business is doing.
-                </p>
-              </div>
-            )}
-
-            {messages?.map((msg) => (
-              <div key={msg._id} className="space-y-2">
-                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 rounded-br-md"
-                        : "bg-stone-100 dark:bg-white/[0.06] text-stone-800 dark:text-stone-200 rounded-bl-md"
-                    }`}
+              )}
+              {threads?.map((thread) => (
+                <div
+                  key={thread._id}
+                  className={`group w-full flex items-center justify-between gap-2 px-4 py-3 transition-colors duration-150 ${
+                    thread._id === currentThreadId
+                      ? "bg-blue-50 dark:bg-blue-500/[0.08]"
+                      : "active:bg-stone-100 dark:active:bg-white/[0.06]"
+                  }`}
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onPointerUp={() => {
+                      setCurrentThreadId(thread._id);
+                      setShowThreadList(false);
+                    }}
+                    onClick={() => {
+                      setCurrentThreadId(thread._id);
+                      setShowThreadList(false);
+                    }}
                   >
-                    <MarkdownMessage content={msg.content} />
-                  </div>
-                </div>
-
-                {msg.intent && msg.intentStatus && (
-                  <div className="pl-0 pr-4">
-                    <ConfirmationCard
-                      intent={msg.intent as {
-                        table: string;
-                        operation: "create" | "update" | "query";
-                        data?: Record<string, unknown>;
-                      }}
-                      status={msg.intentStatus}
-                      onConfirm={() => void handleConfirm(msg._id)}
-                      onReject={() => void handleReject(msg._id)}
-                      loading={committingId === msg._id}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {sending && (
-              <div className="flex justify-start">
-                <div className="bg-stone-100 dark:bg-white/[0.06] rounded-xl rounded-bl-md px-4 py-3">
-                  <div className="flex gap-1 items-center h-5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Error */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="px-4 overflow-hidden shrink-0"
-              >
-                <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-xs text-red-700 dark:text-red-400 mb-2">
-                  {error}
-                  <button onClick={() => setError(null)} className="ml-2 underline hover:no-underline">
-                    Dismiss
+                    <p className={`text-xs font-medium truncate ${
+                      thread._id === currentThreadId
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-stone-700 dark:text-stone-300"
+                    }`}>
+                      {thread.title}
+                    </p>
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500 tabular-nums mt-0.5">
+                      {relativeTime(thread.lastMessageAt)}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleDeleteThread(e, thread._id)}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded text-stone-400 hover:text-red-500 active:text-red-500 transition-colors duration-150"
+                    aria-label="Delete conversation"
+                  >
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Input */}
-          <div className="border-t border-stone-200 dark:border-white/[0.06] px-3 py-3 shrink-0">
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Tell MNotes something..."
-                disabled={sending}
-                rows={1}
-                className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-base sm:text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
-                style={{ maxHeight: "120px" }}
-              />
-              <button
-                onClick={() => void handleSend()}
-                disabled={!input.trim() || sending}
-                className="shrink-0 w-9 h-9 rounded-xl bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 flex items-center justify-center hover:bg-stone-700 dark:hover:bg-white/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <Send className="w-4 h-4" />
+        <MessagesView
+          messages={renderedMessages}
+          rawMessagesLength={messages ? messages.length : null}
+          sending={sending}
+          committingId={committingId}
+          onConfirm={handleConfirm}
+          onReject={handleReject}
+          messagesEndRef={messagesEndRef}
+        />
+
+        {/* Error */}
+        {error && (
+          <div className="px-4 shrink-0 animate-fade-in">
+            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-xs text-red-700 dark:text-red-400 mb-2">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 underline hover:no-underline">
+                Dismiss
               </button>
             </div>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+
+        {/* Input */}
+        <div className="border-t border-stone-200 dark:border-white/[0.06] px-3 py-3 shrink-0 safe-area-bottom">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Tell MNotes something..."
+              disabled={sending}
+              rows={1}
+              className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-base sm:text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
+              style={{ maxHeight: "120px" }}
+            />
+            <button
+              onClick={() => void handleSend()}
+              disabled={!input.trim() || sending}
+              className="shrink-0 w-10 h-10 sm:w-9 sm:h-9 rounded-xl bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 flex items-center justify-center hover:bg-stone-700 dark:hover:bg-white/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
+
+const MessagesView = memo(function MessagesView({
+  messages,
+  rawMessagesLength,
+  sending,
+  committingId,
+  onConfirm,
+  onReject,
+  messagesEndRef,
+}: {
+  messages: Array<{
+    _id: Id<"chatMessages">;
+    role: "user" | "assistant";
+    content: string;
+    intent?: unknown | null;
+    intentStatus?: unknown | null;
+  }>;
+  rawMessagesLength: number | null;
+  sending: boolean;
+  committingId: string | null;
+  onConfirm: (messageId: Id<"chatMessages">) => void;
+  onReject: (messageId: Id<"chatMessages">) => void;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0"
+      style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+    >
+      {(rawMessagesLength === 0) && !sending && messages.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-xl bg-stone-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
+            <MessageSquare className="w-6 h-6 sm:w-5 sm:h-5 text-stone-400" />
+          </div>
+          <p className="text-base sm:text-sm font-medium text-stone-600 dark:text-stone-400">
+            Chat with MNotes
+          </p>
+          <p className="text-sm sm:text-xs text-stone-400 dark:text-stone-500 mt-1 max-w-[280px] sm:max-w-[240px]">
+            Tell it about a deal you closed, an idea you had, or ask how your business is doing.
+          </p>
+        </div>
+      )}
+
+      {messages.map((msg) => (
+        <div key={msg._id} className="space-y-2">
+          <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                msg.role === "user"
+                  ? "bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 rounded-br-md"
+                  : "bg-stone-100 dark:bg-white/[0.06] text-stone-800 dark:text-stone-200 rounded-bl-md"
+              }`}
+            >
+              {/* Avoid markdown processing for user messages to keep typing/snappiness high. */}
+              {msg.role === "user" ? (
+                <span className="whitespace-pre-wrap">{msg.content}</span>
+              ) : (
+                <MarkdownMessage content={msg.content} />
+              )}
+            </div>
+          </div>
+
+          {msg.intent && msg.intentStatus ? (
+            <div className="pl-0 pr-4">
+              <ConfirmationCard
+                intent={msg.intent as {
+                  table: string;
+                  operation: "create" | "update" | "query";
+                  data?: Record<string, unknown>;
+                }}
+                status={
+                  msg.intentStatus as "proposed" | "confirmed" | "rejected" | "committed"
+                }
+                onConfirm={() => void onConfirm(msg._id)}
+                onReject={() => void onReject(msg._id)}
+                loading={committingId === msg._id}
+              />
+            </div>
+          ) : null}
+        </div>
+      ))}
+
+      {sending && (
+        <div className="flex justify-start">
+          <div className="bg-stone-100 dark:bg-white/[0.06] rounded-xl rounded-bl-md px-4 py-3">
+            <div className="flex gap-1.5 items-center h-5">
+              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse [animation-delay:150ms]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse [animation-delay:300ms]" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div ref={messagesEndRef} />
+    </div>
+  );
+});

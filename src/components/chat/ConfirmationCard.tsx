@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, X, Database } from "lucide-react";
-import { motion } from "framer-motion";
 
 type Intent = {
   table: string;
@@ -53,11 +52,8 @@ export function ConfirmationCard({
   const isResolved = status === "committed" || status === "rejected";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.15 }}
-      className={`rounded-lg border text-sm ${
+    <div
+      className={`rounded-lg border text-sm animate-fade-in ${
         status === "committed"
           ? "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-900/10"
           : status === "rejected"
@@ -135,6 +131,6 @@ export function ConfirmationCard({
           </button>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

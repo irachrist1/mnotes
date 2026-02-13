@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSaveButtonLabel } from "./page";
+import { getSaveButtonLabel } from "./saveButtonLabel";
 
 describe("AI insights save button state", () => {
   it("shows saving label while mutation is pending", () => {
