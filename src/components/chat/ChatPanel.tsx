@@ -56,6 +56,8 @@ export function ChatPanel({
   const prevSoulVersionRef = useRef<number | null>(null);
   const threadInitRef = useRef(false);
   const scrollPosRef = useRef(0);
+  const threadTapRef = useRef<{ x: number; y: number } | null>(null);
+  const threadMovedRef = useRef(false);
 
   // Auto-create or auto-select thread when panel first opens
   useEffect(() => {
@@ -257,7 +259,7 @@ export function ChatPanel({
     }
   };
 
-  const handleConfirm = async (messageId: Id<"chatMessages">) => {
+  const handleConfirm = useCallback(async (messageId: Id<"chatMessages">) => {
     setCommittingId(messageId);
     try {
       await commitIntent({ messageId });
@@ -266,15 +268,15 @@ export function ChatPanel({
     } finally {
       setCommittingId(null);
     }
-  };
+  }, [commitIntent]);
 
-  const handleReject = async (messageId: Id<"chatMessages">) => {
+  const handleReject = useCallback(async (messageId: Id<"chatMessages">) => {
     try {
       await rejectIntent({ messageId });
     } catch (err) {
       console.error("Failed to reject intent:", err);
     }
-  };
+  }, [rejectIntent]);
 
   const currentThread = threads?.find((t) => t._id === currentThreadId);
 
@@ -395,11 +397,27 @@ export function ChatPanel({
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
+                    onPointerDown={(e) => {
+                      // Prevent "scroll selects item": only treat as a tap if the finger doesn't move.
+                      threadMovedRef.current = false;
+                      threadTapRef.current = { x: e.clientX, y: e.clientY };
+                    }}
+                    onPointerMove={(e) => {
+                      if (!threadTapRef.current) return;
+                      const dx = Math.abs(e.clientX - threadTapRef.current.x);
+                      const dy = Math.abs(e.clientY - threadTapRef.current.y);
+                      if (dx > 8 || dy > 8) threadMovedRef.current = true;
+                    }}
                     onPointerUp={() => {
+                      const moved = threadMovedRef.current;
+                      threadTapRef.current = null;
+                      threadMovedRef.current = false;
+                      if (moved) return;
                       setCurrentThreadId(thread._id);
                       setShowThreadList(false);
                     }}
                     onClick={() => {
+                      // Desktop fallback (pointer events aren't always fired the same way).
                       setCurrentThreadId(thread._id);
                       setShowThreadList(false);
                     }}
