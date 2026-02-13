@@ -52,12 +52,15 @@ export function ChatPanel({
   const deleteThread = useMutation(api.chat.deleteThread);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const prevSoulVersionRef = useRef<number | null>(null);
   const threadInitRef = useRef(false);
   const scrollPosRef = useRef(0);
   const threadTapRef = useRef<{ x: number; y: number } | null>(null);
   const threadMovedRef = useRef(false);
+  const pinnedToBottomRef = useRef(true);
+  const keyboardSyncRafRef = useRef<number | null>(null);
 
   // Auto-create or auto-select thread when panel first opens
   useEffect(() => {
@@ -75,13 +78,39 @@ export function ChatPanel({
     }
   }, [open, threads, createThread]);
 
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior) => {
+      const el = messagesScrollRef.current;
+      if (!el) return;
+      // Next tick avoids fighting layout while VisualViewport is resizing.
+      requestAnimationFrame(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior });
+      });
+    },
+    []
+  );
+
+  // Track whether the user is "pinned" to bottom so we don't yank them while reading history.
+  useEffect(() => {
+    if (!open) return;
+    const el = messagesScrollRef.current;
+    if (!el) return;
+
+    const updatePinned = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      pinnedToBottomRef.current = distance < 120;
+    };
+
+    updatePinned();
+    el.addEventListener("scroll", updatePinned, { passive: true });
+    return () => el.removeEventListener("scroll", updatePinned);
+  }, [open]);
+
   // Auto-scroll on new messages or optimistic message
   useEffect(() => {
-    if (open && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: optimisticUserMsg || sending ? "auto" : "smooth",
-      });
-    }
+    if (!open) return;
+    if (!pinnedToBottomRef.current) return;
+    scrollToBottom(optimisticUserMsg || sending ? "auto" : "smooth");
   }, [messages?.length, open, optimisticUserMsg]);
 
   // Focus input when panel opens
@@ -161,6 +190,13 @@ export function ChatPanel({
       mq.removeEventListener("change", applyMobile);
     };
   }, [open]);
+
+  // Always land at the bottom when opening (so you can type immediately).
+  useEffect(() => {
+    if (!open) return;
+    pinnedToBottomRef.current = true;
+    scrollToBottom("auto");
+  }, [open, currentThreadId, scrollToBottom]);
 
   // Clear optimistic message when real message arrives from Convex
   useEffect(() => {
@@ -261,6 +297,35 @@ export function ChatPanel({
       void handleSend();
     }
   };
+
+  const stopKeyboardSync = useCallback(() => {
+    if (keyboardSyncRafRef.current !== null) {
+      cancelAnimationFrame(keyboardSyncRafRef.current);
+      keyboardSyncRafRef.current = null;
+    }
+  }, []);
+
+  const startKeyboardSync = useCallback(() => {
+    stopKeyboardSync();
+    if (!isMobile) return;
+    const vvp = window.visualViewport;
+    if (!vvp) return;
+
+    const start = performance.now();
+    const tick = () => {
+      // Keep syncing during keyboard animation to prevent transient gaps/flicker.
+      setVv({
+        height: Math.round(vvp.height),
+        top: Math.round(vvp.offsetTop),
+      });
+      if (performance.now() - start < 450) {
+        keyboardSyncRafRef.current = requestAnimationFrame(tick);
+      } else {
+        keyboardSyncRafRef.current = null;
+      }
+    };
+    keyboardSyncRafRef.current = requestAnimationFrame(tick);
+  }, [isMobile, stopKeyboardSync]);
 
   const handleConfirm = useCallback(async (messageId: Id<"chatMessages">) => {
     setCommittingId(messageId);
@@ -458,6 +523,7 @@ export function ChatPanel({
           onConfirm={handleConfirm}
           onReject={handleReject}
           messagesEndRef={messagesEndRef}
+          messagesScrollRef={messagesScrollRef}
         />
 
         {/* Error */}
@@ -484,6 +550,15 @@ export function ChatPanel({
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
               }}
               onKeyDown={handleKeyDown}
+              onFocus={() => {
+                // Pin to bottom and smoothly bring latest messages into view.
+                pinnedToBottomRef.current = true;
+                startKeyboardSync();
+                scrollToBottom("smooth");
+              }}
+              onBlur={() => {
+                stopKeyboardSync();
+              }}
               placeholder="Tell MNotes something..."
               disabled={sending}
               rows={1}
@@ -512,6 +587,7 @@ const MessagesView = memo(function MessagesView({
   onConfirm,
   onReject,
   messagesEndRef,
+  messagesScrollRef,
 }: {
   messages: Array<{
     _id: Id<"chatMessages">;
@@ -526,9 +602,11 @@ const MessagesView = memo(function MessagesView({
   onConfirm: (messageId: Id<"chatMessages">) => void;
   onReject: (messageId: Id<"chatMessages">) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
+  messagesScrollRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
     <div
+      ref={messagesScrollRef}
       className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0"
       style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
     >
