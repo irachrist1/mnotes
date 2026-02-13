@@ -24,24 +24,25 @@ export default function RootLayout({
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
   const hasConvexUrl = Boolean(convexUrl && !convexUrl.includes("placeholder"));
 
-  const doc = (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="font-sans antialiased">
-        <ConvexClientProvider>
-          <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-            {children}
-          </div>
-        </ConvexClientProvider>
-      </body>
-    </html>
+  const inner = (
+    <ConvexClientProvider>
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+        {children}
+      </div>
+    </ConvexClientProvider>
   );
 
-  // Avoid hard-crashing production when Convex env vars are missing.
-  if (!hasConvexUrl) return doc;
-
   return (
-    <ConvexAuthNextjsServerProvider storageNamespace="mnotes-auth">
-      {doc}
-    </ConvexAuthNextjsServerProvider>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <body className="font-sans antialiased">
+        {hasConvexUrl ? (
+          <ConvexAuthNextjsServerProvider storageNamespace="mnotes-auth">
+            {inner}
+          </ConvexAuthNextjsServerProvider>
+        ) : (
+          inner
+        )}
+      </body>
+    </html>
   );
 }

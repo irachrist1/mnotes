@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Send, Sparkles, Check } from "lucide-react";
 import { MarkdownMessage } from "@/components/ui/MarkdownMessage";
+import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
 // Pre-designed avatar options for the assistant
 const AVATARS = [
@@ -24,7 +25,33 @@ type Message = {
   content: string;
 };
 
-export default function OnboardingPage() {
+function DisconnectedOnboardingPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-mesh relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-blue-600/[0.05] blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-[560px] relative z-10">
+        <div className="card p-8 shadow-xl dark:shadow-none text-center">
+          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
+            Convex not connected
+          </h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">
+            This deployment is missing{" "}
+            <code className="px-1 py-0.5 bg-stone-100 dark:bg-stone-800 rounded text-xs">
+              NEXT_PUBLIC_CONVEX_URL
+            </code>
+            , so onboarding is disabled.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectedOnboardingPage() {
   const router = useRouter();
   const soulFile = useQuery(api.soulFile.get, {});
   const sendOnboard = useAction(api.ai.onboardSend.send);
@@ -391,4 +418,10 @@ export default function OnboardingPage() {
       </div>
     </div>
   );
+}
+
+export default function OnboardingPage() {
+  const convexAvailable = useConvexAvailable();
+  if (!convexAvailable) return <DisconnectedOnboardingPage />;
+  return <ConnectedOnboardingPage />;
 }
