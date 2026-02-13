@@ -391,7 +391,7 @@ export function ChatPanel({
                 placeholder="Tell MNotes something..."
                 disabled={sending}
                 rows={1}
-                className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
+                className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-base sm:text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
                 style={{ maxHeight: "120px" }}
               />
               <button

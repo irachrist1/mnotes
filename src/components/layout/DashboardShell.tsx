@@ -14,8 +14,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-dot-pattern" style={{ background: 'rgb(var(--color-background))' }}>
-      {/* Dot pattern overlay */}
-      <div className="fixed inset-0 bg-dot-pattern pointer-events-none" />
 
       <Toaster
         position="top-right"

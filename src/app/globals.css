@@ -209,7 +209,7 @@
 
   /* ─── Input Fields ─── */
   .input-field {
-    @apply w-full rounded-lg px-3.5 py-2.5 text-sm;
+    @apply w-full rounded-lg px-3.5 py-2.5 text-base sm:text-sm;
     @apply bg-white dark:bg-white/5 text-stone-900 dark:text-stone-100;
     @apply placeholder-stone-400 dark:placeholder-stone-500;
     border: 1px solid rgba(231, 229, 228, 0.8);

@@ -403,7 +403,7 @@ function ConnectedOnboardingPage() {
               placeholder={greetingLoaded ? "Tell MNotes about yourself..." : "Loading..."}
               disabled={sending || !greetingLoaded || confirming}
               rows={1}
-              className="flex-1 resize-none rounded-2xl px-4 py-3 text-[15px] bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
+              className="flex-1 resize-none rounded-2xl px-4 py-3 text-base bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
               style={{ maxHeight: "120px" }}
             />
             <button
