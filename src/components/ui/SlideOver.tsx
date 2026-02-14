@@ -86,7 +86,7 @@ export function SlideOver({
   }, [open, handleKeyDown]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {open && (
         <div
           className="fixed inset-0 z-50 flex justify-end"
@@ -99,9 +99,12 @@ export function SlideOver({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm"
-            onClick={onClose}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             aria-hidden="true"
           />
           {/* Panel */}
@@ -115,7 +118,7 @@ export function SlideOver({
               "relative h-full flex flex-col",
               "bg-white dark:bg-stone-950",
               "border-l border-stone-200 dark:border-white/[0.06]",
-              wide ? "w-full max-w-lg" : "w-full max-w-md"
+              wide ? "w-full max-w-2xl" : "w-full max-w-md"
             )}
           >
             {/* Header */}
@@ -127,7 +130,11 @@ export function SlideOver({
                 {title}
               </h2>
               <button
-                onClick={onClose}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
                 className="btn-icon w-7 h-7"
                 aria-label="Close panel"
               >
