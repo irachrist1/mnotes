@@ -100,7 +100,7 @@ export default function ActionsPage() {
     <>
       <PageHeader
         title="Tasks"
-        description="Your to-dos from AI insights, chat, and manual entry"
+        description="Tasks I'm tracking and acting on for you"
       />
 
       {/* Toolbar */}
@@ -220,9 +220,8 @@ export default function ActionsPage() {
                 variants={itemVariant}
                 layout
                 exit={itemVariant.exit}
-                className={`card p-3.5 flex items-start gap-3 group ${
-                  task.done ? "opacity-60" : ""
-                }`}
+                className={`card p-3.5 flex items-start gap-3 group ${task.done ? "opacity-60" : ""
+                  }`}
               >
                 {/* Checkbox */}
                 <button
@@ -239,11 +238,10 @@ export default function ActionsPage() {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium leading-snug ${
-                    task.done
+                  <p className={`text-sm font-medium leading-snug ${task.done
                       ? "line-through text-stone-400 dark:text-stone-500"
                       : "text-stone-900 dark:text-stone-100"
-                  }`}>
+                    }`}>
                     {task.title}
                   </p>
 

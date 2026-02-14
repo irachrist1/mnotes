@@ -123,7 +123,7 @@ export function IncomeContent() {
 
   return (
     <>
-      <PageHeader title="Income Streams" description="Manage and track all your revenue sources"
+      <PageHeader title="Income Streams" description="Revenue sources I'm monitoring for you"
         action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Stream</button>}
       />
 

@@ -27,11 +27,13 @@ export function ChatPanel({
   onClose,
   pendingPrompt,
   onPromptConsumed,
+  inline = false,
 }: {
   open: boolean;
   onClose: () => void;
   pendingPrompt?: string | null;
   onPromptConsumed?: () => void;
+  inline?: boolean;
 }) {
   const [currentThreadId, setCurrentThreadId] = useState<Id<"chatThreads"> | null>(null);
   const [showThreadList, setShowThreadList] = useState(false);
@@ -79,7 +81,7 @@ export function ChatPanel({
     if (threads.length > 0) {
       setCurrentThreadId(threads[0]._id);
     } else {
-      createThread().then(({ threadId }) => setCurrentThreadId(threadId)).catch(() => {});
+      createThread().then(({ threadId }) => setCurrentThreadId(threadId)).catch(() => { });
     }
   }, [open, threads, createThread]);
 
@@ -137,9 +139,9 @@ export function ChatPanel({
     }
   }, [open]);
 
-  // Lock body scroll on mobile when chat is open (iOS-safe)
+  // Lock body scroll on mobile when chat is open (iOS-safe) — skip in inline mode
   useEffect(() => {
-    if (!open) return;
+    if (!open || inline) return;
     const mq = window.matchMedia("(max-width: 639px)");
     if (!mq.matches) return;
 
@@ -166,11 +168,12 @@ export function ChatPanel({
       body.style.overflow = "";
       window.scrollTo(0, scrollPosRef.current);
     };
-  }, [open]);
+  }, [open, inline]);
 
   // VisualViewport sizing: prevents iOS keyboard gaps + "scroll behind" artifacts.
+  // Skip in inline mode — parent handles layout.
   useEffect(() => {
-    if (!open) return;
+    if (!open || inline) return;
     const mq = window.matchMedia("(max-width: 639px)");
     const applyMobile = () => setIsMobile(mq.matches);
     applyMobile();
@@ -203,7 +206,7 @@ export function ChatPanel({
       window.removeEventListener("orientationchange", update);
       mq.removeEventListener("change", applyMobile);
     };
-  }, [open]);
+  }, [open, inline]);
 
   // Always land at the bottom when opening (so you can type immediately).
   useEffect(() => {
@@ -388,15 +391,166 @@ export function ChatPanel({
 
   if (!open) return null;
 
-  const panelStyleMobile: CSSProperties | undefined = isMobile
+  const panelStyleMobile: CSSProperties | undefined = isMobile && !inline
     ? vv
       ? { top: vv.top, height: vv.height, bottom: "auto" }
       : { top: 0, height: "100dvh" }
     : undefined;
 
   const backdropStyleMobile: CSSProperties | undefined =
-    vv ? { top: vv.top, height: vv.height, bottom: "auto" } : undefined;
+    vv && !inline ? { top: vv.top, height: vv.height, bottom: "auto" } : undefined;
 
+  // ── Inline mode: renders as a normal flow element filling its parent ──
+  if (inline) {
+    return (
+      <div
+        className="flex flex-col overflow-hidden w-full h-full min-h-0 rounded-2xl border border-stone-200 dark:border-white/[0.06]"
+        style={{ background: "rgb(var(--color-surface))", overscrollBehavior: "contain" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-white/[0.06] shrink-0">
+          <button
+            onClick={() => setShowThreadList((v) => !v)}
+            className="flex items-center gap-2 min-w-0 hover:opacity-70 transition-opacity duration-150"
+            aria-label="Toggle conversation list"
+          >
+            <div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate max-w-[200px]">
+                {currentThread?.title || "MNotes"}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-150 ${showThreadList ? "rotate-180" : ""}`}
+              />
+            </div>
+          </button>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => void handleNewChat()}
+              className="btn-icon w-8 h-8"
+              aria-label="New chat"
+              title="New chat"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="btn-icon w-8 h-8" aria-label="Close chat">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Thread list (collapsible) */}
+        {showThreadList && (
+          <div className="border-b border-stone-200 dark:border-white/[0.06] shrink-0 animate-fade-in">
+            <div className="max-h-48 overflow-y-auto py-1">
+              {(!threads || threads.length === 0) && (
+                <p className="text-xs text-stone-400 px-4 py-3 text-center">
+                  No conversations yet
+                </p>
+              )}
+              {threads?.map((thread) => (
+                <div
+                  key={thread._id}
+                  className={`group w-full flex items-center justify-between gap-2 px-4 py-3 transition-colors duration-150 ${thread._id === currentThreadId
+                      ? "bg-blue-50 dark:bg-blue-500/[0.08]"
+                      : "hover:bg-stone-50 dark:hover:bg-white/[0.04]"
+                    }`}
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => {
+                      setCurrentThreadId(thread._id);
+                      setShowThreadList(false);
+                    }}
+                  >
+                    <p className={`text-xs font-medium truncate ${thread._id === currentThreadId
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-stone-700 dark:text-stone-300"
+                      }`}>
+                      {thread.title}
+                    </p>
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500 tabular-nums mt-0.5">
+                      {relativeTime(thread.lastMessageAt)}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleDeleteThread(e, thread._id)}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded text-stone-400 hover:text-red-500 transition-colors duration-150"
+                    aria-label="Delete conversation"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <MessagesView
+          messages={renderedMessages}
+          rawMessagesLength={messages ? messages.length : null}
+          sending={sending}
+          committingId={committingId}
+          onConfirm={handleConfirm}
+          onReject={handleReject}
+          onSuggestionClick={handleSuggestion}
+          messagesEndRef={messagesEndRef}
+          messagesScrollRef={messagesScrollRef}
+        />
+
+        {/* Error */}
+        {error && (
+          <div className="px-4 shrink-0 animate-fade-in">
+            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-xs text-red-700 dark:text-red-400 mb-2">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 underline hover:no-underline">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="border-t border-stone-200 dark:border-white/[0.06] px-3 py-3 shrink-0">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              onFocus={() => {
+                pinnedToBottomRef.current = true;
+                scrollToBottom("smooth");
+              }}
+              placeholder="Tell me what to do…"
+              disabled={sending}
+              rows={1}
+              className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
+              style={{ maxHeight: "120px" }}
+            />
+            <button
+              onClick={() => void handleSend()}
+              disabled={!input.trim() || sending}
+              className="shrink-0 w-9 h-9 rounded-xl bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 flex items-center justify-center hover:bg-stone-700 dark:hover:bg-white/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Floating overlay mode (default) ──
   return (
     <>
       {/* Backdrop - mobile only, blocks all interaction behind */}
@@ -477,11 +631,10 @@ export function ChatPanel({
               {threads?.map((thread) => (
                 <div
                   key={thread._id}
-                  className={`group w-full flex items-center justify-between gap-2 px-4 py-3 transition-colors duration-150 ${
-                    thread._id === currentThreadId
-                      ? "bg-blue-50 dark:bg-blue-500/[0.08]"
-                      : "active:bg-stone-100 dark:active:bg-white/[0.06]"
-                  }`}
+                  className={`group w-full flex items-center justify-between gap-2 px-4 py-3 transition-colors duration-150 ${thread._id === currentThreadId
+                    ? "bg-blue-50 dark:bg-blue-500/[0.08]"
+                    : "active:bg-stone-100 dark:active:bg-white/[0.06]"
+                    }`}
                   style={{ touchAction: "manipulation" }}
                 >
                   <button
@@ -512,11 +665,10 @@ export function ChatPanel({
                       setShowThreadList(false);
                     }}
                   >
-                    <p className={`text-xs font-medium truncate ${
-                      thread._id === currentThreadId
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-stone-700 dark:text-stone-300"
-                    }`}>
+                    <p className={`text-xs font-medium truncate ${thread._id === currentThreadId
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-stone-700 dark:text-stone-300"
+                      }`}>
                       {thread.title}
                     </p>
                     <p className="text-[10px] text-stone-400 dark:text-stone-500 tabular-nums mt-0.5">
@@ -582,7 +734,7 @@ export function ChatPanel({
               onBlur={() => {
                 stopKeyboardSync();
               }}
-              placeholder="Tell MNotes something..."
+              placeholder="Tell me what to do…"
               disabled={sending}
               rows={1}
               className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-base sm:text-sm bg-stone-50 dark:bg-white/[0.04] text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 border border-stone-200 dark:border-white/[0.06] focus:outline-none focus:border-blue-500 transition-colors"
@@ -603,9 +755,9 @@ export function ChatPanel({
 }
 
 const SUGGESTIONS = [
-  "I just closed a deal",
-  "I have a new idea",
-  "Log a mentor session",
+  "Log a deal I just closed",
+  "Capture a new idea",
+  "Record a mentor session",
 ];
 
 const MessagesView = memo(function MessagesView({
@@ -647,10 +799,10 @@ const MessagesView = memo(function MessagesView({
             <MessageSquare className="w-6 h-6 sm:w-5 sm:h-5 text-stone-400" />
           </div>
           <p className="text-base sm:text-sm font-medium text-stone-600 dark:text-stone-400">
-            Chat with MNotes
+            I&apos;m ready to work
           </p>
           <p className="text-sm sm:text-xs text-stone-400 dark:text-stone-500 mt-1 max-w-[280px] sm:max-w-[240px]">
-            Tell it about a deal you closed, an idea you had, or ask how your business is doing.
+            Tell it about a deal, an idea, or what to work on next — I&apos;ll handle it.
           </p>
           {onSuggestionClick && (
             <div className="flex flex-wrap gap-2 mt-4 justify-center">
@@ -672,11 +824,10 @@ const MessagesView = memo(function MessagesView({
         <div key={msg._id} className="space-y-2">
           <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 rounded-br-md"
-                  : "bg-stone-100 dark:bg-white/[0.06] text-stone-800 dark:text-stone-200 rounded-bl-md"
-              }`}
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === "user"
+                ? "bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 rounded-br-md"
+                : "bg-stone-100 dark:bg-white/[0.06] text-stone-800 dark:text-stone-200 rounded-bl-md"
+                }`}
             >
               {/* Avoid markdown processing for user messages to keep typing/snappiness high. */}
               {msg.role === "user" ? (

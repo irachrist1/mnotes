@@ -105,7 +105,7 @@ export function MentorshipContent() {
 
   return (
     <>
-      <PageHeader title="Mentorship" description="Track sessions, insights, and action items"
+      <PageHeader title="Mentorship" description="Sessions and insights I've captured for you"
         action={<button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors"><Plus className="w-3.5 h-3.5" />Add Session</button>}
       />
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { ChatButton } from "@/components/chat/ChatButton";
+
 import { Toaster } from "sonner";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -103,16 +103,17 @@ export function DashboardShell({
   // Close chat panel when navigating to a different page
   useEffect(() => {
     setChatOpen(false);
+    window.dispatchEvent(new CustomEvent("mnotes:chat-closed"));
   }, [pathname]);
 
   // Listen for "mnotes:open-chat" custom events from QuickActionCards
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ prompt: string }>).detail;
+      const detail = (e as CustomEvent<{ prompt?: string }>).detail;
       if (detail?.prompt) {
         setPendingPrompt(detail.prompt);
-        setChatOpen(true);
       }
+      setChatOpen(true);
     };
     window.addEventListener("mnotes:open-chat", handler);
     return () => window.removeEventListener("mnotes:open-chat", handler);
@@ -186,17 +187,15 @@ export function DashboardShell({
       {convexAvailable && (
         <ChatPanel
           open={chatOpen}
-          onClose={() => setChatOpen(false)}
+          onClose={() => {
+            setChatOpen(false);
+            window.dispatchEvent(new CustomEvent("mnotes:chat-closed"));
+          }}
           pendingPrompt={pendingPrompt}
           onPromptConsumed={() => setPendingPrompt(null)}
         />
       )}
-      {/* Never render the floating button while open: mobile uses full-screen, and panel has its own close button. */}
-      {convexAvailable && !chatOpen && (
-        <div onPointerDown={preloadChat} onMouseEnter={preloadChat}>
-          <ChatButton open={false} onClick={() => setChatOpen(true)} />
-        </div>
-      )}
+
     </div>
   );
 }

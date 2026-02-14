@@ -56,7 +56,7 @@ function timeAgo(timestamp: number): string {
   });
 }
 
-export function AIInsightsContent() {
+export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const streams = useQuery(api.incomeStreams.list);
@@ -433,7 +433,7 @@ export function AIInsightsContent() {
   if (settings === null) {
     return (
       <>
-        <PageHeader title="AI Insights" description="AI-powered analysis of your business data" />
+        {!hideHeader && <PageHeader title="AI Insights" description="AI-powered analysis of your business data" />}
         <div className="flex flex-col items-center py-16 text-center">
           <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-4">
             <Settings className="w-6 h-6 text-stone-400" />
@@ -458,35 +458,37 @@ export function AIInsightsContent() {
 
   return (
     <>
-      <PageHeader
-        title="AI Insights"
-        description="AI-powered analysis of your business data"
-        action={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/settings"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-secondary text-sm transition-colors"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Settings
-            </Link>
-            {activeTab === "generated" && (
-              <button
-                onClick={generateInsights}
-                disabled={loading || !hasData || !settings}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors disabled:opacity-50"
+      {!hideHeader && (
+        <PageHeader
+          title="AI Insights"
+          description="AI-powered analysis of your business data"
+          action={
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/settings"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-secondary text-sm transition-colors"
               >
-                {loading ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                {loading ? "Analyzing..." : "Generate Insights"}
-              </button>
-            )}
-          </div>
-        }
-      />
+                <Settings className="w-3.5 h-3.5" />
+                Settings
+              </Link>
+              {activeTab === "generated" && (
+                <button
+                  onClick={generateInsights}
+                  disabled={loading || !hasData || !settings}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md btn-primary text-sm transition-colors disabled:opacity-50"
+                >
+                  {loading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  {loading ? "Analyzing..." : "Generate Insights"}
+                </button>
+              )}
+            </div>
+          }
+        />
+      )}
 
       <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-0.5 mb-4 w-fit">
         {([

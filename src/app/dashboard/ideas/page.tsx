@@ -118,7 +118,7 @@ export function IdeasContent() {
 
   return (
     <>
-      <PageHeader title="Ideas Pipeline" description="Track ideas from conception to launch"
+      <PageHeader title="Ideas Pipeline" description="Ideas I'm developing and tracking for you"
         action={
           <div className="flex items-center gap-3">
             <div className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-0.5">

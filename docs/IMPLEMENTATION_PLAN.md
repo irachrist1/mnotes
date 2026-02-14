@@ -6,6 +6,18 @@ This document is designed so **multiple agents can work on separate workstreams 
 
 ---
 
+## Takeover Audit (Feb 14, 2026)
+
+This section exists because parts of the plan below are marked "SHIPPED", but the current codebase still has wiring gaps that make core UX feel broken/slow.
+
+### What Is Actually Broken Right Now (Verified In Code)
+- **Actions page mismatch**: `src/app/dashboard/actions/page.tsx` is a `tasks` UI, but chat intents + AI Insights create `actionableActions`. Result: AI-created "Actions" do not show up on `/dashboard/actions`.
+- **Sidebar missing critical links**: `src/components/layout/Sidebar.tsx` has no nav item for `/dashboard/actions`, and does not render `src/components/layout/NotificationBell.tsx`.
+- **Chat feels slow by design**: `convex/ai/chatSend.ts` saves the assistant message only after the full LLM call completes. The UI shows a typing indicator, but there is no immediate assistant placeholder message in the thread.
+
+### Immediate P0 Goal
+Make chat feel instant (UI responsiveness) and make "Actions" a real, visible system by wiring `/dashboard/actions` to `actionableActions` end-to-end.
+
 ## Architecture Overview (Read This First)
 
 ```

@@ -39,7 +39,6 @@ type Section = {
     key: string;
     label: string;
     icon: React.ElementType;
-    description: string;
 };
 
 const SECTIONS: Section[] = [
@@ -47,19 +46,17 @@ const SECTIONS: Section[] = [
         key: "insights",
         label: "AI Insights",
         icon: Sparkles,
-        description: "AI-powered analysis of your business data",
     },
     {
         key: "analytics",
         label: "Analytics",
         icon: BarChart3,
-        description: "Comprehensive charts and trends",
     },
 ];
 
 export default function IntelligencePage() {
     const [openSections, setOpenSections] = useState<Set<string>>(
-        new Set(["insights"])
+        new Set()
     );
 
     const toggle = (key: string) => {
@@ -83,7 +80,7 @@ export default function IntelligencePage() {
                         Intelligence
                     </h1>
                     <p className="text-sm text-stone-500 dark:text-stone-400">
-                        AI insights and analytics in one place
+                        What I&apos;ve discovered about your business
                     </p>
                 </div>
             </div>
@@ -101,14 +98,9 @@ export default function IntelligencePage() {
                             <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
                                 <Icon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                                    {section.label}
-                                </span>
-                                <p className="text-xs text-stone-500 dark:text-stone-400">
-                                    {section.description}
-                                </p>
-                            </div>
+                            <span className="text-sm font-semibold text-stone-900 dark:text-stone-100 flex-1">
+                                {section.label}
+                            </span>
                             <motion.div
                                 animate={{ rotate: isOpen ? 180 : 0 }}
                                 transition={{ duration: 0.2 }}
@@ -127,8 +119,8 @@ export default function IntelligencePage() {
                                     className="overflow-hidden"
                                 >
                                     <div className="px-5 pt-4 pb-5 border-t border-stone-100 dark:border-stone-800">
-                                        {section.key === "insights" && <AIInsightsContent />}
-                                        {section.key === "analytics" && <AnalyticsContent />}
+                                        {section.key === "insights" && <AIInsightsContent hideHeader />}
+                                        {section.key === "analytics" && <AnalyticsContent hideHeader />}
                                     </div>
                                 </motion.div>
                             )}

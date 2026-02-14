@@ -40,7 +40,7 @@ const categoryLabel: Record<string, string> = {
 const STAGES_ORDER = ["raw-thought", "researching", "validating", "developing", "testing", "launched"] as const;
 const CATEGORY_ORDER = ["consulting", "employment", "content", "product", "project-based"] as const;
 
-export function AnalyticsContent() {
+export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean } = {}) {
   const streams = useQuery(api.incomeStreams.list);
   const ideas = useQuery(api.ideas.list);
   const sessions = useQuery(api.mentorshipSessions.list);
@@ -128,7 +128,7 @@ export function AnalyticsContent() {
 
   return (
     <>
-      <PageHeader title="Analytics" description="Comprehensive insights into your business" />
+      {!hideHeader && <PageHeader title="Analytics" description="Comprehensive insights into your business" />}
 
       {/* Empty state when user has no data */}
       {hasNoData && (
