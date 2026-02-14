@@ -244,7 +244,8 @@ export default defineSchema({
       v.literal("stale-idea"),
       v.literal("overdue-action"),
       v.literal("pattern-detected"),
-      v.literal("milestone")
+      v.literal("milestone"),
+      v.literal("agent-task")
     ),
     title: v.string(),
     body: v.string(),
@@ -270,30 +271,55 @@ export default defineSchema({
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     done: v.boolean(),
     createdAt: v.number(),
+    executionType: v.optional(v.literal("draft")),
+    executionPayload: v.optional(v.any()),
+    lastExecutionAt: v.optional(v.number()),
+    lastExecutionStatus: v.optional(
+      v.union(
+        v.literal("idle"),
+        v.literal("queued"),
+        v.literal("succeeded"),
+        v.literal("failed")
+      )
+    ),
+    lastExecutionError: v.optional(v.string()),
+
+    // Agent work state (Deep Research-style visibility).
+    agentStatus: v.optional(
+      v.union(
+        v.literal("idle"),
+        v.literal("queued"),
+        v.literal("running"),
+        v.literal("succeeded"),
+        v.literal("failed")
+      )
+    ),
+    agentProgress: v.optional(v.number()), // 0-100
+    agentPhase: v.optional(v.string()),
+    agentPlan: v.optional(v.array(v.string())),
+    agentSummary: v.optional(v.string()),
+    agentResult: v.optional(v.string()), // markdown output
+    agentStartedAt: v.optional(v.number()),
+    agentCompletedAt: v.optional(v.number()),
+    agentError: v.optional(v.string()),
   }).index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
 
-  actionableActions: defineTable({
+  taskEvents: defineTable({
     userId: v.string(),
-    sourceInsightId: v.optional(v.id("aiInsights")),
-    title: v.string(),
-    description: v.string(),
-    status: v.union(
-      v.literal("proposed"),
-      v.literal("accepted"),
-      v.literal("in-progress"),
-      v.literal("completed"),
-      v.literal("dismissed")
+    taskId: v.id("tasks"),
+    kind: v.union(
+      v.literal("status"),
+      v.literal("progress"),
+      v.literal("note"),
+      v.literal("result"),
+      v.literal("error")
     ),
-    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-    dueDate: v.optional(v.string()),
-    calendarEventId: v.optional(v.string()),
-    aiNotes: v.optional(v.string()),
-    researchResults: v.optional(v.string()),
-    completedAt: v.optional(v.number()),
+    title: v.string(),
+    detail: v.optional(v.string()),
+    progress: v.optional(v.number()), // 0-100
     createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    .index("by_user_created", ["userId", "createdAt"]),
+  })
+    .index("by_user_task_created", ["userId", "taskId", "createdAt"])
+    .index("by_task_created", ["taskId", "createdAt"]),
 });

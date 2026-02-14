@@ -4,6 +4,7 @@ import { Suspense, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { DollarSign, Lightbulb, Users, ListTodo } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // Lazy-load each tab's content — only the active tab is mounted
 const IncomeContent = dynamic(
@@ -28,17 +29,17 @@ const TABS = [
     { key: "income", label: "Income", icon: DollarSign },
     { key: "ideas", label: "Ideas", icon: Lightbulb },
     { key: "mentorship", label: "Mentorship", icon: Users },
-    { key: "tasks", label: "Tasks", icon: ListTodo },
+    { key: "tasks", label: "Agent Tasks", icon: ListTodo },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 function TabSkeleton() {
     return (
-        <div className="space-y-4 animate-pulse">
-            <div className="h-8 w-48 bg-stone-100 dark:bg-stone-800 rounded" />
-            <div className="h-32 bg-stone-100 dark:bg-stone-800 rounded-lg" />
-            <div className="h-64 bg-stone-100 dark:bg-stone-800 rounded-lg" />
+        <div className="space-y-4" aria-label="Loading tab">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-32 rounded-lg" />
+            <Skeleton className="h-64 rounded-lg" />
         </div>
     );
 }

@@ -832,6 +832,14 @@ const MessagesView = memo(function MessagesView({
               {/* Avoid markdown processing for user messages to keep typing/snappiness high. */}
               {msg.role === "user" ? (
                 <span className="whitespace-pre-wrap">{msg.content}</span>
+              ) : msg.content === "Thinking..." ? (
+                <span className="inline-flex items-center gap-1 text-stone-400 dark:text-stone-500">
+                  <span className="inline-flex gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-[pulse_1.2s_ease-in-out_infinite]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-[pulse_1.2s_ease-in-out_0.2s_infinite]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-[pulse_1.2s_ease-in-out_0.4s_infinite]" />
+                  </span>
+                </span>
               ) : (
                 <MarkdownMessage content={msg.content} />
               )}
@@ -857,18 +865,6 @@ const MessagesView = memo(function MessagesView({
           ) : null}
         </div>
       ))}
-
-      {sending && (
-        <div className="flex justify-start">
-          <div className="bg-stone-100 dark:bg-white/[0.06] rounded-xl rounded-bl-md px-4 py-3">
-            <div className="flex gap-1.5 items-center h-5">
-              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse" />
-              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse [animation-delay:150ms]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse [animation-delay:300ms]" />
-            </div>
-          </div>
-        </div>
-      )}
 
       <div ref={messagesEndRef} />
     </div>

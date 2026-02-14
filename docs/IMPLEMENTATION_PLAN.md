@@ -10,10 +10,15 @@ This document is designed so **multiple agents can work on separate workstreams 
 
 This section exists because parts of the plan below are marked "SHIPPED", but the current codebase still has wiring gaps that make core UX feel broken/slow.
 
+### Source-Of-Truth For The New UI
+- **Three Zones UI** (Home command center + Data hub + Intelligence hub) is defined in `docs/UI_REDESIGN_PLAN.md`.
+- This document remains the engineering work plan (Convex + chat pipeline + wiring), but must stay aligned with `docs/UI_REDESIGN_PLAN.md` and `docs/DESIGN_SYSTEM.md`.
+
 ### What Is Actually Broken Right Now (Verified In Code)
 - **Actions page mismatch**: `src/app/dashboard/actions/page.tsx` is a `tasks` UI, but chat intents + AI Insights create `actionableActions`. Result: AI-created "Actions" do not show up on `/dashboard/actions`.
-- **Sidebar missing critical links**: `src/components/layout/Sidebar.tsx` has no nav item for `/dashboard/actions`, and does not render `src/components/layout/NotificationBell.tsx`.
+- **Navigation deep-links are inconsistent**: `src/components/layout/Sidebar.tsx` follows the Three Zones (Home/Data/Intelligence), but legacy routes like `/dashboard/actions` still exist and are still used as deep-links from AI flows.
 - **Chat feels slow by design**: `convex/ai/chatSend.ts` saves the assistant message only after the full LLM call completes. The UI shows a typing indicator, but there is no immediate assistant placeholder message in the thread.
+ - **Three-Zones mismatch**: the new Tasks UI lives at `/dashboard/data?tab=tasks` (`src/components/dashboard/TasksContent.tsx`), but AI flows still deep-link to `/dashboard/actions` and/or create records in the wrong table.
 
 ### Immediate P0 Goal
 Make chat feel instant (UI responsiveness) and make "Actions" a real, visible system by wiring `/dashboard/actions` to `actionableActions` end-to-end.
@@ -60,14 +65,17 @@ Make chat feel instant (UI responsiveness) and make "Actions" a real, visible sy
 | C | Actionable Recommended Actions | P1 | ✅ **SHIPPED** (Feb 14) | None |
 | D | Research Integration | P2 | ✅ **SHIPPED** (Feb 14) | Uses C's `actionableActions` table |
 | E | PostHog Analytics | P3 | ✅ **SHIPPED** (Feb 14) — needs `npm install posthog-js` + `NEXT_PUBLIC_POSTHOG_KEY` env var | None |
+| F | Chat Latency + "Instant Feel" | P0 | ❗ **PLANNED** (Feb 14) | None |
+| G | Tasks Wiring (Chat + AI Insights + Redirects) | P0 | ❗ **PLANNED** (Feb 14) | Uses existing `tasks` table + `TasksContent` tab |
+| H | Agentic Task Execution (Do, Not Just Track) | P0 | ❗ **PLANNED** (Feb 14) | Depends on F + G |
 
 ### File Ownership (Prevents Merge Conflicts)
 
 **Shared files** — multiple workstreams need to modify these. Coordinate via sections:
 - `convex/schema.ts` — each workstream adds its table(s) at the END of the schema, before the closing `});`
 - `convex/crons.ts` — each workstream adds its cron at the END of the file
-- `src/components/layout/Sidebar.tsx` — only Workstream B adds a notification bell
-- `src/components/layout/DashboardShell.tsx` — only Workstream B adds NotificationBell
+- `src/components/layout/Sidebar.tsx` — Workstream B owns NotificationBell integration; Workstream G owns the `/dashboard/actions` nav item (coordinate via small, clearly-marked sections)
+- `src/components/layout/DashboardShell.tsx` — avoid touching unless necessary; Sidebar is the preferred integration point
 
 **Rule: never modify another workstream's NEW files. Only touch shared files in designated sections.**
 
@@ -500,6 +508,157 @@ npx next build && npx vitest run
 # 2. Send a chat message, verify 'chat_message_sent' event
 # 3. Check PostHog dashboard for events
 ```
+
+---
+
+## Workstream F: Chat Latency + "Instant Feel"
+
+**Goal:** Make chat *feel* instant even when the LLM takes seconds. The user should see an immediate assistant placeholder message, then it upgrades in-place when the AI reply arrives.
+
+### Core Design
+- The client sends a message and immediately gets a saved placeholder assistant message in the thread (no waiting for the full LLM call).
+- The full LLM generation runs asynchronously via an `internalAction` scheduled with `ctx.scheduler.runAfter(0, ...)`.
+- When generation completes, we patch the placeholder assistant message with the final `reply` + optional `intent`.
+
+### Tasks
+
+#### F1: Refactor chatSend into fast send + async generate
+- **File: `convex/ai/chatSend.ts`** (MODIFY)
+  - Keep exported `send` action as the client entry point.
+  - `send` should:
+    - save the user message (existing `internal.chat.saveMessage`)
+    - save a placeholder assistant message (`content: "Thinking..."`)
+    - schedule `internal.ai.chatSend.generateReplyInternal` with `{ userId, threadId, assistantMessageId, userMessage }`
+    - return quickly (do not block on the LLM call)
+- **File: `convex/chat.ts`** (MODIFY)
+  - Add `internalMutation` to patch a chat message by id (assistant only):
+    - fields: `content`, `intent`, `intentStatus`
+    - used only by the async generator to "upgrade" the placeholder
+- **File: `convex/ai/chatSend.ts`** (ADD exports)
+  - Add `generateReplyInternal` as an `internalAction` that:
+    - loads settings, soul file, domain summary, recent messages, memory candidates
+    - calls provider (OpenRouter/Google), parses intent
+    - patches the placeholder assistant message via the new internal mutation
+    - on error: patch placeholder with a short failure message (do not leave "Thinking..." forever)
+
+#### F2: Client UX cleanup for placeholder replies
+- **File: `src/components/chat/ChatPanel.tsx`** (MODIFY)
+  - Keep user-message optimistic render.
+  - Remove reliance on `sending` for "assistant typing" feel (placeholder message covers it).
+  - Ensure the input re-enables immediately after the fast `send` returns (so the UI stays snappy).
+
+### Verification
+```bash
+npx next build
+npx vitest run
+```
+- Manual:
+  - Send a message; confirm you instantly see a placeholder assistant bubble.
+  - Within a few seconds the placeholder bubble updates in-place to the real reply.
+  - Intents still appear and Confirm still commits data.
+
+---
+
+## Workstream G: Tasks Wiring (Chat + AI Insights + Redirects)
+
+**Goal:** Standardize on the existing `tasks` model + `TasksContent` tab (`/dashboard/data?tab=tasks`). Stop creating "invisible" `actionableActions` that have no coherent UX in the Three Zones architecture.
+
+### Tasks
+
+#### G1: Make chat intents create `tasks` (not `actionableActions`)
+- **File: `convex/ai/chatPrompt.ts`** (MODIFY)
+  - Add `tasks` to `WRITABLE_TABLES` with the minimal fields the AI should propose:
+    - `title` (required)
+    - `note` (optional)
+    - `priority` (required: low|medium|high)
+    - `dueDate` (optional: ISO date)
+  - Remove `actionableActions` from `WRITABLE_TABLES` (or mark deprecated if we must keep it for now).
+- **File: `convex/chat.ts`** (MODIFY `commitIntent`)
+  - Add `else if (table === "tasks")` branch:
+    - set `sourceType: "chat"`, `done: false`, `createdAt: now`
+    - map `note` from AI data if present
+  - (Optional) mark `actionableActions` branch deprecated; do not generate new records via chat.
+
+#### G2: Make AI Insights "Create Actions" create Tasks and deep-link correctly
+- **File: `src/app/dashboard/ai-insights/page.tsx`** (MODIFY)
+  - Replace `api.actionableActions.createFromInsight` with `api.tasks.createFromInsight`.
+  - Update the toast CTA to navigate to `/dashboard/data?tab=tasks` (not `/dashboard/actions`).
+  - Update button text from "Create Actions from These" to "Create Tasks from These".
+
+#### G3: Deprecate `/dashboard/actions` route safely
+- **File: `src/app/dashboard/actions/page.tsx`** (MODIFY)
+  - Replace the current implementation with a redirect to `/dashboard/data?tab=tasks` (server-side `redirect()` preferred).
+
+#### G4: Small UI polish for intent confirmation cards
+- **File: `src/components/chat/ConfirmationCard.tsx`** (MODIFY)
+  - Add `tasks` to `TABLE_LABELS` as "Task".
+
+### Verification
+```bash
+npx next build
+npx vitest run
+```
+- Manual:
+  - Chat: "Remind me to follow up with Acme next Tuesday" -> AI proposes `tasks` intent -> Confirm -> task appears in Data -> Tasks.
+  - AI Insights: open an insight -> "Create Tasks from These" -> tasks appear in Data -> Tasks.
+  - Visiting `/dashboard/actions` lands on Data -> Tasks.
+
+---
+
+## Workstream H: Agentic Task Execution (Do, Not Just Track)
+
+**Goal:** A task can be *executed*, not just stored. This is the "real Jarvis" step: the system proposes work, the user confirms, and the system performs safe actions (internal first, external with explicit confirmation).
+
+**Reference:** Behavior + loops should follow `docs/OPENCLAW_LEARNINGS.md` (memory-first, deterministic boot order, proactive loops, strict boundaries for external actions).
+
+### Execution Model (MVP)
+- A `task` can optionally include an `execution` payload that the system knows how to run.
+- The AI proposes tasks with an `execution.type` only from a strict allowlist (no arbitrary code/tool calls).
+- The user must confirm execution for any external side effects.
+
+### Supported Executors (Start Small)
+- `draft`: generate a draft (email, proposal, checklist) and attach it back to the task note (no side effects).
+- `calendar_stub`: generate a calendar event payload and show it for copy/paste (later: connect real calendar API).
+- `webhook_stub`: generate a structured request (URL + JSON) but do not send without confirmation (later: real sending).
+
+### Tasks
+
+#### H1: Extend tasks schema for execution metadata
+- **File: `convex/schema.ts`** (MODIFY `tasks` table)
+  - Add optional fields:
+    - `executionType: v.optional(v.string())`
+    - `executionPayload: v.optional(v.any())`
+    - `lastExecutionAt: v.optional(v.number())`
+    - `lastExecutionStatus: v.optional(v.union(v.literal("idle"), v.literal("queued"), v.literal("succeeded"), v.literal("failed")))`
+    - `lastExecutionError: v.optional(v.string())`
+
+#### H2: Add execution action + internal mutation
+- **File: `convex/tasks.ts`** (MODIFY)
+  - Add mutation `queueExecution({ id })` that sets status to queued (auth-checked).
+- **File: `convex/ai/taskExecutor.ts`** (CREATE, `"use node"`)
+  - Action `runExecution({ taskId })`:
+    - loads task + soul file + recent context
+    - runs executor by type (draft/calendar_stub/webhook_stub)
+    - patches task with results + status
+
+#### H3: Wire execution into UI
+- **File: `src/components/dashboard/TasksContent.tsx`** (MODIFY)
+  - Add an "Execute" button when a task has `executionType`.
+  - Show last execution status inline.
+  - For `draft`, render the generated output cleanly (use existing card + markdown rules).
+
+#### H4: Teach chat how to propose executable tasks safely
+- **File: `convex/ai/chatPrompt.ts`** (MODIFY)
+  - For `tasks`, document optional `executionType` + `executionPayload` and the allowlist.
+  - Add explicit system-prompt rule: never propose external execution without user confirmation.
+
+### Verification
+```bash
+npx next build
+npx vitest run
+```
+- Manual:
+  - Chat: "Draft a follow-up email to Acme about next steps" -> propose task with `executionType: draft` -> confirm -> execute -> draft appears on the task.
 
 ---
 

@@ -8,14 +8,14 @@ const features = [
   {
     title: 'Revenue Tracking',
     description: 'See every income stream in one view. Monthly revenue, time invested, growth rates, and category breakdowns.',
-    accent: 'from-emerald-500/20 to-emerald-500/5',
-    border: 'hover:border-emerald-500/20',
-    iconColor: 'text-emerald-500 dark:text-emerald-400',
+    accent: 'from-blue-600/20 to-blue-600/5',
+    border: 'hover:border-blue-600/20',
+    iconColor: 'text-blue-600 dark:text-blue-500',
     span: 'md:col-span-2',
     preview: (
       <div className="mt-4 flex items-end gap-1 h-20">
         {[35, 42, 38, 55, 48, 62, 58, 72, 68, 78, 82, 90].map((h, i) => (
-          <div key={i} className="flex-1 bg-gradient-to-t from-emerald-500/30 to-emerald-400/50 rounded-sm" style={{ height: `${h}%` }} />
+          <div key={i} className="flex-1 bg-gradient-to-t from-blue-600/25 to-blue-500/45 rounded-sm" style={{ height: `${h}%` }} />
         ))}
       </div>
     ),
@@ -23,9 +23,9 @@ const features = [
   {
     title: 'Ideas Pipeline',
     description: 'Move ideas from raw thought to launch. Score by potential, complexity, and market fit.',
-    accent: 'from-violet-500/20 to-violet-500/5',
-    border: 'hover:border-violet-500/20',
-    iconColor: 'text-violet-500 dark:text-violet-400',
+    accent: 'from-blue-600/20 to-blue-600/5',
+    border: 'hover:border-blue-600/20',
+    iconColor: 'text-blue-600 dark:text-blue-500',
     span: '',
     preview: (
       <div className="mt-4 space-y-2">
@@ -33,7 +33,7 @@ const features = [
           <div key={stage} className="flex items-center gap-2">
             <span className="text-[10px] text-stone-500 w-16 text-right">{stage}</span>
             <div className="flex-1 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-violet-500/60 to-violet-400/40 rounded-full" style={{ width: `${[20, 30, 50, 80][i]}%` }} />
+              <div className="h-full bg-gradient-to-r from-blue-600/55 to-blue-500/35 rounded-full" style={{ width: `${[20, 30, 50, 80][i]}%` }} />
             </div>
           </div>
         ))}
@@ -90,9 +90,9 @@ const features = [
   {
     title: 'Analytics',
     description: 'Real charts. Revenue by category, pipeline velocity, mentorship trends. Not CSS rectangles.',
-    accent: 'from-teal-500/20 to-teal-500/5',
-    border: 'hover:border-teal-500/20',
-    iconColor: 'text-teal-500 dark:text-teal-400',
+    accent: 'from-blue-600/20 to-blue-600/5',
+    border: 'hover:border-blue-600/20',
+    iconColor: 'text-blue-600 dark:text-blue-500',
     span: '',
     preview: (
       <div className="mt-4 grid grid-cols-2 gap-2">

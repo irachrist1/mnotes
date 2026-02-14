@@ -24,23 +24,23 @@ export default function LandingHeader() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-150 ${
         isScrolled
           ? 'bg-white/80 dark:bg-stone-950/80 backdrop-blur-xl border-b border-stone-200 dark:border-white/[0.06]'
           : 'bg-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/25">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">M</span>
             </div>
             <span className="text-lg font-semibold text-stone-900 dark:text-white">MNotes</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            {['Features', 'How It Works', 'Roadmap'].map((item) => (
+            {['Memory', 'Agent Tasks', 'How It Works', 'Safety'].map((item) => (
               <button
                 key={item}
                 onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}
@@ -91,7 +91,7 @@ export default function LandingHeader() {
           className="md:hidden bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-t border-stone-200 dark:border-white/[0.06]"
         >
           <nav className="px-4 py-3 space-y-1">
-            {['Features', 'How It Works', 'Roadmap'].map((item) => (
+            {['Memory', 'Agent Tasks', 'How It Works', 'Safety'].map((item) => (
               <button
                 key={item}
                 onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}

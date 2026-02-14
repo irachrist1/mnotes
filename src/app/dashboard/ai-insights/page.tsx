@@ -77,7 +77,7 @@ export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean
   const togglePinSavedInsight = useMutation(api.savedInsights.togglePin);
   const removeSavedInsight = useMutation(api.savedInsights.remove);
   const touchSavedInsightUsage = useMutation(api.savedInsights.touchUsage);
-  const createActionsFromInsight = useMutation(api.actionableActions.createFromInsight);
+  const createTasksFromInsight = useMutation(api.tasks.createFromInsight);
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<InsightsTab>("generated");
@@ -413,7 +413,7 @@ export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean
 
   const statusVariant = (s: string) => {
     switch (s) {
-      case "unread": return "purple" as const;
+      case "unread": return "info" as const;
       case "read": return "default" as const;
       case "dismissed": return "default" as const;
       default: return "default" as const;
@@ -656,9 +656,9 @@ export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean
                 <div
                   key={insight._id}
                   className={`card p-5 cursor-pointer card-hover ${insight.status === "unread"
-                    ? "ring-1 ring-purple-200 dark:ring-purple-800/50"
+                    ? "ring-1 ring-blue-200 dark:ring-blue-800/50"
                     : ""
-                    }`}
+                }`}
                   onClick={() => openDetail(insight._id)}
                 >
                   <div className="flex items-start gap-3">
@@ -924,25 +924,25 @@ export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean
                 <button
                   onClick={async () => {
                     try {
-                      const result = await createActionsFromInsight({ insightId: selectedInsight._id });
+                      const result = await createTasksFromInsight({ insightId: selectedInsight._id });
                       setSelectedInsightId(null);
                       toast.success(
-                        `Created ${result.created} action${result.created !== 1 ? "s" : ""}`,
+                        `Created ${result.created} task${result.created !== 1 ? "s" : ""}`,
                         {
                           action: {
-                            label: "View Actions",
-                            onClick: () => router.push("/dashboard/actions"),
+                            label: "View Tasks",
+                            onClick: () => router.push("/dashboard/data?tab=tasks"),
                           },
                         }
                       );
                     } catch {
-                      toast.error("Failed to create actions");
+                      toast.error("Failed to create tasks");
                     }
                   }}
                   className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Create Actions from These
+                  Create Tasks from These
                 </button>
               </div>
             )}
@@ -1067,5 +1067,8 @@ export function AIInsightsContent({ hideHeader = false }: { hideHeader?: boolean
 }
 
 export default function AIInsightsPage() {
-  return <AIInsightsContent />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/dashboard/intelligence");
+  }
+  return null;
 }

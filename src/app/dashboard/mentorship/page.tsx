@@ -130,7 +130,11 @@ export function MentorshipContent() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="h-24 bg-stone-100 dark:bg-stone-800 rounded-lg animate-pulse" />))}</div>
+        <div className="space-y-3" aria-label="Loading mentorship sessions">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
       ) : filtered && filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((session) => {
@@ -141,7 +145,7 @@ export function MentorshipContent() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-stone-900 dark:text-stone-100">{session.mentorName}</span>
-                      <Badge variant={session.sessionType === "giving" ? "purple" : "info"}>{session.sessionType}</Badge>
+                      <Badge variant={session.sessionType === "giving" ? "default" : "info"}>{session.sessionType}</Badge>
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className="text-xs text-stone-500 dark:text-stone-400">{session.date}</span>
@@ -238,5 +242,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function MentorshipPage() {
-  return <MentorshipContent />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/dashboard/data?tab=mentorship");
+  }
+  return null;
 }

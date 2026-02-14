@@ -32,7 +32,7 @@ const CHART_COLORS = [
   "rgb(120, 113, 108)",  // stone-500
   "rgb(239, 68, 68)",    // red
   "rgb(59, 130, 246)",   // blue-500
-  "rgb(168, 85, 247)",   // purple
+  "rgb(245, 158, 11)",   // amber
   "rgb(29, 78, 216)",    // blue-700
   "rgb(87, 83, 78)",     // stone-600
 ];

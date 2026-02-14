@@ -40,11 +40,10 @@ export default function WaitlistCTA() {
         >
           <div className="space-y-4">
             <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">
-              Get early access
+              Get early access to Agent Tasks
             </h2>
             <p className="text-stone-500 dark:text-stone-400">
-              Join the waitlist and be the first to try MNotes when we open up.
-              No spam. Just an email when it&apos;s your turn.
+              Join the waitlist for memory-first AI that shows its work. No spam, just one email when it&apos;s your turn.
             </p>
           </div>
 

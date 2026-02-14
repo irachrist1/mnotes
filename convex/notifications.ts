@@ -85,7 +85,8 @@ export const createInternal = internalMutation({
       v.literal("stale-idea"),
       v.literal("overdue-action"),
       v.literal("pattern-detected"),
-      v.literal("milestone")
+      v.literal("milestone"),
+      v.literal("agent-task")
     ),
     title: v.string(),
     body: v.string(),

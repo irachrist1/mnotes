@@ -156,7 +156,7 @@ export default function Hero() {
                         { label: 'Monthly Revenue', value: '$12,450', accent: 'text-emerald-600 dark:text-emerald-400' },
                         { label: 'Active Ideas', value: '23', accent: 'text-blue-700 dark:text-blue-500' },
                         { label: 'Growth Rate', value: '+18.2%', accent: 'text-blue-700 dark:text-blue-500' },
-                        { label: 'AI Insights', value: '5 new', accent: 'text-violet-600 dark:text-violet-400' },
+                        { label: 'AI Insights', value: '5 new', accent: 'text-blue-700 dark:text-blue-500' },
                       ].map((stat) => (
                         <div key={stat.label} className="bg-white dark:bg-stone-800/50 rounded-lg p-2.5 border border-stone-100 dark:border-white/[0.04]">
                           <p className="text-[9px] text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">{stat.label}</p>

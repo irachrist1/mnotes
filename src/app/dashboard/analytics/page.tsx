@@ -6,7 +6,7 @@ import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { DoughnutChart, BarChart, LineChart } from "@/components/ui/LazyCharts";
 import { DollarSign, TrendingUp, Lightbulb, Users, Target, Clock, BarChart3 } from "lucide-react";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
@@ -143,10 +143,10 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
             Add income streams, ideas, or mentorship sessions to see charts and trends here.
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/dashboard/income" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white/70 transition-colors">
+            <Link href="/dashboard/data?tab=income" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white/70 transition-colors">
               Add Income
             </Link>
-            <Link href="/dashboard/ideas" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/[0.1] transition-colors">
+            <Link href="/dashboard/data?tab=ideas" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/[0.1] transition-colors">
               Add Ideas
             </Link>
           </div>
@@ -209,7 +209,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
               Revenue by Category
             </h3>
             {isLoading ? (
-              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+              <Skeleton className="h-[220px] rounded" />
             ) : revenueCategoryEntries.length > 0 ? (
               <DoughnutChart
                 labels={revenueCategoryEntries.map((entry) => entry.label)}
@@ -225,7 +225,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
               Revenue Projection (6 months)
             </h3>
             {isLoading ? (
-              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+              <Skeleton className="h-[220px] rounded" />
             ) : revenueProjection.datasets.length > 0 && totalRevenue > 0 ? (
               <LineChart
                 labels={revenueProjection.labels}
@@ -244,7 +244,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
               Ideas Pipeline Funnel
             </h3>
             {isLoading ? (
-              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+              <Skeleton className="h-[220px] rounded" />
             ) : ideas && ideas.length > 0 ? (
               <BarChart
                 labels={STAGES_ORDER.map((s) => stageLabel[s])}
@@ -262,7 +262,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
               Revenue per Hour ($/hr)
             </h3>
             {isLoading ? (
-              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+              <Skeleton className="h-[220px] rounded" />
             ) : revenueEfficiency.labels.length > 0 ? (
               <BarChart
                 labels={revenueEfficiency.labels}
@@ -284,7 +284,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+                  <Skeleton key={i} className="h-10 rounded" />
                 ))}
               </div>
             ) : topStreams.length > 0 ? (
@@ -328,7 +328,7 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
             {isLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+                  <Skeleton key={i} className="h-10 rounded" />
                 ))}
               </div>
             ) : sessions && sessions.length > 0 ? (
@@ -394,5 +394,8 @@ export function AnalyticsContent({ hideHeader = false }: { hideHeader?: boolean 
 }
 
 export default function AnalyticsPage() {
-  return <AnalyticsContent />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/dashboard/intelligence");
+  }
+  return null;
 }

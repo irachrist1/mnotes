@@ -53,7 +53,7 @@ export const generateForUser = internalAction({
           type: "stale-idea",
           title,
           body: `Your idea "${idea.title}" has been in the "${idea.stage}" stage for over 14 days. Consider moving it forward or archiving it.`,
-          actionUrl: "/dashboard/ideas",
+          actionUrl: "/dashboard/data?tab=ideas",
         });
         recentTitles.add(title);
       }
@@ -75,7 +75,7 @@ export const generateForUser = internalAction({
             type: "overdue-action",
             title,
             body: `Action item from your session with ${session.mentorName} was due ${item.dueDate}. Mark it complete or reschedule.`,
-            actionUrl: "/dashboard/mentorship",
+            actionUrl: "/dashboard/data?tab=mentorship",
           });
           recentTitles.add(title);
         }
@@ -100,7 +100,7 @@ export const generateForUser = internalAction({
           type: "milestone",
           title,
           body: `Your total monthly revenue is now $${totalRevenue.toLocaleString()}/mo. Keep pushing!`,
-          actionUrl: "/dashboard/income",
+          actionUrl: "/dashboard/data?tab=income",
         });
         recentTitles.add(title);
         break;
@@ -120,7 +120,7 @@ export const generateForUser = internalAction({
           type: "pattern-detected",
           title,
           body: "You haven't logged a mentorship session in over a week. Staying connected with mentors accelerates growth.",
-          actionUrl: "/dashboard/mentorship",
+          actionUrl: "/dashboard/data?tab=mentorship",
         });
       }
     }

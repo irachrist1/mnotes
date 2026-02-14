@@ -289,5 +289,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function IncomePage() {
-  return <IncomeContent />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/dashboard/data?tab=income");
+  }
+  return null;
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, BarChart3, ChevronDown, Brain } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // Lazy-load both sections — charts and AI logic are heavy
 const AIInsightsContent = dynamic(
@@ -21,16 +22,13 @@ const AnalyticsContent = dynamic(
 
 function SectionSkeleton() {
     return (
-        <div className="space-y-4 animate-pulse py-4">
+        <div className="space-y-4 py-4" aria-label="Loading section">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                        key={i}
-                        className="h-20 bg-stone-100 dark:bg-stone-800 rounded-lg"
-                    />
+                    <Skeleton key={i} className="h-20 rounded-lg" />
                 ))}
             </div>
-            <div className="h-64 bg-stone-100 dark:bg-stone-800 rounded-lg" />
+            <Skeleton className="h-64 rounded-lg" />
         </div>
     );
 }
@@ -72,8 +70,8 @@ export default function IntelligencePage() {
         <div className="space-y-4">
             {/* Page header */}
             <div className="flex items-center gap-3 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500/10 to-purple-600/10 dark:from-violet-500/20 dark:to-purple-600/20 flex items-center justify-center">
-                    <Brain className="w-4.5 h-4.5 text-violet-500 dark:text-violet-400" />
+                <div className="w-9 h-9 rounded-lg bg-blue-600/[0.08] dark:bg-blue-400/[0.10] flex items-center justify-center">
+                    <Brain className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                     <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
@@ -93,7 +91,7 @@ export default function IntelligencePage() {
                     <div key={section.key} className="card overflow-hidden">
                         <button
                             onClick={() => toggle(section.key)}
-                            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors duration-150 text-left"
                         >
                             <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
                                 <Icon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
@@ -103,7 +101,7 @@ export default function IntelligencePage() {
                             </span>
                             <motion.div
                                 animate={{ rotate: isOpen ? 180 : 0 }}
-                                transition={{ duration: 0.2 }}
+                                transition={{ duration: 0.15 }}
                             >
                                 <ChevronDown className="w-4 h-4 text-stone-400" />
                             </motion.div>
@@ -115,7 +113,7 @@ export default function IntelligencePage() {
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: "auto", opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                                     className="overflow-hidden"
                                 >
                                     <div className="px-5 pt-4 pb-5 border-t border-stone-100 dark:border-stone-800">

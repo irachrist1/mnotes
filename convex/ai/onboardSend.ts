@@ -43,6 +43,7 @@ export const send = action({
     reply: string;
     soulFileContent: string | null;
     assistantName: string | null;
+    tasks: string[];
   }> => {
     if (args.message.length > 10_000) {
       throw new Error("Message too long (max 10,000 characters)");
@@ -89,14 +90,15 @@ export const send = action({
       output: aiResponse,
     });
 
-    // Parse for soul file
-    const { reply, soulFileContent, assistantName } =
+    // Parse for soul file and tasks
+    const { reply, soulFileContent, assistantName, tasks } =
       parseSoulFileFromResponse(aiResponse);
 
     return {
       reply,
       soulFileContent,
       assistantName: assistantName ?? args.assistantName ?? null,
+      tasks,
     };
   },
 });

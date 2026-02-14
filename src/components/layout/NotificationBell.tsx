@@ -12,8 +12,9 @@ const TYPE_STYLES: Record<string, { color: string; border: string }> = {
   "goal-check-in": { color: "text-blue-500", border: "border-l-blue-500" },
   "stale-idea": { color: "text-amber-500", border: "border-l-amber-500" },
   "overdue-action": { color: "text-red-500", border: "border-l-red-500" },
-  "pattern-detected": { color: "text-violet-500", border: "border-l-violet-500" },
+  "pattern-detected": { color: "text-blue-500", border: "border-l-blue-500" },
   milestone: { color: "text-emerald-500", border: "border-l-emerald-500" },
+  "agent-task": { color: "text-blue-500", border: "border-l-blue-500" },
 };
 
 function relativeTime(ts: number): string {

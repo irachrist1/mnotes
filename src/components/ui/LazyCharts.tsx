@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const Spinner = () => (
   <div className="flex items-center justify-center py-8">
-    <div className="h-6 w-6 rounded-md bg-stone-200 dark:bg-stone-700 animate-pulse" />
+    <Skeleton className="h-6 w-6 rounded-md" />
   </div>
 );
 

@@ -15,14 +15,13 @@ describe("Badge", () => {
     expect(badge).toHaveClass("text-stone-700");
   });
 
-  it("renders all 7 variants", () => {
+  it("renders all variants", () => {
     const variants = [
       "default",
       "success",
       "warning",
       "danger",
       "info",
-      "purple",
       "muted",
     ] as const;
 

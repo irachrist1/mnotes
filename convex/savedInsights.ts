@@ -340,7 +340,7 @@ function toCommandPaletteItem(
     id: doc._id,
     title: doc.title,
     subtitle: doc.bodySummary || doc.body.slice(0, 120),
-    route: `/dashboard/ai-insights?tab=saved&saved=${doc._id}`,
+    route: `/dashboard/intelligence?saved=${doc._id}`,
     type: doc.type,
     priority: doc.priority,
     pinned: doc.pinned,

@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn';
 
 interface BadgeProps {
   children: ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'muted';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'muted';
   size?: 'sm' | 'md';
   className?: string;
 }
@@ -14,7 +14,6 @@ const variantStyles = {
   warning: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   danger: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   info: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
-  purple: 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
   muted: 'bg-stone-50 text-stone-400 dark:bg-stone-900 dark:text-stone-500',
 };
 

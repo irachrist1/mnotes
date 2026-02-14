@@ -135,6 +135,16 @@
     background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.04), transparent 40%);
   }
 
+  /* Hide scrollbars (used for horizontal nudge rows + tab bars). */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
   .dashboard-panel-title {
     @apply text-lg font-semibold text-stone-900 dark:text-stone-100;
   }

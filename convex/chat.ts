@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getUserId } from "./lib/auth";
+import { internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
 // Thread queries / mutations
@@ -247,20 +248,20 @@ export const saveMessage = internalMutation({
     });
 
     // Update thread timestamp + set title from first user message
-    if (args.threadId && args.role === "user") {
+    if (args.threadId) {
       const thread = await ctx.db.get(args.threadId);
       if (thread) {
         const patch: { lastMessageAt: number; title?: string } = {
           lastMessageAt: Date.now(),
         };
-        if (thread.title === "New chat") {
+        if (args.role === "user" && thread.title === "New chat") {
           patch.title = args.content.slice(0, 50);
         }
         await ctx.db.patch(args.threadId, patch);
       }
     }
 
-    return messageId as string;
+    return messageId;
   },
 });
 
@@ -268,6 +269,51 @@ export const saveMessage = internalMutation({
  * Commit a confirmed intent — write to the target domain table.
  * This is called when the user clicks "Confirm" on a proposed intent.
  */
+/**
+ * Patch an assistant message in-place (used to upgrade placeholder replies).
+ * Internal-only: never callable from the client.
+ */
+export const patchAssistantMessageInternal = internalMutation({
+  args: {
+    userId: v.string(),
+    messageId: v.id("chatMessages"),
+    content: v.string(),
+    intent: v.optional(
+      v.object({
+        table: v.string(),
+        operation: v.union(v.literal("create"), v.literal("update"), v.literal("query")),
+        data: v.optional(v.any()),
+      })
+    ),
+    intentStatus: v.optional(
+      v.union(
+        v.literal("proposed"),
+        v.literal("confirmed"),
+        v.literal("rejected"),
+        v.literal("committed")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (!msg || msg.userId !== args.userId) throw new Error("Message not found");
+    if (msg.role !== "assistant") throw new Error("Only assistant messages can be patched");
+
+    await ctx.db.patch(args.messageId, {
+      content: args.content,
+      intent: args.intent,
+      intentStatus: args.intentStatus,
+    });
+
+    if (msg.threadId) {
+      const thread = await ctx.db.get(msg.threadId);
+      if (thread) {
+        await ctx.db.patch(msg.threadId, { lastMessageAt: Date.now() });
+      }
+    }
+  },
+});
+
 export const commitIntent = mutation({
   args: {
     messageId: v.id("chatMessages"),
@@ -372,17 +418,59 @@ export const commitIntent = mutation({
         notes: String(data.notes ?? ""),
         createdAt: now,
       });
-    } else if (table === "actionableActions") {
-      recordId = await ctx.db.insert("actionableActions", {
+    } else if (table === "tasks") {
+      const execTypeRaw = String((data as Record<string, unknown>).executionType ?? "").toLowerCase().trim();
+      const executionType = execTypeRaw === "draft" ? ("draft" as const) : undefined;
+      const executionPayload =
+        executionType && typeof (data as Record<string, unknown>).executionPayload === "object"
+          ? (data as Record<string, unknown>).executionPayload
+          : undefined;
+
+      const taskId = await ctx.db.insert("tasks", {
         userId,
-        title: String(data.title ?? "Untitled Action"),
-        description: String(data.description ?? ""),
-        status: "proposed",
-        priority: safeEnum(data.priority, [...PRIORITY_LEVELS], "medium"),
+        title: String(data.title ?? "Untitled Task"),
+        note: data.note ? String(data.note) : undefined,
+        sourceType: "chat",
+        sourceId: String(args.messageId),
         dueDate: data.dueDate ? String(data.dueDate) : undefined,
-        aiNotes: data.aiNotes ? String(data.aiNotes) : undefined,
+        priority: safeEnum(data.priority, [...PRIORITY_LEVELS], "medium"),
+        done: false,
         createdAt: now,
-        updatedAt: now,
+        executionType,
+        executionPayload,
+        lastExecutionStatus: executionType ? "idle" : undefined,
+
+        agentStatus: "queued",
+        agentProgress: 3,
+        agentPhase: "Queued",
+        agentStartedAt: now,
+      });
+      recordId = String(taskId);
+
+      await ctx.db.insert("taskEvents", {
+        userId,
+        taskId,
+        kind: "status",
+        title: "Queued",
+        detail: "Agent is about to start.",
+        progress: 3,
+        createdAt: now,
+      });
+
+      await ctx.db.insert("notifications", {
+        userId,
+        type: "agent-task",
+        title: "Agent started a task",
+        body: `Working on: ${String(data.title ?? "Untitled Task")}`,
+        actionUrl: `/dashboard/data?tab=tasks&taskId=${String(taskId)}`,
+        read: false,
+        dismissed: false,
+        createdAt: now,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.ai.taskAgent.runInternal, {
+        userId,
+        taskId,
       });
     } else {
       throw new Error(`Unknown table: ${table}`);

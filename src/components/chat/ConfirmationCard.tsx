@@ -12,6 +12,7 @@ const TABLE_LABELS: Record<string, string> = {
   incomeStreams: "Income Stream",
   ideas: "Idea",
   mentorshipSessions: "Mentorship Session",
+  tasks: "Task",
 };
 
 function formatFieldName(key: string): string {
@@ -31,6 +32,14 @@ function formatValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") {
     return value.toLocaleString();
+  }
+  if (value && typeof value === "object") {
+    try {
+      const s = JSON.stringify(value);
+      return s.length > 60 ? `${s.slice(0, 57)}...` : s;
+    } catch {
+      return "(object)";
+    }
   }
   return String(value ?? "");
 }

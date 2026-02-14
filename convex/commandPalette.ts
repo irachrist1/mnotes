@@ -69,7 +69,7 @@ export const search = query({
         id: String(insight._id),
         title: insight.title,
         subtitle: insight.bodySummary || insight.body.slice(0, 140),
-        route: `/dashboard/ai-insights?tab=saved&saved=${insight._id}`,
+        route: `/dashboard/intelligence?saved=${insight._id}`,
         searchText: [
           insight.title,
           insight.bodySummary,
@@ -87,7 +87,7 @@ export const search = query({
         id: String(idea._id),
         title: idea.title,
         subtitle: `${formatIdeaStage(idea.stage)} • ${idea.potentialRevenue} revenue potential`,
-        route: "/dashboard/ideas",
+        route: "/dashboard/data?tab=ideas",
         searchText: [
           idea.title,
           idea.description,
@@ -106,7 +106,7 @@ export const search = query({
         id: String(session._id),
         title: session.mentorName,
         subtitle: `${session.sessionType} session • ${session.date}`,
-        route: "/dashboard/mentorship",
+        route: "/dashboard/data?tab=mentorship",
         searchText: [
           session.mentorName,
           session.sessionType,
@@ -124,7 +124,7 @@ export const search = query({
         id: String(stream._id),
         title: stream.name,
         subtitle: `${stream.status} • $${stream.monthlyRevenue.toFixed(0)}/mo`,
-        route: "/dashboard/income",
+        route: "/dashboard/data?tab=income",
         searchText: [
           stream.name,
           stream.category,

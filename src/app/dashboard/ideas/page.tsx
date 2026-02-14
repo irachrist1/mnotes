@@ -154,7 +154,7 @@ export function IdeasContent() {
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
                         <Badge variant={revenueVariant(idea.potentialRevenue)}>{idea.potentialRevenue}</Badge>
-                        {idea.aiRelevance && <Cpu className="w-3 h-3 text-violet-500" aria-label="AI Relevant" />}
+                        {idea.aiRelevance && <Cpu className="w-3 h-3 text-blue-600" aria-label="AI Relevant" />}
                         {idea.hardwareComponent && <Wrench className="w-3 h-3 text-amber-500" aria-label="Hardware" />}
                       </div>
                     </div>
@@ -174,7 +174,7 @@ export function IdeasContent() {
                 <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{idea.description}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {idea.aiRelevance && <Cpu className="w-3.5 h-3.5 text-violet-500" />}
+                {idea.aiRelevance && <Cpu className="w-3.5 h-3.5 text-blue-600" />}
                 <Badge variant={revenueVariant(idea.potentialRevenue)}>{idea.potentialRevenue}</Badge>
                 <Badge variant="default">{stages.find((s) => s.key === idea.stage)?.label ?? idea.stage}</Badge>
                 <button onClick={() => openEdit(idea)} className="p-1 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-300" aria-label="Edit idea"><Pencil className="w-3.5 h-3.5" /></button>
@@ -261,5 +261,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function IdeasPage() {
-  return <IdeasContent />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/dashboard/data?tab=ideas");
+  }
+  return null;
 }

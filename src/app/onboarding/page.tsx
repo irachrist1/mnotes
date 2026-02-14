@@ -5,7 +5,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Send, Sparkles, Check, Key, Settings } from "lucide-react";
+import { Send, Sparkles, Check, Key, Settings, CheckCircle2, ListTodo, Target, Loader2 } from "lucide-react";
 import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 import { toast } from "sonner";
@@ -84,11 +84,17 @@ function ConnectedOnboardingPage() {
   const [greetingLoaded, setGreetingLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Extracted data (live preview)
+  const [extractedTasks, setExtractedTasks] = useState<string[]>([]);
+  const [extractedGoal, setExtractedGoal] = useState<string | null>(null);
+
   // Setup state
   const [provider, setProvider] = useState<"openrouter" | "google">(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [apiKey, setApiKey] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
+
+  const createTasksFromOnboarding = useMutation(api.tasks.createFromOnboarding);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -176,6 +182,21 @@ function ConnectedOnboardingPage() {
 
       if (result.soulFileContent) {
         setSoulFileContent(result.soulFileContent);
+        // Extract goal from soul file content
+        const goalMatch = result.soulFileContent.match(/## Goals\s*\n([\s\S]*?)(?=\n## |$)/);
+        if (goalMatch) {
+          const firstGoal = goalMatch[1].split("\n").find((l: string) => l.trim().startsWith("-"));
+          if (firstGoal) setExtractedGoal(firstGoal.replace(/^-\s*/, "").trim());
+        }
+      }
+
+      // Accumulate extracted tasks (no duplicates)
+      if (result.tasks && result.tasks.length > 0) {
+        setExtractedTasks((prev) => {
+          const existing = new Set(prev.map((t) => t.toLowerCase()));
+          const newTasks = result.tasks.filter((t: string) => !existing.has(t.toLowerCase()));
+          return [...prev, ...newTasks];
+        });
       }
 
       const aiMsg: Message = {
@@ -210,12 +231,15 @@ function ConnectedOnboardingPage() {
         content: soulFileContent,
         assistantName: assistantName ?? undefined,
       });
-      track("onboarding_soul_confirmed");
+      // Create extracted tasks so dashboard is never empty
+      if (extractedTasks.length > 0) {
+        await createTasksFromOnboarding({ tasks: extractedTasks });
+      }
+      track("onboarding_soul_confirmed", { taskCount: extractedTasks.length });
       setConfirming(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create profile");
       setConfirming(false);
-      // Revert phase so user can retry
       setPhase("chat");
     }
   };
@@ -463,9 +487,10 @@ function ConnectedOnboardingPage() {
       {/* ─── CHAT PHASE ─── */}
       {phase === "chat" && (
         <>
+          <div className="relative z-10 flex-1 flex overflow-hidden">
           {/* Chat area */}
-          <div className="relative z-10 flex-1 overflow-y-auto px-4">
-            <div className="max-w-2xl mx-auto space-y-4 pb-4">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="max-w-2xl mx-auto space-y-4 pb-4 lg:max-w-xl">
               {/* Loading skeleton for greeting */}
               {!greetingLoaded && (
                 <div className="flex justify-start">
@@ -606,6 +631,109 @@ function ConnectedOnboardingPage() {
               <div ref={messagesEndRef} />
             </div>
           </div>
+
+          {/* Live Preview Panel (desktop only) */}
+          <div className="hidden lg:flex w-80 xl:w-96 flex-col border-l border-stone-200/50 dark:border-white/[0.04] bg-white/30 dark:bg-stone-950/30 backdrop-blur-sm overflow-y-auto px-5 py-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Loader2 className={`w-4 h-4 text-blue-500 ${messages.length > 1 ? "animate-spin" : ""}`} />
+              <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                Building your workspace
+              </span>
+            </div>
+
+            {/* Tasks Preview */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <ListTodo className="w-3.5 h-3.5 text-stone-400" />
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                  Tasks ({extractedTasks.length})
+                </span>
+              </div>
+              {extractedTasks.length > 0 ? (
+                <div className="space-y-1.5">
+                  <AnimatePresence initial={false}>
+                    {extractedTasks.map((task, i) => (
+                      <motion.div
+                        key={task}
+                        initial={{ opacity: 0, x: 12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, delay: i * 0.05 }}
+                        className="flex items-start gap-2 py-1.5 px-2 rounded-lg bg-white/60 dark:bg-white/[0.04] border border-stone-200/60 dark:border-white/[0.06]"
+                      >
+                        <div className="w-4 h-4 mt-0.5 rounded border border-stone-300 dark:border-stone-600 shrink-0" />
+                        <span className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
+                          {task}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-400 dark:text-stone-500 italic">
+                  Tell me what you&apos;re working on and I&apos;ll build your task list
+                </p>
+              )}
+            </div>
+
+            {/* Goal Preview */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-3.5 h-3.5 text-stone-400" />
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                  Goals
+                </span>
+              </div>
+              {extractedGoal ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-1.5 px-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-500/[0.06] border border-emerald-200/60 dark:border-emerald-500/[0.1]"
+                >
+                  <span className="text-xs text-emerald-800 dark:text-emerald-300">
+                    {extractedGoal}
+                  </span>
+                </motion.div>
+              ) : (
+                <p className="text-xs text-stone-400 dark:text-stone-500 italic">
+                  I&apos;ll capture your goals as we talk
+                </p>
+              )}
+            </div>
+
+            {/* Soul File Status */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-stone-400" />
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                  Memory
+                </span>
+              </div>
+              {soulFileContent ? (
+                <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-blue-50/60 dark:bg-blue-500/[0.06] border border-blue-200/60 dark:border-blue-500/[0.1]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="text-xs text-blue-800 dark:text-blue-300">
+                    Soul file ready — confirm below
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-400 dark:text-stone-500 italic">
+                  {messages.length > 2 ? "Almost there..." : "Learning about you..."}
+                </p>
+              )}
+            </div>
+
+            {/* Summary stats */}
+            {(extractedTasks.length > 0 || extractedGoal || assistantName) && (
+              <div className="mt-auto pt-5 border-t border-stone-200/50 dark:border-white/[0.04]">
+                <p className="text-[11px] text-stone-400 dark:text-stone-500 text-center">
+                  {extractedTasks.length} task{extractedTasks.length !== 1 ? "s" : ""} ready
+                  {extractedGoal ? " | 1 goal" : ""}
+                  {assistantName ? ` | ${assistantName}` : ""}
+                </p>
+              </div>
+            )}
+          </div>
+          </div>{/* close flex row */}
 
           {/* Error */}
           <AnimatePresence>

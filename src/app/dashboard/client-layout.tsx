@@ -8,6 +8,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ConvexGuard } from "@/components/ConvexGuard";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 import { identifyUser, trackPageView } from "@/lib/analytics";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function DashboardConnectedLayout({
   children,
@@ -54,7 +55,7 @@ function DashboardConnectedLayout({
   if (soulFile === undefined || soulFile === null) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'rgb(var(--color-background))' }}>
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 animate-pulse" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
       </div>
     );
   }

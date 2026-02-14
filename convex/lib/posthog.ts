@@ -18,7 +18,16 @@ interface AiGenerationEvent {
   /** Provider: "openrouter" or "google" */
   provider: string;
   /** The feature that triggered this call */
-  feature: "chat" | "onboarding" | "analyze" | "weekly-digest" | "soul-evolve" | "embed" | "generate";
+  feature:
+    | "chat"
+    | "onboarding"
+    | "analyze"
+    | "weekly-digest"
+    | "soul-evolve"
+    | "embed"
+    | "generate"
+    | "task-execute"
+    | "task-agent";
   /** Latency in seconds */
   latencySeconds: number;
   /** Input messages sent to the model */

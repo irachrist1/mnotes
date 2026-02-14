@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as actionableActions from "../actionableActions.js";
 import type * as aiInsights from "../aiInsights.js";
 import type * as aiPromptCache from "../aiPromptCache.js";
 import type * as ai_analyze from "../ai/analyze.js";
@@ -22,8 +21,9 @@ import type * as ai_insightFingerprint from "../ai/insightFingerprint.js";
 import type * as ai_onboardPrompt from "../ai/onboardPrompt.js";
 import type * as ai_onboardSend from "../ai/onboardSend.js";
 import type * as ai_parseAIResponse from "../ai/parseAIResponse.js";
-import type * as ai_research from "../ai/research.js";
 import type * as ai_soulFileEvolve from "../ai/soulFileEvolve.js";
+import type * as ai_taskAgent from "../ai/taskAgent.js";
+import type * as ai_taskExecute from "../ai/taskExecute.js";
 import type * as ai_weeklyDigest from "../ai/weeklyDigest.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
@@ -43,6 +43,7 @@ import type * as migrations_migrateIdeasToCamelCase from "../migrations/migrateI
 import type * as notifications from "../notifications.js";
 import type * as savedInsights from "../savedInsights.js";
 import type * as soulFile from "../soulFile.js";
+import type * as taskEvents from "../taskEvents.js";
 import type * as tasks from "../tasks.js";
 import type * as userSettings from "../userSettings.js";
 import type * as users from "../users.js";
@@ -54,7 +55,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  actionableActions: typeof actionableActions;
   aiInsights: typeof aiInsights;
   aiPromptCache: typeof aiPromptCache;
   "ai/analyze": typeof ai_analyze;
@@ -68,8 +68,9 @@ declare const fullApi: ApiFromModules<{
   "ai/onboardPrompt": typeof ai_onboardPrompt;
   "ai/onboardSend": typeof ai_onboardSend;
   "ai/parseAIResponse": typeof ai_parseAIResponse;
-  "ai/research": typeof ai_research;
   "ai/soulFileEvolve": typeof ai_soulFileEvolve;
+  "ai/taskAgent": typeof ai_taskAgent;
+  "ai/taskExecute": typeof ai_taskExecute;
   "ai/weeklyDigest": typeof ai_weeklyDigest;
   auth: typeof auth;
   chat: typeof chat;
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   savedInsights: typeof savedInsights;
   soulFile: typeof soulFile;
+  taskEvents: typeof taskEvents;
   tasks: typeof tasks;
   userSettings: typeof userSettings;
   users: typeof users;

@@ -1,8 +1,8 @@
 "use node";
 
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { internal, api } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
 import { buildSystemPrompt, buildDomainSummary, parseIntentFromResponse } from "./chatPrompt";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -13,7 +13,9 @@ const CHAT_PROMPT_CACHE_TTL_SECONDS = 120;
 
 /**
  * Send a message to the chat AI.
- * Loads context, calls AI, parses intent, saves messages, returns response.
+ * Fast path: saves the user message + an assistant placeholder, then schedules
+ * async generation to upgrade the placeholder in-place. This makes chat feel
+ * instant even when the model takes seconds.
  */
 export const send = action({
   args: {
@@ -31,24 +33,8 @@ export const send = action({
 
     const userId = await getUserId(ctx);
 
-    // Load all context in parallel
-    const [settings, soulFile, domainInput, recentMessages, memoryCandidates] = await Promise.all([
-      ctx.runQuery(internal.userSettings.getWithKeys, {}),
-      ctx.runQuery(api.soulFile.get, {}),
-      ctx.runQuery(internal.chat.getDomainSummaryInput, {
-        userId,
-        sampleLimit: 80,
-      }),
-      ctx.runQuery(api.chat.listMessages, {
-        threadId: args.threadId,
-        limit: 20,
-      }),
-      ctx.runQuery(internal.savedInsights.searchCandidatesInternal, {
-        userId,
-        q: args.message,
-        limit: 6,
-      }),
-    ]);
+    // Validate AI settings (fast fail before persisting messages).
+    const settings = await ctx.runQuery(internal.userSettings.getWithKeys, {});
 
     if (!settings) {
       console.error(`[CHAT] NO SETTINGS userId=${userId}`);
@@ -64,6 +50,97 @@ export const send = action({
       throw new Error(`Please add your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key in Settings`);
     }
 
+    // Save user message immediately
+    await ctx.runMutation(internal.chat.saveMessage, {
+      userId,
+      threadId: args.threadId,
+      role: "user",
+      content: args.message,
+    });
+
+    // Save assistant placeholder immediately (client sees it as a bubble)
+    const assistantMsgId = await ctx.runMutation(internal.chat.saveMessage, {
+      userId,
+      threadId: args.threadId,
+      role: "assistant",
+      content: "Thinking...",
+    });
+
+    // Async generation upgrades the placeholder in-place.
+    await ctx.scheduler.runAfter(0, internal.ai.chatSend.generateReplyInternal, {
+      userId,
+      threadId: args.threadId,
+      assistantMessageId: assistantMsgId,
+      message: args.message,
+    });
+
+    return {
+      messageId: String(assistantMsgId),
+      reply: "Thinking...",
+      intent: null,
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AI provider helpers (chat-specific with message arrays)
+// ---------------------------------------------------------------------------
+
+/**
+ * Internal generator that upgrades a placeholder assistant message with the final reply + intent.
+ * Runs outside the client request path.
+ */
+export const generateReplyInternal = internalAction({
+  args: {
+    userId: v.string(),
+    threadId: v.optional(v.id("chatThreads")),
+    assistantMessageId: v.id("chatMessages"),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const [settings, soulFile, domainInput, recentMessages, memoryCandidates] = await Promise.all([
+      ctx.runQuery(internal.userSettings.getForUser, { userId: args.userId }),
+      ctx.runQuery(internal.soulFile.getByUserId, { userId: args.userId }),
+      ctx.runQuery(internal.chat.getDomainSummaryInput, {
+        userId: args.userId,
+        sampleLimit: 80,
+      }),
+      ctx.runQuery(internal.chat.listMessagesForUser, {
+        userId: args.userId,
+        threadId: args.threadId,
+        limit: 20,
+      }),
+      ctx.runQuery(internal.savedInsights.searchCandidatesInternal, {
+        userId: args.userId,
+        q: args.message,
+        limit: 6,
+      }),
+    ]);
+
+    if (!settings) {
+      await ctx.runMutation(internal.chat.patchAssistantMessageInternal, {
+        userId: args.userId,
+        messageId: args.assistantMessageId,
+        content: "I need AI settings configured before I can respond. Open Settings and add your API key.",
+      });
+      return;
+    }
+
+    const apiKey = settings.aiProvider === "openrouter"
+      ? settings.openrouterApiKey
+      : settings.googleApiKey;
+
+    if (!apiKey) {
+      await ctx.runMutation(internal.chat.patchAssistantMessageInternal, {
+        userId: args.userId,
+        messageId: args.assistantMessageId,
+        content: `I need your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key before I can respond. Open Settings to add it.`,
+      });
+      return;
+    }
+
+    const model = settings.aiModel || "google/gemini-2.5-flash";
+
     // Build context
     const domainSummary = buildDomainSummary({
       incomeStreams: domainInput.incomeStreams,
@@ -71,7 +148,9 @@ export const send = action({
       sessions: domainInput.sessions,
     });
 
-    const recentMsgs = recentMessages as Array<{ role: string; content: string }>;
+    const recentMsgsRaw = (recentMessages as Array<{ _id: string; role: string; content: string }>).filter(
+      (m) => String(m._id) !== String(args.assistantMessageId)
+    );
 
     const relevantMemoryBlock = buildRelevantMemoryBlock(
       memoryCandidates as Array<{
@@ -90,25 +169,19 @@ export const send = action({
       relevantMemoryBlock
         ? `${domainSummary}\n\n## Relevant Memory From Important Past Chats\n${relevantMemoryBlock}`
         : domainSummary,
-      recentMsgs.map((m) => ({ role: m.role, content: m.content }))
+      recentMsgsRaw.map((m) => ({ role: m.role, content: m.content }))
     );
 
-    // Build conversation messages for the AI
-    const conversationMessages = recentMsgs.slice(-10).map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
-    conversationMessages.push({ role: "user", content: args.message });
+    // Build conversation messages for the AI (exclude placeholder)
+    const conversationMessages = recentMsgsRaw
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-    // Save user message
-    await ctx.runMutation(internal.chat.saveMessage, {
-      userId,
-      threadId: args.threadId,
-      role: "user",
-      content: args.message,
-    });
+    if (conversationMessages.length === 0 || conversationMessages[conversationMessages.length - 1].content !== args.message) {
+      conversationMessages.push({ role: "user", content: args.message });
+    }
 
-    const model = settings.aiModel || "google/gemini-2.5-flash";
     const promptCacheKey = createHash("sha256")
       .update(JSON.stringify({
         provider: settings.aiProvider,
@@ -119,12 +192,11 @@ export const send = action({
       .digest("hex");
 
     const cachedResponse = await ctx.runQuery(internal.aiPromptCache.getValidInternal, {
-      userId,
+      userId: args.userId,
       scope: "chat",
       cacheKey: promptCacheKey,
     });
 
-    // Call AI (or use cache)
     const t0 = Date.now();
     let aiResponse: string;
     let cached = false;
@@ -132,7 +204,6 @@ export const send = action({
       if (cachedResponse?.responseText) {
         aiResponse = cachedResponse.responseText;
         cached = true;
-        console.log(`[CHAT] cacheHit userId=${userId} model=${model}`);
       } else {
         if (settings.aiProvider === "openrouter") {
           const result = await callOpenRouterChat(
@@ -143,14 +214,12 @@ export const send = action({
           );
           aiResponse = result.content;
 
-          // Capture LLM analytics
-          const latency = (Date.now() - t0) / 1000;
           captureAiGeneration({
-            distinctId: userId,
+            distinctId: args.userId,
             model,
             provider: "openrouter",
             feature: "chat",
-            latencySeconds: latency,
+            latencySeconds: (Date.now() - t0) / 1000,
             input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
             output: result.content,
             inputTokens: result.usage?.prompt_tokens,
@@ -165,20 +234,19 @@ export const send = action({
             apiKey
           );
 
-          const latency = (Date.now() - t0) / 1000;
           captureAiGeneration({
-            distinctId: userId,
+            distinctId: args.userId,
             model,
             provider: "google",
             feature: "chat",
-            latencySeconds: latency,
+            latencySeconds: (Date.now() - t0) / 1000,
             input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
             output: aiResponse,
           });
         }
 
         await ctx.runMutation(internal.aiPromptCache.setInternal, {
-          userId,
+          userId: args.userId,
           scope: "chat",
           cacheKey: promptCacheKey,
           provider: settings.aiProvider,
@@ -188,24 +256,22 @@ export const send = action({
         });
       }
     } catch (error) {
-      console.error(`[CHAT] AI ERROR userId=${userId} provider=${settings.aiProvider} model=${model}`, error);
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to get AI response"
-      );
+      console.error(`[CHAT] AI ERROR userId=${args.userId} provider=${settings.aiProvider} model=${model}`, error);
+      await ctx.runMutation(internal.chat.patchAssistantMessageInternal, {
+        userId: args.userId,
+        messageId: args.assistantMessageId,
+        content: "I hit an error while generating that response. Try again, or check your AI settings.",
+      });
+      return;
     }
-    console.log(`[CHAT] response userId=${userId} len=${aiResponse.length} ms=${Date.now() - t0} cached=${cached} model=${model}`);
 
-    // Parse for intents
+    console.log(`[CHAT] response userId=${args.userId} len=${aiResponse.length} ms=${Date.now() - t0} cached=${cached} model=${model}`);
+
     const { reply, intent } = parseIntentFromResponse(aiResponse);
-    if (intent) {
-      console.log(`[CHAT] intent detected table=${intent.table} op=${intent.operation} userId=${userId}`);
-    }
 
-    // Save assistant message
-    const assistantMsgId: string = await ctx.runMutation(internal.chat.saveMessage, {
-      userId,
-      threadId: args.threadId,
-      role: "assistant",
+    await ctx.runMutation(internal.chat.patchAssistantMessageInternal, {
+      userId: args.userId,
+      messageId: args.assistantMessageId,
       content: reply,
       intent: intent ?? undefined,
       intentStatus: intent ? "proposed" : undefined,
@@ -213,28 +279,18 @@ export const send = action({
 
     // Schedule soul file evolution every 5 user messages for fast memory learning
     const userMsgCount = await ctx.runQuery(internal.chat.countUserMessages, {
-      userId,
+      userId: args.userId,
       threadId: args.threadId,
     });
 
     if (userMsgCount > 0 && userMsgCount % 5 === 0) {
       await ctx.scheduler.runAfter(0, internal.ai.soulFileEvolve.evolveFromChat, {
-        userId,
+        userId: args.userId,
         threadId: args.threadId,
       });
     }
-
-    return {
-      messageId: assistantMsgId,
-      reply,
-      intent,
-    };
   },
 });
-
-// ---------------------------------------------------------------------------
-// AI provider helpers (chat-specific with message arrays)
-// ---------------------------------------------------------------------------
 
 interface OpenRouterResult {
   content: string;

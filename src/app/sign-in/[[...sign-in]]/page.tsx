@@ -4,6 +4,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import { useState, useEffect, useRef } from "react";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Flow = "signIn" | "signUp";
 
@@ -103,7 +104,7 @@ function ConnectedSignInPage() {
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 animate-pulse" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
       </div>
     );
   }
@@ -142,7 +143,7 @@ function ConnectedSignInPage() {
                   setSuccess(false);
                 }}
                 className={`
-                  relative flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200
+                  relative flex-1 py-2 text-sm font-medium rounded-md transition-colors duration-150
                   ${flow === f
                     ? "text-stone-900 dark:text-white"
                     : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"

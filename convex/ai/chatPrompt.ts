@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat prompt builder — dynamically describes the schema so the AI
  * knows what tables/fields it can write to. Zero hardcoded intents.
  *
@@ -122,19 +122,16 @@ const WRITABLE_TABLES: TableDescription[] = [
     ],
   },
   {
-    name: "actionableActions",
+    name: "tasks",
     description:
-      "Actionable tasks — things the user commits to doing, derived from AI recommendations or user decisions. Tracked from proposal through completion.",
+      "Tasks - a simple to-do list. Use this when the user says they need to do something or wants a reminder. The system sets sourceType/sourceId automatically.",
     fields: [
       { name: "title", type: "string", required: true, description: "Short task title" },
-      { name: "description", type: "string", required: true, description: "What needs to be done" },
-      {
-        name: "priority",
-        type: 'enum: "low" | "medium" | "high"',
-        required: true,
-      },
-      { name: "dueDate", type: "string (ISO date)", required: false, description: "When it should be done" },
-      { name: "aiNotes", type: "string", required: false, description: "AI reasoning or context for why this matters" },
+      { name: "note", type: "string", required: false, description: "Optional context/details" },
+      { name: "priority", type: 'enum: "low" | "medium" | "high"', required: true },
+      { name: "dueDate", type: "string (ISO date)", required: false, description: "Optional due date" },
+      { name: "executionType", type: 'enum: "draft"', required: false, description: "Optional: makes this task executable (draft generator only in v1)" },
+      { name: "executionPayload", type: "object", required: false, description: "For executionType=draft: { kind?: 'email'|'outline'|'checklist', prompt?: string }" },
     ],
   },
 ];
@@ -364,3 +361,4 @@ export function parseIntentFromResponse(text: string): {
     return { reply: text.trim(), intent: null };
   }
 }
+
