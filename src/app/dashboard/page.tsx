@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
 import { motion } from "framer-motion";
 import {
   DollarSign,
@@ -15,6 +16,8 @@ import {
   ArrowRight,
   Clock,
   Target,
+  Sparkles,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
@@ -66,6 +69,8 @@ export default function DashboardPage() {
   const incomeStreams = useQuery(api.incomeStreams.list);
   const ideas = useQuery(api.ideas.list);
   const sessions = useQuery(api.mentorshipSessions.list);
+  const unreadDigests = useQuery(api.aiInsights.getUnreadDigests);
+  const updateStatus = useMutation(api.aiInsights.updateStatus);
 
   const isLoading = incomeStreams === undefined || ideas === undefined || sessions === undefined;
 
@@ -84,6 +89,54 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="Overview" description="Your business at a glance" />
+
+      {/* Weekly Digest Cards */}
+      {unreadDigests && unreadDigests.length > 0 && (
+        <div className="space-y-4 mb-6">
+          {unreadDigests.map((digest) => (
+            <div
+              key={digest._id}
+              className="card p-5 border-l-4 border-l-blue-500"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-500 shrink-0" strokeWidth={2} />
+                  <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                    {digest.title}
+                  </h3>
+                </div>
+                <button
+                  onClick={() =>
+                    void updateStatus({ id: digest._id, status: "read" })
+                  }
+                  className="p-1 rounded-md text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/[0.05] transition-colors shrink-0"
+                  aria-label="Dismiss digest"
+                >
+                  <X className="w-4 h-4" strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed prose-sm">
+                <MarkdownMessage content={digest.body} />
+              </div>
+              {digest.actionItems.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {digest.actionItems.map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-300"
+                    >
+                      <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[11px] font-medium shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats Grid */}
       {isLoading ? (

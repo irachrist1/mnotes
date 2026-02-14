@@ -340,6 +340,45 @@ async function tryEmbedForDedupe(ctx: {
   }
 }
 
+export const createDigestInternal = internalMutation({
+  args: {
+    userId: v.string(),
+    title: v.string(),
+    body: v.string(),
+    actionItems: v.array(v.string()),
+    model: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("aiInsights", {
+      userId: args.userId,
+      type: "weekly-digest",
+      title: args.title,
+      body: args.body,
+      actionItems: args.actionItems,
+      priority: "high",
+      confidence: 1,
+      model: args.model,
+      status: "unread",
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const getUnreadDigests = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getUserId(ctx);
+    const all = await ctx.db
+      .query("aiInsights")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+    return all.filter(
+      (i) => i.type === "weekly-digest" && i.status === "unread"
+    );
+  },
+});
+
 async function findNearDuplicateByVector(ctx: {
   runQuery: GenericActionCtx<DataModel>["runQuery"];
 }, args: {

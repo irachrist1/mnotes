@@ -212,3 +212,15 @@ export const evolveInternal = internalMutation({
     return existing._id;
   },
 });
+
+/**
+ * List all userIds that have a soul file (completed onboarding).
+ * Used by the weekly digest cron to find eligible users.
+ */
+export const listAllUserIds = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("soulFiles").collect();
+    return all.map((sf) => ({ userId: sf.userId }));
+  },
+});

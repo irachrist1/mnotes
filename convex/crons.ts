@@ -17,4 +17,11 @@ crons.daily(
   { limit: 1000 }
 );
 
+crons.weekly(
+  "weekly-ai-digest",
+  { dayOfWeek: "sunday", hourUTC: 8, minuteUTC: 0 },
+  internal.ai.weeklyDigest.runAll,
+  {}
+);
+
 export default crons;

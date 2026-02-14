@@ -7,13 +7,19 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Save, Key, Sparkles } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
+import {
+  OPENROUTER_MODELS,
+  GOOGLE_MODELS,
+  DEFAULT_PROVIDER,
+  DEFAULT_MODEL,
+} from "@/lib/aiModels";
 
 export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
   const upsertSettings = useMutation(api.userSettings.upsert);
 
-  const [provider, setProvider] = useState<"openrouter" | "google">("openrouter");
-  const [model, setModel] = useState("google/gemini-2.5-flash");
+  const [provider, setProvider] = useState<"openrouter" | "google">(DEFAULT_PROVIDER);
+  const [model, setModel] = useState(DEFAULT_MODEL);
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
   const [saving, setSaving] = useState(false);
@@ -62,25 +68,7 @@ export default function SettingsPage() {
     }
   };
 
-  const commonOpenRouterModels = [
-    { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (Newest, fast)" },
-    { value: "google/gemini-3-pro-preview", label: "Gemini 3 Pro (Newest, powerful)" },
-    { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Stable, cheap)" },
-    { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Deep reasoning)" },
-    { value: "anthropic/claude-sonnet-4", label: "Claude Sonnet 4 (Best for analysis)" },
-    { value: "openai/gpt-4o", label: "GPT-4o (Good all-rounder)" },
-    { value: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick (Open source)" },
-  ];
-
-  const commonGoogleModels = [
-    { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Newest, fast)" },
-    { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (Newest, powerful)" },
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Stable)" },
-    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite (Ultra fast)" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Deep reasoning)" },
-  ];
-
-  const modelOptions = provider === "openrouter" ? commonOpenRouterModels : commonGoogleModels;
+  const modelOptions = provider === "openrouter" ? OPENROUTER_MODELS : GOOGLE_MODELS;
 
   return (
     <>

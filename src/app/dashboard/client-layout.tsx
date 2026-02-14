@@ -10,13 +10,14 @@ import { useConvexAvailable } from "@/components/ConvexClientProvider";
 
 function DashboardConnectedLayout({
   children,
-}: {
+}: { 
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const claimLegacyData = useMutation(api.users.claimLegacyData);
   const hasAttemptedClaim = useRef(false);
   const soulFile = useQuery(api.soulFile.get, {});
+  const dashboardEmpty = useQuery(api.dashboard.isEmpty, {});
 
   useEffect(() => {
     if (hasAttemptedClaim.current) return;
@@ -49,8 +50,11 @@ function DashboardConnectedLayout({
     return null;
   }
 
+  // Auto-open chat for freshly onboarded users with no data
+  const initialChatOpen = soulFile !== null && soulFile !== undefined && dashboardEmpty === true;
+
   return (
-    <DashboardShell>
+    <DashboardShell initialChatOpen={initialChatOpen}>
       <ConvexGuard>{children}</ConvexGuard>
     </DashboardShell>
   );

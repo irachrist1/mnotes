@@ -142,12 +142,13 @@ MNotes doesn't compete with other AI tools. It makes them all better by giving t
 | Layer | What's Built |
 |-------|-------------|
 | Auth | Email/password via Convex Auth, working sign-in, protected routes |
-| Backend | Convex: income streams, ideas, mentorship sessions, AI insights, user settings — full CRUD **plus** `soulFiles` and `chatMessages` tables with indexes |
-| AI | OpenRouter + Google AI pipeline with user-configurable models in Settings; platform OpenRouter key for onboarding (default `google/gemini-3-flash-preview`); schema-driven intents (no hardcoded intent types) |
-| Frontend | 7 dashboard pages, analytics, charts, responsive layout, Sidebar, floating chat panel on all dashboard pages, full-screen conversational onboarding that generates the initial soul file |
-| UI Kit | Badge, Charts, EmptyState, SlideOver, StatCard, Select, Skeleton, PageHeader, ChatPanel, ConfirmationCard, ChatButton |
+| Backend | Convex: income streams, ideas, mentorship sessions, AI insights, user settings — full CRUD **plus** `soulFiles`, `chatThreads`, and `chatMessages` tables with indexes |
+| AI | OpenRouter + Google AI pipeline with user-configurable models in Settings; platform OpenRouter key for onboarding (default `google/gemini-3-flash-preview`); schema-driven intents (no hardcoded intent types); soul file background evolution (auto-runs every 5 chat messages); vector + lexical dedup on saved insights |
+| Frontend | 7 dashboard pages, analytics, charts, responsive layout, Sidebar, CommandPalette (Cmd+K), floating chat panel on all dashboard pages, full-screen conversational onboarding that generates the initial soul file |
+| Chat | Multi-thread conversations, intent detection + ConfirmationCard for AI-proposed data mutations, LazyMarkdownMessage rendering, optimistic UI, scroll pinning |
+| Crons | Daily cleanup for expired insights and prompt cache |
 
-**What does not exist yet:** File ingestion (drag/drop, OCR, classification), proactive behavior (crons/briefings/nudges), vector search + semantic memory, context API/MCP integration, native mobile app, multi-conversation chat (threads), soul file background evolution + user notifications, persistent assistant avatar/identity across the UI.
+**What does not exist yet:** File ingestion (drag/drop, OCR, classification), proactive behavior (weekly digests/briefings/nudges), context API/MCP integration, native mobile app, persistent assistant avatar/identity across the UI, onboarding API key setup, chat-first empty-dashboard experience.
 
 ---
 
@@ -167,13 +168,23 @@ MNotes is now something you can talk to. The assistant learns who you are via a 
 - Model selection wired in Settings; main chat uses the user’s chosen model, onboarding uses the platform key/model
 - Chat is available from all dashboard pages via a floating button
 
-**Remaining for Milestone 1:**
+**Completed since initial build:**
+- Soul file background evolution from regular chat messages (auto-runs every 5 user messages via `ctx.scheduler.runAfter`)
+- Multiple chat threads per user (thread list, "New chat" button, thread switching)
+- Vector + lexical deduplication on saved insights
+- CommandPalette (Cmd+K) with cross-entity search
 
-- Soul file background evolution from regular chat messages (auto-updating patterns/notes) with a subtle “your profile just got smarter” notification
-- Multiple chat threads per user (ability to start a “New chat” instead of a single global history)
-- Fully deprecate the standalone AI Insights page once briefings/nudges replace it
+**V1 launch checklist (remaining for Milestone 1):**
 
-**You get:** An assistant you can talk to that knows who you are and can write directly into your income/ideas/mentorship data, with a first version of your soul file in place.
+1. **API key setup in onboarding** — After soul file confirmation, show a setup step for provider + model + API key (with skip option). Eliminates the dead-AI cliff where users land on a dashboard with no working AI because they haven't discovered Settings. Implementation: phase state machine in `src/app/onboarding/page.tsx` (`"chat" | "setup" | "complete"`), shared model constants in `src/lib/aiModels.ts`.
+
+2. **Chat-first post-onboarding landing** — When a freshly onboarded user arrives at the dashboard with zero domain data, auto-open the chat panel and show suggested prompt chips ("I just closed a deal", "I have a new idea", "Log a mentor session"). Implementation: `convex/dashboard.ts` `isEmpty` query (three indexed `.first()` lookups), `initialChatOpen` prop passed from `client-layout.tsx` → `DashboardShell`, suggestion chips in `ChatPanel` empty state.
+
+3. **Weekly AI digest** — Convex cron (Sunday 8:00 UTC) generates a personalized digest per user using their own API key. Covers revenue summary, stalled ideas, mentorship status, goal progress from soul file. Saved as high-priority `aiInsight` with type `"weekly-digest"`. Shown as a prominent card on the dashboard home page. Implementation: `convex/ai/weeklyDigest.ts` (`runAll` + `generateForUser` internal actions), `aiInsights.createDigestInternal` mutation, `aiInsights.getUnreadDigests` query.
+
+- Fully deprecate the standalone AI Insights page once briefings/nudges replace it (deferred to after V1)
+
+**You get:** An assistant you can talk to that knows who you are, can write directly into your income/ideas/mentorship data, guides you from onboarding to first value without friction, and proactively reaches out weekly with business insights.
 
 ### Milestone 2: Files + Proactive (Jarvis starts working for you)
 
@@ -227,7 +238,46 @@ Chat-first native app. Same Convex backend.
 
 ---
 
-## 6. What We Explicitly Defer
+## 6. Analytics & Usage Tracking (PostHog)
+
+**Status: planned — not yet implemented.**
+
+PostHog will be the single analytics layer. Every event keyed by `userId` from Convex auth. Client-side SDK for page views + UI interactions, server-side (Convex actions) for AI token tracking.
+
+### Onboarding Funnel (are people finishing setup?)
+- `sign_up` → `onboarding_started` → `soul_file_created` → `api_key_configured` → `onboarding_completed` / `onboarding_skipped`
+- Drop-off between each step is the #1 metric to watch during beta.
+
+### Core Engagement (are they coming back?)
+- `page_viewed` (per route: dashboard, income, ideas, mentorship, ai-insights, analytics, settings)
+- `chat_panel_opened`, `chat_message_sent`, `command_palette_opened`, `sidebar_toggled`
+- `income_stream_created/updated/deleted`, `idea_created/updated/stage_changed`, `session_created`
+- `suggestion_chip_clicked` (which prompts do new users pick?)
+
+### AI Value (is the AI actually useful?)
+- `chat_ai_response` (with `tokenCount`, `model`, `provider`, `cacheHit`)
+- `intent_proposed` → `intent_confirmed` vs `intent_rejected` (intent accuracy rate)
+- `soul_file_evolved` (how often does the profile update?)
+- `weekly_digest_generated`, `weekly_digest_dismissed` (do people read digests?)
+- `insight_saved` vs `insight_removed` (are generated insights worth keeping?)
+- `saved_insight_pinned`, `saved_insight_accessed` (re-use rate)
+
+### Token Economics (what's it costing per user?)
+- Track per AI operation: `chat_send`, `soul_file_evolution`, `weekly_digest`, `onboarding_chat`, `manual_analysis`, `insight_embedding`
+- Properties: `tokensUsed`, `aiProvider`, `aiModel`, `cacheHit`, `durationMs`
+- Goal: know cost-per-user-per-week to price sustainably.
+
+### Implementation Plan
+1. Add `posthog-js` to client, initialize in `ConvexClientProvider` with `userId` as distinct ID
+2. Auto-capture page views via Next.js router events
+3. Add `posthog.capture()` calls to key UI actions (chat open, message send, intent confirm/reject, chip click, digest dismiss)
+4. For server-side AI token tracking: log events from Convex actions via PostHog server API (`fetch` to `https://us.i.posthog.com/capture/`)
+5. Build PostHog dashboards: onboarding funnel, daily active users, AI cost per user, intent accuracy
+
+---
+
+## 7. What We Explicitly Defer
+
 
 - Calendar/Gmail/Notion/Plaid sync (v2 — after core assistant is proven)
 - Autonomous external actions (no sending emails or creating events for you — yet)
@@ -237,7 +287,7 @@ Chat-first native app. Same Convex backend.
 
 ---
 
-## 7. Success Looks Like
+## 8. Success Looks Like
 
 Six months from now, a user describes MNotes to a friend:
 
@@ -247,4 +297,4 @@ That's the product.
 
 ---
 
-*Last updated: February 12, 2026*
+*Last updated: February 14, 2026*

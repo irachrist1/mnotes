@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { Toaster } from "sonner";
@@ -77,9 +77,24 @@ const ChatPanel = dynamic(
   { ssr: false, loading: () => <ChatPanelSkeleton /> }
 );
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  initialChatOpen = false,
+}: {
+  children: React.ReactNode;
+  initialChatOpen?: boolean;
+}) {
   const [chatOpen, setChatOpen] = useState(false);
+  const chatAutoOpened = useRef(false);
   const convexAvailable = useConvexAvailable();
+
+  // Auto-open chat for freshly onboarded users (initialChatOpen resolves async)
+  useEffect(() => {
+    if (initialChatOpen && !chatAutoOpened.current) {
+      chatAutoOpened.current = true;
+      setChatOpen(true);
+    }
+  }, [initialChatOpen]);
 
   // Lock page scroll immediately when chat opens (even while ChatPanel chunk is still loading).
   useEffect(() => {

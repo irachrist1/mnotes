@@ -17,7 +17,9 @@
       "Bash(npx convex dev:*)",
       "Bash(USERID=\"https://glorious-bloodhound-537.convex.site|js794m79x0b9dmtha03fprrg2581171z\")",
       "Bash(CORRECT_UID=\"js794m79x0b9dmtha03fprrg2581171z\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx next lint)",
+      "WebFetch(domain:intuitionlabs.ai)"
     ],
     "deny": [],
     "ask": []

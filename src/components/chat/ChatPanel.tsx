@@ -346,6 +346,11 @@ export function ChatPanel({
     }
   }, [rejectIntent]);
 
+  const handleSuggestion = useCallback((text: string) => {
+    setInput(text);
+    inputRef.current?.focus();
+  }, []);
+
   const currentThread = threads?.find((t) => t._id === currentThreadId);
 
   const renderedMessages = useMemo(() => {
@@ -522,6 +527,7 @@ export function ChatPanel({
           committingId={committingId}
           onConfirm={handleConfirm}
           onReject={handleReject}
+          onSuggestionClick={handleSuggestion}
           messagesEndRef={messagesEndRef}
           messagesScrollRef={messagesScrollRef}
         />
@@ -579,6 +585,12 @@ export function ChatPanel({
   );
 }
 
+const SUGGESTIONS = [
+  "I just closed a deal",
+  "I have a new idea",
+  "Log a mentor session",
+];
+
 const MessagesView = memo(function MessagesView({
   messages,
   rawMessagesLength,
@@ -586,6 +598,7 @@ const MessagesView = memo(function MessagesView({
   committingId,
   onConfirm,
   onReject,
+  onSuggestionClick,
   messagesEndRef,
   messagesScrollRef,
 }: {
@@ -601,6 +614,7 @@ const MessagesView = memo(function MessagesView({
   committingId: string | null;
   onConfirm: (messageId: Id<"chatMessages">) => void;
   onReject: (messageId: Id<"chatMessages">) => void;
+  onSuggestionClick?: (text: string) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   messagesScrollRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -611,7 +625,7 @@ const MessagesView = memo(function MessagesView({
       style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
     >
       {(rawMessagesLength === 0) && !sending && messages.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full text-center">
+        <div className="flex flex-col items-center justify-center h-full text-center px-4">
           <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-xl bg-stone-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
             <MessageSquare className="w-6 h-6 sm:w-5 sm:h-5 text-stone-400" />
           </div>
@@ -621,6 +635,19 @@ const MessagesView = memo(function MessagesView({
           <p className="text-sm sm:text-xs text-stone-400 dark:text-stone-500 mt-1 max-w-[280px] sm:max-w-[240px]">
             Tell it about a deal you closed, an idea you had, or ask how your business is doing.
           </p>
+          {onSuggestionClick && (
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => onSuggestionClick(suggestion)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-white/[0.1] transition-colors"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

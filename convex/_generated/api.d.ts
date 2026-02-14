@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as aiInsights from "../aiInsights.js";
+import type * as aiPromptCache from "../aiPromptCache.js";
 import type * as ai_analyze from "../ai/analyze.js";
 import type * as ai_chatPrompt from "../ai/chatPrompt.js";
 import type * as ai_chatSend from "../ai/chatSend.js";
@@ -19,12 +21,12 @@ import type * as ai_onboardPrompt from "../ai/onboardPrompt.js";
 import type * as ai_onboardSend from "../ai/onboardSend.js";
 import type * as ai_parseAIResponse from "../ai/parseAIResponse.js";
 import type * as ai_soulFileEvolve from "../ai/soulFileEvolve.js";
-import type * as aiInsights from "../aiInsights.js";
-import type * as aiPromptCache from "../aiPromptCache.js";
+import type * as ai_weeklyDigest from "../ai/weeklyDigest.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as commandPalette from "../commandPalette.js";
 import type * as crons from "../crons.js";
+import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as ideas from "../ideas.js";
 import type * as incomeStreams from "../incomeStreams.js";
@@ -45,6 +47,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiInsights: typeof aiInsights;
+  aiPromptCache: typeof aiPromptCache;
   "ai/analyze": typeof ai_analyze;
   "ai/chatPrompt": typeof ai_chatPrompt;
   "ai/chatSend": typeof ai_chatSend;
@@ -56,12 +60,12 @@ declare const fullApi: ApiFromModules<{
   "ai/onboardSend": typeof ai_onboardSend;
   "ai/parseAIResponse": typeof ai_parseAIResponse;
   "ai/soulFileEvolve": typeof ai_soulFileEvolve;
-  aiInsights: typeof aiInsights;
-  aiPromptCache: typeof aiPromptCache;
+  "ai/weeklyDigest": typeof ai_weeklyDigest;
   auth: typeof auth;
   chat: typeof chat;
   commandPalette: typeof commandPalette;
   crons: typeof crons;
+  dashboard: typeof dashboard;
   http: typeof http;
   ideas: typeof ideas;
   incomeStreams: typeof incomeStreams;
