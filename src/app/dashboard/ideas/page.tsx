@@ -120,7 +120,7 @@ export function IdeasContent() {
     <>
       <PageHeader title="Ideas Pipeline" description="Track ideas from conception to launch"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-0.5">
               <button onClick={() => setView("kanban")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "kanban" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm" : "text-stone-500 dark:text-stone-400"}`}>Board</button>
               <button onClick={() => setView("list")} className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${view === "list" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm" : "text-stone-500 dark:text-stone-400"}`}>List</button>

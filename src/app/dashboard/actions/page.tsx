@@ -1,33 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle2,
-  Circle,
-  Play,
-  Clock,
-  X,
+  CheckSquare,
+  Square,
+  Trash2,
   Sparkles,
   Calendar,
+  Plus,
+  X,
+  ExternalLink,
 } from "lucide-react";
-import { ResearchPanel } from "@/components/dashboard/ResearchPanel";
 import { toast } from "sonner";
-import { useState } from "react";
+import Link from "next/link";
 import type { Id } from "@convex/_generated/dataModel";
-
-type StatusFilter = "all" | "proposed" | "accepted" | "in-progress" | "completed";
-
-const STATUS_CONFIG: Record<string, { label: string; icon: typeof Circle; variant: "default" | "info" | "warning" | "success" | "purple" }> = {
-  proposed: { label: "Proposed", icon: Sparkles, variant: "default" },
-  accepted: { label: "Accepted", icon: Circle, variant: "info" },
-  "in-progress": { label: "In Progress", icon: Play, variant: "warning" },
-  completed: { label: "Completed", icon: CheckCircle2, variant: "success" },
-};
 
 const PRIORITY_VARIANT: Record<string, "default" | "info" | "warning" | "success" | "purple"> = {
   low: "default",
@@ -38,102 +30,156 @@ const PRIORITY_VARIANT: Record<string, "default" | "info" | "warning" | "success
 const container = {
   enter: { transition: { staggerChildren: 0.04 } },
 };
-
-const item = {
+const itemVariant = {
   initial: { opacity: 0, y: 6 },
   enter: { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, y: -4, transition: { duration: 0.15 } },
 };
 
+type Priority = "low" | "medium" | "high";
+
 export default function ActionsPage() {
-  const actions = useQuery(api.actionableActions.list);
-  const updateStatus = useMutation(api.actionableActions.updateStatus);
-  const dismissAction = useMutation(api.actionableActions.dismiss);
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const tasks = useQuery(api.tasks.list);
+  const createTask = useMutation(api.tasks.create);
+  const toggleDone = useMutation(api.tasks.toggleDone);
+  const removeTask = useMutation(api.tasks.remove);
 
-  const isLoading = actions === undefined;
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState<Priority>("medium");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const filtered = actions?.filter((a) => filter === "all" || a.status === filter) ?? [];
+  const isLoading = tasks === undefined;
+  const visible = tasks?.filter((t) => showCompleted || !t.done) ?? [];
+  const doneCount = tasks?.filter((t) => t.done).length ?? 0;
+  const todoCount = tasks?.filter((t) => !t.done).length ?? 0;
 
-  const counts = {
-    all: actions?.length ?? 0,
-    proposed: actions?.filter((a) => a.status === "proposed").length ?? 0,
-    accepted: actions?.filter((a) => a.status === "accepted").length ?? 0,
-    "in-progress": actions?.filter((a) => a.status === "in-progress").length ?? 0,
-    completed: actions?.filter((a) => a.status === "completed").length ?? 0,
-  };
-
-  const statusLabel: Record<string, string> = {
-    accepted: "Accepted",
-    "in-progress": "In Progress",
-    completed: "Completed",
-  };
-
-  const handleStatus = async (id: Id<"actionableActions">, status: "accepted" | "in-progress" | "completed") => {
+  const handleToggle = async (id: Id<"tasks">) => {
     try {
-      await updateStatus({ id, status });
-      toast.success(
-        status === "completed"
-          ? "Action completed!"
-          : `Action moved to ${statusLabel[status] ?? status}`
-      );
-      // Switch to "all" so the user can see where the item went
-      if (filter !== "all") setFilter("all");
+      await toggleDone({ id });
     } catch {
-      toast.error("Failed to update");
+      toast.error("Failed to update task");
     }
   };
 
-  const handleDismiss = async (id: Id<"actionableActions">) => {
+  const handleDelete = async (id: Id<"tasks">) => {
     try {
-      await dismissAction({ id });
-      toast.success("Action dismissed");
+      await removeTask({ id });
+      toast.success("Task deleted");
     } catch {
-      toast.error("Failed to dismiss");
+      toast.error("Failed to delete");
     }
   };
 
-  const nextStatus = (current: string): "accepted" | "in-progress" | "completed" | null => {
-    switch (current) {
-      case "proposed": return "accepted";
-      case "accepted": return "in-progress";
-      case "in-progress": return "completed";
-      default: return null;
-    }
-  };
-
-  const nextLabel = (current: string): string => {
-    switch (current) {
-      case "proposed": return "Accept";
-      case "accepted": return "Start";
-      case "in-progress": return "Complete";
-      default: return "";
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = newTitle.trim();
+    if (!title) return;
+    setSaving(true);
+    try {
+      await createTask({
+        title,
+        priority: newPriority,
+        sourceType: "manual",
+        ...(newDueDate ? { dueDate: newDueDate } : {}),
+      });
+      setNewTitle("");
+      setNewPriority("medium");
+      setNewDueDate("");
+      setShowNewForm(false);
+    } catch {
+      toast.error("Failed to create task");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <>
       <PageHeader
-        title="Actions"
-        description="Track and complete your recommended actions"
+        title="Tasks"
+        description="Your to-dos from AI insights, chat, and manual entry"
       />
 
-      {/* Filter tabs */}
-      <div className="flex gap-1.5 mb-6 flex-wrap">
-        {(["all", "proposed", "accepted", "in-progress", "completed"] as StatusFilter[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === f
-                ? "bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900"
-                : "bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/[0.1]"
-            }`}
-          >
-            {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1).replace("-", " ")}
-            <span className="ml-1.5 text-[10px] opacity-60">{counts[f]}</span>
-          </button>
-        ))}
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-stone-500 dark:text-stone-400">
+            {todoCount} to-do{todoCount !== 1 ? "s" : ""}
+            {doneCount > 0 && ` · ${doneCount} done`}
+          </span>
+          {doneCount > 0 && (
+            <button
+              onClick={() => setShowCompleted((v) => !v)}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {showCompleted ? "Hide completed" : "Show completed"}
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => setShowNewForm((v) => !v)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white transition-colors"
+        >
+          {showNewForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          {showNewForm ? "Cancel" : "New Task"}
+        </button>
       </div>
+
+      {/* Inline new-task form */}
+      <AnimatePresence>
+        {showNewForm && (
+          <motion.form
+            key="new-task-form"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.18 } }}
+            exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}
+            onSubmit={(e) => void handleCreate(e)}
+            className="card p-4 mb-4 space-y-3"
+          >
+            <input
+              autoFocus
+              type="text"
+              placeholder="Task title…"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full bg-transparent text-base sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 outline-none border-b border-stone-200 dark:border-stone-700 pb-1 focus:border-stone-400 dark:focus:border-stone-500 transition-colors"
+            />
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-stone-500">Priority</label>
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value as Priority)}
+                  className="text-base sm:text-xs text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-white/[0.06] rounded-md px-2 py-1 outline-none"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-stone-500">Due</label>
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  className="text-base sm:text-xs text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-white/[0.06] rounded-md px-2 py-1 outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!newTitle.trim() || saving}
+                className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Adding…" : "Add Task"}
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       {/* Loading */}
       {isLoading && (
@@ -143,133 +189,113 @@ export default function ActionsPage() {
       )}
 
       {/* Empty state */}
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && visible.length === 0 && (
         <div className="text-center py-16">
           <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
-            <CheckCircle2 className="w-6 h-6 text-stone-400" />
+            <CheckSquare className="w-6 h-6 text-stone-400" />
           </div>
           <p className="text-sm font-medium text-stone-600 dark:text-stone-400">
-            {filter === "all" ? "No actions yet" : `No ${filter} actions`}
+            {doneCount > 0 && !showCompleted ? "All caught up!" : "No tasks yet"}
           </p>
           <p className="text-xs text-stone-400 dark:text-stone-500 mt-1 max-w-xs mx-auto">
-            {filter === "all"
-              ? "Actions are created from AI insights or via chat. Try asking your assistant to recommend next steps."
-              : `No actions with status "${filter.replace("-", " ")}".`}
+            {doneCount > 0 && !showCompleted
+              ? "All tasks are done. Show completed to review them."
+              : "Create a task above, or ask your AI assistant to recommend next steps."}
           </p>
-          {filter !== "all" && (
-            <button
-              onClick={() => setFilter("all")}
-              className="mt-3 px-4 py-1.5 rounded-lg text-xs font-medium bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/[0.1] transition-colors"
-            >
-              View all actions
-            </button>
-          )}
         </div>
       )}
 
-      {/* Action cards */}
-      {!isLoading && filtered.length > 0 && (
+      {/* Task list */}
+      {!isLoading && visible.length > 0 && (
         <motion.div
           variants={container}
           initial="initial"
           animate="enter"
-          className="space-y-3"
+          className="space-y-2"
         >
-          {filtered.map((action) => {
-            const config = STATUS_CONFIG[action.status];
-            const next = nextStatus(action.status);
-            const StatusIcon = config?.icon ?? Circle;
-
-            return (
+          <AnimatePresence mode="popLayout">
+            {visible.map((task) => (
               <motion.div
-                key={action._id}
-                variants={item}
-                className="card p-4"
+                key={task._id}
+                variants={itemVariant}
+                layout
+                exit={itemVariant.exit}
+                className={`card p-3.5 flex items-start gap-3 group ${
+                  task.done ? "opacity-60" : ""
+                }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <StatusIcon
-                      className={`w-5 h-5 shrink-0 mt-0.5 ${
-                        action.status === "completed"
-                          ? "text-emerald-500"
-                          : action.status === "in-progress"
-                          ? "text-amber-500"
-                          : "text-stone-400"
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <h3 className={`text-sm font-semibold ${
-                        action.status === "completed"
-                          ? "text-stone-400 dark:text-stone-500 line-through"
-                          : "text-stone-900 dark:text-stone-100"
-                      }`}>
-                        {action.title}
-                      </h3>
-                      {action.description && (
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-2">
-                          {action.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <Badge variant={config?.variant ?? "default"}>
-                          {config?.label ?? action.status}
-                        </Badge>
-                        <Badge variant={PRIORITY_VARIANT[action.priority] ?? "default"}>
-                          {action.priority}
-                        </Badge>
-                        {action.dueDate && (
-                          <span className="flex items-center gap-1 text-[10px] text-stone-400">
-                            <Calendar className="w-3 h-3" />
-                            {action.dueDate}
-                          </span>
-                        )}
-                        {action.sourceInsightId && (
-                          <span className="flex items-center gap-1 text-[10px] text-blue-500">
-                            <Sparkles className="w-3 h-3" />
-                            AI suggested
-                          </span>
-                        )}
-                      </div>
-                      {action.aiNotes && (
-                        <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-2 italic">
-                          {action.aiNotes}
-                        </p>
-                      )}
-                      {/* Research panel — show for accepted/in-progress actions */}
-                      {(action.status === "accepted" || action.status === "in-progress") && (
-                        <ResearchPanel
-                          actionId={action._id}
-                          researchResults={action.researchResults}
-                          actionTitle={action.title}
-                        />
-                      )}
-                    </div>
-                  </div>
+                {/* Checkbox */}
+                <button
+                  onClick={() => void handleToggle(task._id)}
+                  aria-label={task.done ? "Mark incomplete" : "Mark complete"}
+                  className="mt-0.5 shrink-0 text-stone-400 hover:text-blue-500 transition-colors"
+                >
+                  {task.done ? (
+                    <CheckSquare className="w-4.5 h-4.5 text-blue-500" />
+                  ) : (
+                    <Square className="w-4.5 h-4.5" />
+                  )}
+                </button>
 
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {next && (
-                      <button
-                        onClick={() => void handleStatus(action._id, next)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                      >
-                        {nextLabel(action.status)}
-                      </button>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium leading-snug ${
+                    task.done
+                      ? "line-through text-stone-400 dark:text-stone-500"
+                      : "text-stone-900 dark:text-stone-100"
+                  }`}>
+                    {task.title}
+                  </p>
+
+                  {task.note && (
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-2">
+                      {task.note}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <Badge variant={PRIORITY_VARIANT[task.priority] ?? "default"}>
+                      {task.priority}
+                    </Badge>
+
+                    {task.dueDate && (
+                      <span className="flex items-center gap-1 text-[10px] text-stone-400">
+                        <Calendar className="w-3 h-3" />
+                        {task.dueDate}
+                      </span>
                     )}
-                    {action.status !== "completed" && (
-                      <button
-                        onClick={() => void handleDismiss(action._id)}
-                        className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-colors"
-                        title="Dismiss"
+
+                    {task.sourceType === "ai-insight" && task.sourceId && (
+                      <Link
+                        href={`/dashboard/ai-insights?id=${task.sourceId}`}
+                        className="inline-flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       >
-                        <X className="w-4 h-4" />
-                      </button>
+                        <Sparkles className="w-3 h-3" />
+                        From AI Insight
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </Link>
+                    )}
+
+                    {task.sourceType === "chat" && (
+                      <span className="flex items-center gap-1 text-[10px] text-stone-400">
+                        <Sparkles className="w-3 h-3" />
+                        From Chat
+                      </span>
                     )}
                   </div>
                 </div>
+
+                {/* Delete */}
+                <button
+                  onClick={() => void handleDelete(task._id)}
+                  aria-label="Delete task"
+                  className="opacity-0 group-hover:opacity-100 shrink-0 p-1 rounded text-stone-400 hover:text-red-500 hover:bg-stone-100 dark:hover:bg-white/[0.06] transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
-            );
-          })}
+            ))}
+          </AnimatePresence>
         </motion.div>
       )}
     </>

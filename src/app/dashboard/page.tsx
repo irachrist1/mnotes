@@ -21,7 +21,7 @@ import Link from "next/link";
 // ---------------------------------------------------------------------------
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
 };
 
 const stagger = {
@@ -33,7 +33,7 @@ const stagger = {
 // ---------------------------------------------------------------------------
 function parseSoulName(content?: string): string | null {
   if (!content) return null;
-  const m = content.match(/^#\s+(.+)/m);
+  const m = content.match(/^Name:\s*(.+)/m);
   return m ? m[1].trim() : null;
 }
 
@@ -128,6 +128,14 @@ const typeColor: Record<string, string> = {
   mentorship: "text-blue-500",
   task: "text-amber-500",
   insight: "text-pink-500",
+};
+
+const typeRoute: Record<string, string> = {
+  income: "/dashboard/data?tab=income",
+  idea: "/dashboard/data?tab=ideas",
+  mentorship: "/dashboard/data?tab=mentorship",
+  task: "/dashboard/data?tab=tasks",
+  insight: "/dashboard/intelligence",
 };
 
 function relativeTime(ts: number): string {
@@ -311,10 +319,12 @@ export default function DashboardPage() {
               {recentActivityData.slice(0, 8).map((act) => {
                 const Icon = typeIcon[act.type] ?? Activity;
                 const color = typeColor[act.type] ?? "text-stone-400";
+                const route = typeRoute[act.type] ?? "/dashboard";
                 return (
-                  <div
+                  <Link
                     key={act.id}
-                    className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+                    href={route}
+                    className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors cursor-pointer"
                   >
                     <Icon className={`w-4 h-4 flex-shrink-0 ${color}`} />
                     <span className="text-sm text-stone-700 dark:text-stone-300 truncate flex-1">
@@ -323,7 +333,7 @@ export default function DashboardPage() {
                     <span className="text-[11px] text-stone-400 dark:text-stone-500 flex-shrink-0 tabular-nums">
                       {relativeTime(act.timestamp)}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

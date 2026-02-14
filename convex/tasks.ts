@@ -104,3 +104,26 @@ export const remove = mutation({
         await ctx.db.delete(args.id);
     },
 });
+
+/** Batch-create tasks from an AI insight's action items. */
+export const createFromInsight = mutation({
+    args: { insightId: v.id("aiInsights") },
+    handler: async (ctx, args) => {
+        const userId = await getUserId(ctx);
+        const insight = await ctx.db.get(args.insightId);
+        if (!insight || insight.userId !== userId) throw new Error("Insight not found");
+        const now = Date.now();
+        for (const item of insight.actionItems) {
+            await ctx.db.insert("tasks", {
+                userId,
+                title: item,
+                sourceType: "ai-insight",
+                sourceId: args.insightId,
+                priority: insight.priority,
+                done: false,
+                createdAt: now,
+            });
+        }
+        return { created: insight.actionItems.length };
+    },
+});

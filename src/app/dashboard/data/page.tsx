@@ -4,7 +4,6 @@ import { Suspense, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { DollarSign, Lightbulb, Users, ListTodo } from "lucide-react";
-import { motion } from "framer-motion";
 
 // Lazy-load each tab's content — only the active tab is mounted
 const IncomeContent = dynamic(
@@ -66,8 +65,8 @@ function DataPageInner() {
     return (
         <>
             {/* Sticky tab bar */}
-            <div className="sticky top-0 z-10 bg-white/80 dark:bg-stone-950/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
-                <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2">
+            <div className="sticky top-0 z-10 bg-white/80 dark:bg-stone-950/80 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6 py-2">
+                <nav className="inline-flex items-center gap-1 bg-stone-100/70 dark:bg-stone-800/50 rounded-xl p-1 overflow-x-auto scrollbar-hide">
                     {TABS.map((tab) => {
                         const isActive = activeTab === tab.key;
                         const Icon = tab.icon;
@@ -75,20 +74,13 @@ function DataPageInner() {
                             <button
                                 key={tab.key}
                                 onClick={() => setTab(tab.key)}
-                                className={`relative flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${isActive
-                                        ? "text-stone-900 dark:text-stone-100 bg-stone-100 dark:bg-stone-800"
-                                        : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-50 dark:hover:bg-stone-800/50"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-150 ${isActive
+                                    ? "text-stone-900 dark:text-stone-100 bg-white dark:bg-stone-700 shadow-sm"
+                                    : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
                                 {tab.label}
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="data-tab-indicator"
-                                        className="absolute inset-0 rounded-md bg-stone-100 dark:bg-stone-800 -z-10"
-                                        transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
-                                    />
-                                )}
                             </button>
                         );
                     })}

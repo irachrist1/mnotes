@@ -126,7 +126,7 @@ export default function IntelligencePage() {
                                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                                     className="overflow-hidden"
                                 >
-                                    <div className="px-5 pb-5 border-t border-stone-100 dark:border-stone-800">
+                                    <div className="px-5 pt-4 pb-5 border-t border-stone-100 dark:border-stone-800">
                                         {section.key === "insights" && <AIInsightsContent />}
                                         {section.key === "analytics" && <AnalyticsContent />}
                                     </div>
