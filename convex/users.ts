@@ -8,7 +8,9 @@ export const me = query({
     const identity = await getUserIdentity(ctx);
     if (!identity) return null;
 
+    const userId = identity.subject.split("|")[0];
     return {
+      _id: userId,
       name: identity.name || undefined,
       email: identity.email || undefined,
       avatarUrl: identity.pictureUrl || undefined,

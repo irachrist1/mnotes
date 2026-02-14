@@ -14,6 +14,7 @@ import { DollarSign, Plus, Clock, TrendingUp, Pencil, Trash2 } from "lucide-reac
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
+import { track } from "@/lib/analytics";
 
 type StreamStatus = "active" | "developing" | "planned" | "paused";
 type StreamCategory = "consulting" | "employment" | "content" | "product" | "project-based";
@@ -58,7 +59,7 @@ const emptyForm: FormData = {
   clientInfo: "",
 };
 
-export default function IncomePage() {
+export function IncomeContent() {
   const streams = useQuery(api.incomeStreams.list);
   const createStream = useMutation(api.incomeStreams.create);
   const updateStream = useMutation(api.incomeStreams.update);
@@ -102,8 +103,15 @@ export default function IncomePage() {
         growthRate: parseFloat(form.growthRate) || 0,
         notes: form.notes || undefined, clientInfo: form.clientInfo || undefined,
       };
-      if (editingId) { await updateStream({ id: editingId, ...data }); toast.success("Stream updated"); }
-      else { await createStream(data); toast.success("Stream created"); }
+      if (editingId) {
+        await updateStream({ id: editingId, ...data });
+        track("income_stream_updated", { streamId: editingId });
+        toast.success("Stream updated");
+      } else {
+        await createStream(data);
+        track("income_stream_created");
+        toast.success("Stream created");
+      }
       setShowForm(false);
     } catch { toast.error("Failed to save"); } finally { setSaving(false); }
   };
@@ -278,4 +286,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+export default function IncomePage() {
+  return <IncomeContent />;
 }

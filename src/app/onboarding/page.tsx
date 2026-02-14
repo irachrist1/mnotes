@@ -5,9 +5,10 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Send, Sparkles, Check, Key } from "lucide-react";
+import { Send, Sparkles, Check, Key, Settings } from "lucide-react";
 import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
+import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 import {
   OPENROUTER_MODELS,
@@ -15,6 +16,7 @@ import {
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
 } from "@/lib/aiModels";
+import { track } from "@/lib/analytics";
 
 // Pre-designed avatar options for the assistant
 const AVATARS = [
@@ -200,19 +202,21 @@ function ConnectedOnboardingPage() {
   const handleConfirmSoul = async () => {
     if (!soulFileContent) return;
     setConfirming(true);
+    // Transition to setup BEFORE creating soul file to prevent the redirect
+    // useEffect from firing (it only redirects when phase === "chat")
+    setPhase("setup");
     try {
       await initSoul({
         content: soulFileContent,
         assistantName: assistantName ?? undefined,
       });
-      // Transition to API key setup instead of redirecting
-      setTimeout(() => {
-        setConfirming(false);
-        setPhase("setup");
-      }, 600);
+      track("onboarding_soul_confirmed");
+      setConfirming(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create profile");
       setConfirming(false);
+      // Revert phase so user can retry
+      setPhase("chat");
     }
   };
 
@@ -231,6 +235,7 @@ function ConnectedOnboardingPage() {
           ? { openrouterApiKey: apiKey.trim() }
           : { googleApiKey: apiKey.trim() }),
       });
+      track("onboarding_settings_saved", { provider, model });
       setPhase("complete");
       setTimeout(() => router.push("/dashboard"), 400);
     } catch (err) {
@@ -240,6 +245,15 @@ function ConnectedOnboardingPage() {
   };
 
   const handleSkip = () => {
+    track("onboarding_skipped");
+    toast("You can set up your API key anytime in Settings", {
+      icon: <Settings className="w-4 h-4" />,
+      action: {
+        label: "Open Settings",
+        onClick: () => router.push("/dashboard/settings"),
+      },
+      duration: 6000,
+    });
     router.push("/dashboard");
   };
 
@@ -419,6 +433,9 @@ function ConnectedOnboardingPage() {
                 >
                   Skip for now
                 </button>
+                <p className="text-[11px] text-stone-400 dark:text-stone-500 text-center">
+                  You can always configure this later in Settings
+                </p>
               </div>
             </div>
           </motion.div>

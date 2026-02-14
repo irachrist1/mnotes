@@ -6,11 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SquaresFour,
-  CurrencyDollar,
-  Lightbulb,
-  UsersThree,
-  ChartLine,
-  Sparkle,
+  Database,
+  Brain,
   Gear,
   List,
   X,
@@ -29,12 +26,9 @@ type NavItem = {
 };
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', Icon: SquaresFour },
-  { name: 'Income', href: '/dashboard/income', Icon: CurrencyDollar },
-  { name: 'Ideas', href: '/dashboard/ideas', Icon: Lightbulb },
-  { name: 'Mentorship', href: '/dashboard/mentorship', Icon: UsersThree },
-  { name: 'Analytics', href: '/dashboard/analytics', Icon: ChartLine },
-  { name: 'AI Insights', href: '/dashboard/ai-insights', Icon: Sparkle },
+  { name: 'Home', href: '/dashboard', Icon: SquaresFour },
+  { name: 'Your Data', href: '/dashboard/data', Icon: Database },
+  { name: 'Intelligence', href: '/dashboard/intelligence', Icon: Brain },
 ];
 
 // Settings lives in the desktop user popover; on mobile it's an inline nav item
@@ -317,7 +311,10 @@ export function Sidebar() {
   const showContentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname.startsWith(href);
+  };
 
   useEffect(() => {
     return () => {

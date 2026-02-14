@@ -4,6 +4,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { captureAiGeneration } from "../lib/posthog";
 
 /**
  * Scheduled internal action: evolves the user's soul file based on recent chat.
@@ -20,6 +21,7 @@ export const evolveFromChat = internalAction({
     threadId: v.optional(v.id("chatThreads")),
   },
   handler: async (ctx, args): Promise<void> => {
+    console.log(`[SOUL_EVOLVE] triggered userId=${args.userId} threadId=${args.threadId ?? "none"}`);
     // Load soul file and settings in parallel
     const [soulFile, settings] = await Promise.all([
       ctx.runQuery(internal.soulFile.getByUserId, { userId: args.userId }),
@@ -83,24 +85,37 @@ Return the complete updated soul file markdown and nothing else.`;
     const userPrompt = `Current soul file:\n\n${soulFile.content}\n\n---\n\nRecent conversation:\n\n${conversationText}\n\n---\n\nReturn the updated soul file:`;
 
     let evolved: string;
+    const t0 = Date.now();
     try {
       if (settings.aiProvider === "openrouter") {
         evolved = await callOpenRouter(systemPrompt, userPrompt, settings.aiModel, apiKey);
       } else {
         evolved = await callGoogle(systemPrompt, userPrompt, settings.aiModel, apiKey);
       }
-    } catch {
-      // Evolution is best-effort — don't crash the scheduler
+      captureAiGeneration({
+        distinctId: args.userId,
+        model: settings.aiModel,
+        provider: settings.aiProvider,
+        feature: "soul-evolve",
+        latencySeconds: (Date.now() - t0) / 1000,
+        output: evolved,
+      });
+    } catch (err) {
+      console.error(`[SOUL_EVOLVE] AI FAILED userId=${args.userId}`, err);
       return;
     }
 
     // Sanity check: must look like a soul file
-    if (!evolved || evolved.length < 50 || !evolved.includes("## Identity")) return;
+    if (!evolved || evolved.length < 50 || !evolved.includes("## Identity")) {
+      console.warn(`[SOUL_EVOLVE] rejected — invalid output userId=${args.userId} len=${evolved?.length ?? 0}`);
+      return;
+    }
 
     await ctx.runMutation(internal.soulFile.evolveInternal, {
       userId: args.userId,
       content: evolved.trim(),
     });
+    console.log(`[SOUL_EVOLVE] success userId=${args.userId} newLen=${evolved.trim().length}`);
   },
 });
 

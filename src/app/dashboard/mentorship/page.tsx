@@ -13,6 +13,7 @@ import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Users, Plus, Clock, Star, CheckCircle2, Circle, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
+import { track } from "@/lib/analytics";
 
 type SessionType = "giving" | "receiving";
 type Priority = "low" | "medium" | "high";
@@ -31,7 +32,7 @@ const emptyForm: SessionForm = {
   sessionType: "receiving", topics: "", keyInsights: "", actionItems: [], rating: "", notes: "",
 };
 
-export default function MentorshipPage() {
+export function MentorshipContent() {
   const sessions = useQuery(api.mentorshipSessions.list);
   const createSession = useMutation(api.mentorshipSessions.create);
   const updateSession = useMutation(api.mentorshipSessions.update);
@@ -78,8 +79,15 @@ export default function MentorshipPage() {
         rating: Math.min(10, Math.max(1, parseInt(form.rating) || 8)),
         notes: form.notes.trim(),
       };
-      if (editingId) { await updateSession({ id: editingId, ...data }); toast.success("Session updated"); }
-      else { await createSession(data); toast.success("Session created"); }
+      if (editingId) {
+        await updateSession({ id: editingId, ...data });
+        track("mentorship_session_updated", { sessionId: editingId });
+        toast.success("Session updated");
+      } else {
+        await createSession(data);
+        track("mentorship_session_created");
+        toast.success("Session created");
+      }
       setShowForm(false);
     } catch { toast.error("Failed to save"); } finally { setSaving(false); }
   };
@@ -227,4 +235,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+export default function MentorshipPage() {
+  return <MentorshipContent />;
 }

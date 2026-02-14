@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Save, Key, Sparkles } from "lucide-react";
+import { FeedbackWidget } from "@/components/ui/FeedbackWidget";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 import {
@@ -13,6 +14,7 @@ import {
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
 } from "@/lib/aiModels";
+import { track } from "@/lib/analytics";
 
 export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
@@ -50,6 +52,7 @@ export default function SettingsPage() {
         openrouterApiKey: openrouterKey || undefined,
         googleApiKey: googleKey || undefined,
       });
+      track("settings_saved", { provider, model });
       toast.success("Settings saved successfully");
       // Clear local key state after save so masked placeholder shows again
       if (openrouterKey) {
@@ -248,6 +251,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Feedback */}
+        <FeedbackWidget />
       </div>
     </>
   );

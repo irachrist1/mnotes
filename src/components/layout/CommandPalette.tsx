@@ -19,34 +19,50 @@ type PaletteItem = {
 
 const NAV_ITEMS: PaletteItem[] = [
   {
-    key: "nav-dashboard",
-    title: "Dashboard",
-    subtitle: "Overview",
+    key: "nav-home",
+    title: "Home",
+    subtitle: "Dashboard overview",
     route: "/dashboard",
     kind: "navigation",
     priority: null,
   },
   {
-    key: "nav-ideas",
+    key: "nav-data-income",
+    title: "Income Streams",
+    subtitle: "Your Data → Income tab",
+    route: "/dashboard/data?tab=income",
+    kind: "navigation",
+    priority: null,
+  },
+  {
+    key: "nav-data-ideas",
     title: "Ideas Pipeline",
-    subtitle: "Track idea stages",
-    route: "/dashboard/ideas",
+    subtitle: "Your Data → Ideas tab",
+    route: "/dashboard/data?tab=ideas",
     kind: "navigation",
     priority: null,
   },
   {
-    key: "nav-mentorship",
+    key: "nav-data-mentorship",
     title: "Mentorship",
-    subtitle: "Sessions and action items",
-    route: "/dashboard/mentorship",
+    subtitle: "Your Data → Mentorship tab",
+    route: "/dashboard/data?tab=mentorship",
     kind: "navigation",
     priority: null,
   },
   {
-    key: "nav-ai-insights",
-    title: "AI Insights",
-    subtitle: "Generated + saved insights",
-    route: "/dashboard/ai-insights",
+    key: "nav-data-tasks",
+    title: "Tasks",
+    subtitle: "Your Data → Tasks tab",
+    route: "/dashboard/data?tab=tasks",
+    kind: "navigation",
+    priority: null,
+  },
+  {
+    key: "nav-intelligence",
+    title: "Intelligence",
+    subtitle: "AI Insights & Analytics",
+    route: "/dashboard/intelligence",
     kind: "navigation",
     priority: null,
   },
@@ -203,11 +219,10 @@ export function CommandPalette() {
                 <button
                   key={item.key}
                   onClick={() => void runItem(item)}
-                  className={`w-full text-left rounded-md px-3 py-2 transition-colors ${
-                    selectedIndex === index
+                  className={`w-full text-left rounded-md px-3 py-2 transition-colors ${selectedIndex === index
                       ? "bg-stone-100 dark:bg-stone-800"
                       : "hover:bg-stone-100 dark:hover:bg-stone-800"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">

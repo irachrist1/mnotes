@@ -121,6 +121,22 @@ const WRITABLE_TABLES: TableDescription[] = [
       { name: "notes", type: "string", required: true },
     ],
   },
+  {
+    name: "actionableActions",
+    description:
+      "Actionable tasks — things the user commits to doing, derived from AI recommendations or user decisions. Tracked from proposal through completion.",
+    fields: [
+      { name: "title", type: "string", required: true, description: "Short task title" },
+      { name: "description", type: "string", required: true, description: "What needs to be done" },
+      {
+        name: "priority",
+        type: 'enum: "low" | "medium" | "high"',
+        required: true,
+      },
+      { name: "dueDate", type: "string (ISO date)", required: false, description: "When it should be done" },
+      { name: "aiNotes", type: "string", required: false, description: "AI reasoning or context for why this matters" },
+    ],
+  },
 ];
 
 /**

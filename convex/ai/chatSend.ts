@@ -7,6 +7,7 @@ import { getUserId } from "../lib/auth";
 import { buildSystemPrompt, buildDomainSummary, parseIntentFromResponse } from "./chatPrompt";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createHash } from "node:crypto";
+import { captureAiGeneration } from "../lib/posthog";
 
 const CHAT_PROMPT_CACHE_TTL_SECONDS = 120;
 
@@ -50,6 +51,7 @@ export const send = action({
     ]);
 
     if (!settings) {
+      console.error(`[CHAT] NO SETTINGS userId=${userId}`);
       throw new Error("Please configure your AI settings first (Settings page)");
     }
 
@@ -58,6 +60,7 @@ export const send = action({
       : settings.googleApiKey;
 
     if (!apiKey) {
+      console.error(`[CHAT] NO API KEY provider=${settings.aiProvider} userId=${userId}`);
       throw new Error(`Please add your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key in Settings`);
     }
 
@@ -105,7 +108,7 @@ export const send = action({
       content: args.message,
     });
 
-    const model = settings.aiModel;
+    const model = settings.aiModel || "google/gemini-2.5-flash";
     const promptCacheKey = createHash("sha256")
       .update(JSON.stringify({
         provider: settings.aiProvider,
@@ -122,18 +125,38 @@ export const send = action({
     });
 
     // Call AI (or use cache)
+    const t0 = Date.now();
     let aiResponse: string;
+    let cached = false;
     try {
       if (cachedResponse?.responseText) {
         aiResponse = cachedResponse.responseText;
+        cached = true;
+        console.log(`[CHAT] cacheHit userId=${userId} model=${model}`);
       } else {
         if (settings.aiProvider === "openrouter") {
-          aiResponse = await callOpenRouterChat(
+          const result = await callOpenRouterChat(
             systemPrompt,
             conversationMessages,
             model,
             apiKey
           );
+          aiResponse = result.content;
+
+          // Capture LLM analytics
+          const latency = (Date.now() - t0) / 1000;
+          captureAiGeneration({
+            distinctId: userId,
+            model,
+            provider: "openrouter",
+            feature: "chat",
+            latencySeconds: latency,
+            input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
+            output: result.content,
+            inputTokens: result.usage?.prompt_tokens,
+            outputTokens: result.usage?.completion_tokens,
+            totalCostUsd: result.usage?.total_cost,
+          });
         } else {
           aiResponse = await callGoogleAIChat(
             systemPrompt,
@@ -141,6 +164,17 @@ export const send = action({
             model,
             apiKey
           );
+
+          const latency = (Date.now() - t0) / 1000;
+          captureAiGeneration({
+            distinctId: userId,
+            model,
+            provider: "google",
+            feature: "chat",
+            latencySeconds: latency,
+            input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
+            output: aiResponse,
+          });
         }
 
         await ctx.runMutation(internal.aiPromptCache.setInternal, {
@@ -154,14 +188,18 @@ export const send = action({
         });
       }
     } catch (error) {
-      console.error("Chat AI error:", error);
+      console.error(`[CHAT] AI ERROR userId=${userId} provider=${settings.aiProvider} model=${model}`, error);
       throw new Error(
         error instanceof Error ? error.message : "Failed to get AI response"
       );
     }
+    console.log(`[CHAT] response userId=${userId} len=${aiResponse.length} ms=${Date.now() - t0} cached=${cached} model=${model}`);
 
     // Parse for intents
     const { reply, intent } = parseIntentFromResponse(aiResponse);
+    if (intent) {
+      console.log(`[CHAT] intent detected table=${intent.table} op=${intent.operation} userId=${userId}`);
+    }
 
     // Save assistant message
     const assistantMsgId: string = await ctx.runMutation(internal.chat.saveMessage, {
@@ -198,12 +236,21 @@ export const send = action({
 // AI provider helpers (chat-specific with message arrays)
 // ---------------------------------------------------------------------------
 
+interface OpenRouterResult {
+  content: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_cost?: number;
+  };
+}
+
 async function callOpenRouterChat(
   systemPrompt: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   model: string,
   apiKey: string
-): Promise<string> {
+): Promise<OpenRouterResult> {
   const apiMessages = [
     { role: "system" as const, content: systemPrompt },
     ...messages,
@@ -232,8 +279,12 @@ async function callOpenRouterChat(
 
   const data = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_cost?: number };
   };
-  return data.choices?.[0]?.message?.content || "";
+  return {
+    content: data.choices?.[0]?.message?.content || "",
+    usage: data.usage,
+  };
 }
 
 async function callGoogleAIChat(

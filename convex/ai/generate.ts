@@ -3,6 +3,8 @@
 import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { captureAiGeneration } from "../lib/posthog";
+import { getUserId } from "../lib/auth";
 
 export const generate = action({
   args: {
@@ -23,12 +25,25 @@ export const generate = action({
       throw new Error("API key is too long");
     }
 
+    const userId = await getUserId(ctx);
+    const t0 = Date.now();
     try {
+      let result: string;
       if (args.provider === "openrouter") {
-        return await callOpenRouter(args.prompt, args.model, args.apiKey);
+        result = await callOpenRouter(args.prompt, args.model, args.apiKey);
       } else {
-        return await callGoogleAI(args.prompt, args.model, args.apiKey);
+        result = await callGoogleAI(args.prompt, args.model, args.apiKey);
       }
+      captureAiGeneration({
+        distinctId: userId,
+        model: args.model,
+        provider: args.provider,
+        feature: "generate",
+        latencySeconds: (Date.now() - t0) / 1000,
+        input: [{ role: "user", content: args.prompt }],
+        output: result,
+      });
+      return result;
     } catch (error) {
       console.error("AI generation error:", error);
       throw new Error(

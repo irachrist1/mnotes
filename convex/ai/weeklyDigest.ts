@@ -4,6 +4,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { captureAiGeneration } from "../lib/posthog";
 
 /**
  * Weekly digest pipeline.
@@ -79,6 +80,7 @@ ${domainData.sessions.map((s) => `- ${s.mentorName} on ${s.date} (${s.rating}/10
 Generate the weekly digest JSON:`;
 
     let rawResponse: string;
+    const t0 = Date.now();
     try {
       if (settings.aiProvider === "openrouter") {
         rawResponse = await callOpenRouter(
@@ -95,6 +97,18 @@ Generate the weekly digest JSON:`;
           apiKey
         );
       }
+      captureAiGeneration({
+        distinctId: args.userId,
+        model: settings.aiModel,
+        provider: settings.aiProvider,
+        feature: "weekly-digest",
+        latencySeconds: (Date.now() - t0) / 1000,
+        input: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        output: rawResponse,
+      });
     } catch {
       // AI call failed — silently skip this user's digest
       return;

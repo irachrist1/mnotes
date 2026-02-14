@@ -8,6 +8,7 @@ import { Send, X, MessageSquare, Sparkles, Plus, ChevronDown, Trash2 } from "luc
 import { toast } from "sonner";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { MarkdownMessage } from "@/components/ui/LazyMarkdownMessage";
+import { track } from "@/lib/analytics";
 import type { Id } from "@convex/_generated/dataModel";
 
 function relativeTime(ts: number): string {
@@ -24,9 +25,13 @@ function relativeTime(ts: number): string {
 export function ChatPanel({
   open,
   onClose,
+  pendingPrompt,
+  onPromptConsumed,
 }: {
   open: boolean;
   onClose: () => void;
+  pendingPrompt?: string | null;
+  onPromptConsumed?: () => void;
 }) {
   const [currentThreadId, setCurrentThreadId] = useState<Id<"chatThreads"> | null>(null);
   const [showThreadList, setShowThreadList] = useState(false);
@@ -77,6 +82,15 @@ export function ChatPanel({
       createThread().then(({ threadId }) => setCurrentThreadId(threadId)).catch(() => {});
     }
   }, [open, threads, createThread]);
+
+  // Consume pendingPrompt from QuickActionCards — pre-fill input and focus
+  useEffect(() => {
+    if (!pendingPrompt || !open) return;
+    setInput(pendingPrompt);
+    onPromptConsumed?.();
+    // Focus the input after a short delay to let the panel render
+    setTimeout(() => inputRef.current?.focus(), 150);
+  }, [pendingPrompt, open, onPromptConsumed]);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior) => {
@@ -283,6 +297,7 @@ export function ChatPanel({
 
     try {
       await sendMessage({ message: text, threadId });
+      track("chat_message_sent", { threadId: threadId ?? undefined });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
       setOptimisticUserMsg(null);
@@ -331,6 +346,7 @@ export function ChatPanel({
     setCommittingId(messageId);
     try {
       await commitIntent({ messageId });
+      track("chat_intent_committed", { messageId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -341,6 +357,7 @@ export function ChatPanel({
   const handleReject = useCallback(async (messageId: Id<"chatMessages">) => {
     try {
       await rejectIntent({ messageId });
+      track("chat_intent_rejected", { messageId });
     } catch (err) {
       console.error("Failed to reject intent:", err);
     }

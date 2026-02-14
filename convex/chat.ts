@@ -198,11 +198,13 @@ export const getDomainSummaryInput = internalQuery({
         title: idea.title,
         stage: idea.stage,
         category: idea.category,
+        lastUpdated: idea.lastUpdated,
       })),
       sessions: sessions.map((session) => ({
         mentorName: session.mentorName,
         date: session.date,
         rating: session.rating,
+        actionItems: session.actionItems,
       })),
     };
   },
@@ -289,18 +291,38 @@ export const commitIntent = mutation({
       throw new Error("Only create operations are supported in v1");
     }
 
+    console.log(`[COMMIT] table=${table} userId=${userId} fields=${Object.keys(data).join(",")}`);
+
+    // Safe enum helpers — AI-generated data may not match schema unions exactly
+    function safeEnum<T extends string>(value: unknown, allowed: T[], fallback: T): T {
+      const s = String(value ?? "").toLowerCase().trim();
+      return (allowed as string[]).includes(s) ? (s as T) : fallback;
+    }
+    function safeNumber(value: unknown, fallback: number): number {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    const INCOME_CATEGORIES = ["consulting", "employment", "content", "product", "project-based"] as const;
+    const INCOME_STATUSES = ["active", "developing", "planned", "paused"] as const;
+    const IDEA_STAGES = ["raw-thought", "researching", "validating", "developing", "testing", "launched"] as const;
+    const REVENUE_LEVELS = ["low", "medium", "high", "very-high"] as const;
+    const COMPETITION_LEVELS = ["low", "medium", "high"] as const;
+    const PRIORITY_LEVELS = ["low", "medium", "high"] as const;
+    const SESSION_TYPES = ["giving", "receiving"] as const;
+
     const now = Date.now();
     let recordId: string;
 
     if (table === "incomeStreams") {
       recordId = await ctx.db.insert("incomeStreams", {
         userId,
-        name: String(data.name ?? ""),
-        category: data.category as "consulting" | "employment" | "content" | "product" | "project-based",
-        status: data.status as "active" | "developing" | "planned" | "paused",
-        monthlyRevenue: Number(data.monthlyRevenue ?? 0),
-        timeInvestment: Number(data.timeInvestment ?? 0),
-        growthRate: Number(data.growthRate ?? 0),
+        name: String(data.name ?? "Untitled Stream"),
+        category: safeEnum(data.category, [...INCOME_CATEGORIES], "consulting"),
+        status: safeEnum(data.status, [...INCOME_STATUSES], "active"),
+        monthlyRevenue: safeNumber(data.monthlyRevenue, 0),
+        timeInvestment: safeNumber(data.timeInvestment, 0),
+        growthRate: safeNumber(data.growthRate, 0),
         notes: data.notes ? String(data.notes) : undefined,
         clientInfo: data.clientInfo ? String(data.clientInfo) : undefined,
         createdAt: now,
@@ -310,16 +332,16 @@ export const commitIntent = mutation({
       const isoNow = new Date().toISOString();
       recordId = await ctx.db.insert("ideas", {
         userId,
-        title: String(data.title ?? ""),
+        title: String(data.title ?? "Untitled Idea"),
         description: String(data.description ?? ""),
-        category: String(data.category ?? ""),
-        stage: (data.stage as "raw-thought" | "researching" | "validating" | "developing" | "testing" | "launched") ?? "raw-thought",
-        potentialRevenue: (data.potentialRevenue as "low" | "medium" | "high" | "very-high") ?? "medium",
-        implementationComplexity: Number(data.implementationComplexity ?? 5),
+        category: String(data.category ?? "General"),
+        stage: safeEnum(data.stage, [...IDEA_STAGES], "raw-thought"),
+        potentialRevenue: safeEnum(data.potentialRevenue, [...REVENUE_LEVELS], "medium"),
+        implementationComplexity: Math.min(10, Math.max(1, safeNumber(data.implementationComplexity, 5))),
         timeToMarket: String(data.timeToMarket ?? ""),
         requiredSkills: Array.isArray(data.requiredSkills) ? data.requiredSkills.map(String) : [],
         marketSize: String(data.marketSize ?? ""),
-        competitionLevel: (data.competitionLevel as "low" | "medium" | "high") ?? "medium",
+        competitionLevel: safeEnum(data.competitionLevel, [...COMPETITION_LEVELS], "medium"),
         aiRelevance: Boolean(data.aiRelevance ?? false),
         hardwareComponent: Boolean(data.hardwareComponent ?? false),
         relatedIncomeStream: data.relatedIncomeStream ? String(data.relatedIncomeStream) : undefined,
@@ -332,23 +354,35 @@ export const commitIntent = mutation({
     } else if (table === "mentorshipSessions") {
       recordId = await ctx.db.insert("mentorshipSessions", {
         userId,
-        mentorName: String(data.mentorName ?? ""),
+        mentorName: String(data.mentorName ?? "Unknown"),
         date: String(data.date ?? new Date().toISOString().split("T")[0]),
-        duration: Number(data.duration ?? 60),
-        sessionType: (data.sessionType as "giving" | "receiving") ?? "receiving",
+        duration: safeNumber(data.duration, 60),
+        sessionType: safeEnum(data.sessionType, [...SESSION_TYPES], "receiving"),
         topics: Array.isArray(data.topics) ? data.topics.map(String) : [],
         keyInsights: Array.isArray(data.keyInsights) ? data.keyInsights.map(String) : [],
         actionItems: Array.isArray(data.actionItems)
           ? data.actionItems.map((item: Record<string, unknown>) => ({
               task: String(item.task ?? ""),
-              priority: (item.priority as "low" | "medium" | "high") ?? "medium",
+              priority: safeEnum(item.priority, [...PRIORITY_LEVELS], "medium"),
               completed: Boolean(item.completed ?? false),
               dueDate: item.dueDate ? String(item.dueDate) : undefined,
             }))
           : [],
-        rating: Number(data.rating ?? 7),
+        rating: Math.min(10, Math.max(1, safeNumber(data.rating, 7))),
         notes: String(data.notes ?? ""),
         createdAt: now,
+      });
+    } else if (table === "actionableActions") {
+      recordId = await ctx.db.insert("actionableActions", {
+        userId,
+        title: String(data.title ?? "Untitled Action"),
+        description: String(data.description ?? ""),
+        status: "proposed",
+        priority: safeEnum(data.priority, [...PRIORITY_LEVELS], "medium"),
+        dueDate: data.dueDate ? String(data.dueDate) : undefined,
+        aiNotes: data.aiNotes ? String(data.aiNotes) : undefined,
+        createdAt: now,
+        updatedAt: now,
       });
     } else {
       throw new Error(`Unknown table: ${table}`);
@@ -356,6 +390,7 @@ export const commitIntent = mutation({
 
     await ctx.db.patch(args.messageId, { intentStatus: "committed" });
 
+    console.log(`[COMMIT] success table=${table} recordId=${recordId} userId=${userId}`);
     return { table, recordId };
   },
 });

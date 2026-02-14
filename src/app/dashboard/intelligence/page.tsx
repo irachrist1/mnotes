@@ -1,0 +1,141 @@
+"use client";
+
+import { useState } from "react";
+import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, BarChart3, ChevronDown, Brain } from "lucide-react";
+
+// Lazy-load both sections — charts and AI logic are heavy
+const AIInsightsContent = dynamic(
+    () =>
+        import("@/app/dashboard/ai-insights/page").then(
+            (m) => m.AIInsightsContent
+        ),
+    { ssr: false, loading: () => <SectionSkeleton /> }
+);
+const AnalyticsContent = dynamic(
+    () =>
+        import("@/app/dashboard/analytics/page").then((m) => m.AnalyticsContent),
+    { ssr: false, loading: () => <SectionSkeleton /> }
+);
+
+function SectionSkeleton() {
+    return (
+        <div className="space-y-4 animate-pulse py-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                        key={i}
+                        className="h-20 bg-stone-100 dark:bg-stone-800 rounded-lg"
+                    />
+                ))}
+            </div>
+            <div className="h-64 bg-stone-100 dark:bg-stone-800 rounded-lg" />
+        </div>
+    );
+}
+
+type Section = {
+    key: string;
+    label: string;
+    icon: React.ElementType;
+    description: string;
+};
+
+const SECTIONS: Section[] = [
+    {
+        key: "insights",
+        label: "AI Insights",
+        icon: Sparkles,
+        description: "AI-powered analysis of your business data",
+    },
+    {
+        key: "analytics",
+        label: "Analytics",
+        icon: BarChart3,
+        description: "Comprehensive charts and trends",
+    },
+];
+
+export default function IntelligencePage() {
+    const [openSections, setOpenSections] = useState<Set<string>>(
+        new Set(["insights"])
+    );
+
+    const toggle = (key: string) => {
+        setOpenSections((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Page header */}
+            <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500/10 to-purple-600/10 dark:from-violet-500/20 dark:to-purple-600/20 flex items-center justify-center">
+                    <Brain className="w-4.5 h-4.5 text-violet-500 dark:text-violet-400" />
+                </div>
+                <div>
+                    <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
+                        Intelligence
+                    </h1>
+                    <p className="text-sm text-stone-500 dark:text-stone-400">
+                        AI insights and analytics in one place
+                    </p>
+                </div>
+            </div>
+
+            {/* Collapsible sections */}
+            {SECTIONS.map((section) => {
+                const isOpen = openSections.has(section.key);
+                const Icon = section.icon;
+                return (
+                    <div key={section.key} className="card overflow-hidden">
+                        <button
+                            onClick={() => toggle(section.key)}
+                            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors text-left"
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+                                <Icon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                                    {section.label}
+                                </span>
+                                <p className="text-xs text-stone-500 dark:text-stone-400">
+                                    {section.description}
+                                </p>
+                            </div>
+                            <motion.div
+                                animate={{ rotate: isOpen ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <ChevronDown className="w-4 h-4 text-stone-400" />
+                            </motion.div>
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                            {isOpen && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="px-5 pb-5 border-t border-stone-100 dark:border-stone-800">
+                                        {section.key === "insights" && <AIInsightsContent />}
+                                        {section.key === "analytics" && <AnalyticsContent />}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}

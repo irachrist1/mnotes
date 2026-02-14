@@ -8,8 +8,18 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { DoughnutChart, BarChart, LineChart } from "@/components/ui/LazyCharts";
-import { DollarSign, TrendingUp, Lightbulb, Users, Target, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Lightbulb, Users, Target, Clock, BarChart3 } from "lucide-react";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
+import { motion } from "framer-motion";
+import Link from "next/link";
+
+const container = {
+  enter: { transition: { staggerChildren: 0.05 } },
+};
+const item = {
+  initial: { opacity: 0, y: 8 },
+  enter: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const } },
+};
 
 const stageLabel: Record<string, string> = {
   "raw-thought": "Raw Thought",
@@ -30,7 +40,7 @@ const categoryLabel: Record<string, string> = {
 const STAGES_ORDER = ["raw-thought", "researching", "validating", "developing", "testing", "launched"] as const;
 const CATEGORY_ORDER = ["consulting", "employment", "content", "product", "project-based"] as const;
 
-export default function AnalyticsPage() {
+export function AnalyticsContent() {
   const streams = useQuery(api.incomeStreams.list);
   const ideas = useQuery(api.ideas.list);
   const sessions = useQuery(api.mentorshipSessions.list);
@@ -111,9 +121,37 @@ export default function AnalyticsPage() {
       }));
   }, [revenueByCategory]);
 
+  const hasNoData = !isLoading &&
+    (streams?.length ?? 0) === 0 &&
+    (ideas?.length ?? 0) === 0 &&
+    (sessions?.length ?? 0) === 0;
+
   return (
     <>
       <PageHeader title="Analytics" description="Comprehensive insights into your business" />
+
+      {/* Empty state when user has no data */}
+      {hasNoData && (
+        <div className="text-center py-20">
+          <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+            <BarChart3 className="w-7 h-7 text-stone-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-1">
+            No data to analyze yet
+          </h3>
+          <p className="text-xs text-stone-400 dark:text-stone-500 max-w-sm mx-auto mb-5">
+            Add income streams, ideas, or mentorship sessions to see charts and trends here.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/dashboard/income" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-900 dark:bg-white/90 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white/70 transition-colors">
+              Add Income
+            </Link>
+            <Link href="/dashboard/ideas" className="px-4 py-2 rounded-lg text-xs font-medium bg-stone-100 dark:bg-white/[0.06] text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/[0.1] transition-colors">
+              Add Ideas
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards */}
       {isLoading ? (
@@ -122,8 +160,8 @@ export default function AnalyticsPage() {
             <CardSkeleton key={i} />
           ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      ) : !hasNoData ? (
+        <motion.div variants={container} initial="initial" animate="enter" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           <StatCard
             label="Monthly Revenue"
             value={`$${totalRevenue.toLocaleString()}`}
@@ -160,195 +198,201 @@ export default function AnalyticsPage() {
             detail={`${Object.keys(revenueByCategory).length} categories`}
             icon={Target}
           />
-        </div>
-      )}
+        </motion.div>
+      ) : null}
 
-      {/* Charts Row 1: Revenue */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Revenue by Category
-          </h3>
-          {isLoading ? (
-            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-          ) : revenueCategoryEntries.length > 0 ? (
-            <DoughnutChart
-              labels={revenueCategoryEntries.map((entry) => entry.label)}
-              data={revenueCategoryEntries.map((entry) => entry.value)}
-            />
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
-        </div>
+      {/* Charts + Tables — only show when there's data */}
+      {!isLoading && !hasNoData && (<>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Revenue by Category
+            </h3>
+            {isLoading ? (
+              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+            ) : revenueCategoryEntries.length > 0 ? (
+              <DoughnutChart
+                labels={revenueCategoryEntries.map((entry) => entry.label)}
+                data={revenueCategoryEntries.map((entry) => entry.value)}
+              />
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
 
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Revenue Projection (6 months)
-          </h3>
-          {isLoading ? (
-            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-          ) : revenueProjection.datasets.length > 0 && totalRevenue > 0 ? (
-            <LineChart
-              labels={revenueProjection.labels}
-              datasets={revenueProjection.datasets}
-            />
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
-        </div>
-      </div>
-
-      {/* Charts Row 2: Ideas Pipeline + Revenue Efficiency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Ideas Pipeline Funnel
-          </h3>
-          {isLoading ? (
-            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-          ) : ideas && ideas.length > 0 ? (
-            <BarChart
-              labels={STAGES_ORDER.map((s) => stageLabel[s])}
-              data={STAGES_ORDER.map((s) => ideasByStage[s] ?? 0)}
-              label="Ideas"
-              horizontal
-            />
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Revenue Projection (6 months)
+            </h3>
+            {isLoading ? (
+              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+            ) : revenueProjection.datasets.length > 0 && totalRevenue > 0 ? (
+              <LineChart
+                labels={revenueProjection.labels}
+                datasets={revenueProjection.datasets}
+              />
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Revenue per Hour ($/hr)
-          </h3>
-          {isLoading ? (
-            <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-          ) : revenueEfficiency.labels.length > 0 ? (
-            <BarChart
-              labels={revenueEfficiency.labels}
-              data={revenueEfficiency.data}
-              label="$/hr"
-            />
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
-        </div>
-      </div>
+        {/* Charts Row 2: Ideas Pipeline + Revenue Efficiency */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Ideas Pipeline Funnel
+            </h3>
+            {isLoading ? (
+              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+            ) : ideas && ideas.length > 0 ? (
+              <BarChart
+                labels={STAGES_ORDER.map((s) => stageLabel[s])}
+                data={STAGES_ORDER.map((s) => ideasByStage[s] ?? 0)}
+                label="Ideas"
+                horizontal
+              />
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
 
-      {/* Detail Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Top Revenue Streams
-          </h3>
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : topStreams.length > 0 ? (
-            <div className="space-y-2">
-              {topStreams.map((stream, i) => (
-                <div
-                  key={stream._id}
-                  className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-medium text-stone-400 w-5 tabular-nums">
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
-                      {stream.name}
-                    </span>
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Revenue per Hour ($/hr)
+            </h3>
+            {isLoading ? (
+              <div className="h-[220px] bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+            ) : revenueEfficiency.labels.length > 0 ? (
+              <BarChart
+                labels={revenueEfficiency.labels}
+                data={revenueEfficiency.data}
+                label="$/hr"
+              />
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
+        </div>
+
+        {/* Detail Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Top Revenue Streams
+            </h3>
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : topStreams.length > 0 ? (
+              <div className="space-y-2">
+                {topStreams.map((stream, i) => (
+                  <div
+                    key={stream._id}
+                    className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-xs font-medium text-stone-400 w-5 tabular-nums">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
+                        {stream.name}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-stone-400">
+                        {stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%
+                      </span>
+                      <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums block">
+                        ${stream.monthlyRevenue.toLocaleString()}
+                      </span>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
+                        ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs text-stone-400">
-                      {stream.growthRate > 0 ? "+" : ""}{stream.growthRate}%
-                    </span>
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-100 tabular-nums block">
-                      ${stream.monthlyRevenue.toLocaleString()}
-                    </span>
-                    <span className="text-[11px] text-stone-500 dark:text-stone-400 tabular-nums">
-                      ~${(stream.monthlyRevenue / WEEKS_PER_MONTH).toFixed(2)}/wk
-                    </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+              Mentorship Overview
+            </h3>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : sessions && sessions.length > 0 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Giving</p>
+                    <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+                      {sessions.filter((s) => s.sessionType === "giving").length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Receiving</p>
+                    <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+                      {sessions.filter((s) => s.sessionType === "receiving").length}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
-        </div>
-
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-5">
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
-            Mentorship Overview
-          </h3>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 bg-stone-100 dark:bg-stone-800 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : sessions && sessions.length > 0 ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Giving</p>
-                  <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
-                    {sessions.filter((s) => s.sessionType === "giving").length}
+                  <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
+                    Frequent Mentors
                   </p>
+                  <div className="flex flex-wrap gap-1">
+                    {[...new Set(sessions.map((s) => s.mentorName))].slice(0, 6).map((name) => (
+                      <Badge key={name} variant="default">
+                        {name}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-0.5">Receiving</p>
-                  <p className="text-lg font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
-                    {sessions.filter((s) => s.sessionType === "receiving").length}
+                  <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
+                    Common Topics
                   </p>
+                  <div className="flex flex-wrap gap-1">
+                    {(() => {
+                      const topicCounts: Record<string, number> = {};
+                      sessions.forEach((s) =>
+                        s.topics.forEach((t) => {
+                          topicCounts[t] = (topicCounts[t] || 0) + 1;
+                        })
+                      );
+                      return Object.entries(topicCounts)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 8)
+                        .map(([topic]) => (
+                          <Badge key={topic} variant="info">
+                            {topic}
+                          </Badge>
+                        ));
+                    })()}
+                  </div>
                 </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
-                  Frequent Mentors
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {[...new Set(sessions.map((s) => s.mentorName))].slice(0, 6).map((name) => (
-                    <Badge key={name} variant="default">
-                      {name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
-                  Common Topics
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {(() => {
-                    const topicCounts: Record<string, number> = {};
-                    sessions.forEach((s) =>
-                      s.topics.forEach((t) => {
-                        topicCounts[t] = (topicCounts[t] || 0) + 1;
-                      })
-                    );
-                    return Object.entries(topicCounts)
-                      .sort(([, a], [, b]) => b - a)
-                      .slice(0, 8)
-                      .map(([topic]) => (
-                        <Badge key={topic} variant="info">
-                          {topic}
-                        </Badge>
-                      ));
-                  })()}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-stone-400 py-4 text-center">No data</p>
-          )}
+            ) : (
+              <p className="text-sm text-stone-400 py-4 text-center">No data</p>
+            )}
+          </div>
         </div>
-      </div>
+      </>)}
     </>
   );
+}
+
+export default function AnalyticsPage() {
+  return <AnalyticsContent />;
 }

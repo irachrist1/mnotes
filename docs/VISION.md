@@ -148,7 +148,15 @@ MNotes doesn't compete with other AI tools. It makes them all better by giving t
 | Chat | Multi-thread conversations, intent detection + ConfirmationCard for AI-proposed data mutations, LazyMarkdownMessage rendering, optimistic UI, scroll pinning |
 | Crons | Daily cleanup for expired insights and prompt cache |
 
-**What does not exist yet:** File ingestion (drag/drop, OCR, classification), proactive behavior (weekly digests/briefings/nudges), context API/MCP integration, native mobile app, persistent assistant avatar/identity across the UI, onboarding API key setup, chat-first empty-dashboard experience.
+**What does not exist yet:** File ingestion (drag/drop, OCR, classification), proactive behavior (briefings/nudges beyond weekly digest), context API/MCP integration, native mobile app, persistent assistant avatar/identity across the UI, calendar integration for actionable recommendations, research agent integration.
+
+**Recently completed (Feb 14 2026):**
+- Onboarding API key setup phase — fixed race condition where soul file creation triggered premature redirect before setup screen could render
+- Dashboard flicker fix — replaced DashboardShell loading state with minimal full-screen loader to prevent sidebar flash on redirect to onboarding
+- Ideas page "failed to save" fix — removed overly strict `validateShortText` on optional fields (category, timeToMarket, marketSize, sourceOfInspiration)
+- Chat commitIntent hardening — added `safeEnum` and `safeNumber` helpers to gracefully handle AI-generated data that doesn't match schema union types
+- Chat-first empty dashboard — when dashboard has zero data, shows personalized welcome with soul-file-based goals and QuickActionCards that open chat with pre-filled prompts
+- Feedback collection mechanism — `feedback` table + `FeedbackWidget` component (bug/feature/general) accessible from all dashboard pages
 
 ---
 
@@ -176,13 +184,60 @@ MNotes is now something you can talk to. The assistant learns who you are via a 
 
 **V1 launch checklist (remaining for Milestone 1):**
 
-1. **API key setup in onboarding** — After soul file confirmation, show a setup step for provider + model + API key (with skip option). Eliminates the dead-AI cliff where users land on a dashboard with no working AI because they haven't discovered Settings. Implementation: phase state machine in `src/app/onboarding/page.tsx` (`"chat" | "setup" | "complete"`), shared model constants in `src/lib/aiModels.ts`.
+1. ~~**API key setup in onboarding**~~ ✅ Fixed Feb 14 — race condition resolved by setting phase to "setup" before `initSoul` call.
 
-2. **Chat-first post-onboarding landing** — When a freshly onboarded user arrives at the dashboard with zero domain data, auto-open the chat panel and show suggested prompt chips ("I just closed a deal", "I have a new idea", "Log a mentor session"). Implementation: `convex/dashboard.ts` `isEmpty` query (three indexed `.first()` lookups), `initialChatOpen` prop passed from `client-layout.tsx` → `DashboardShell`, suggestion chips in `ChatPanel` empty state.
+2. ~~**Chat-first post-onboarding landing**~~ ✅ Implemented Feb 14 — empty dashboard now shows personalized welcome with soul-file goals and QuickActionCards that dispatch `mnotes:open-chat` events to pre-fill the chat.
 
 3. **Weekly AI digest** — Convex cron (Sunday 8:00 UTC) generates a personalized digest per user using their own API key. Covers revenue summary, stalled ideas, mentorship status, goal progress from soul file. Saved as high-priority `aiInsight` with type `"weekly-digest"`. Shown as a prominent card on the dashboard home page. Implementation: `convex/ai/weeklyDigest.ts` (`runAll` + `generateForUser` internal actions), `aiInsights.createDigestInternal` mutation, `aiInsights.getUnreadDigests` query.
 
 - Fully deprecate the standalone AI Insights page once briefings/nudges replace it (deferred to after V1)
+
+### Planned Features (Priority Order)
+
+#### P1: Actionable Recommended Actions ✅ SHIPPED (Feb 14)
+**Goal:** Transform static AI recommendations into executable workflows.
+
+- ✅ New `actionableActions` table with full lifecycle: proposed → accepted → in-progress → completed
+- ✅ `/dashboard/actions` page with filter tabs, status transitions, priority badges, due dates
+- ✅ AI can propose creating actions via chat intents (added to `WRITABLE_TABLES` + `commitIntent`)
+- ✅ "Create Actions" button on AI insight detail panel — converts insight action items into trackable tasks
+- ✅ "Actions" nav item in sidebar
+- Future: Google Calendar integration for "Push to Calendar" button (OAuth2, `calendarIntegrations` table)
+
+#### P2: Research Integration for Recommendations ✅ SHIPPED (Feb 14)
+**Goal:** When a user commits to an action, trigger a research agent that finds relevant examples, best practices, and templates.
+
+- ✅ `convex/ai/research.ts` — research action using user's AI provider with research-focused prompt
+- ✅ `src/components/dashboard/ResearchPanel.tsx` — expandable research results panel with "Draft from findings" button
+- ✅ Integrated into `/dashboard/actions` page for accepted/in-progress actions
+- ✅ "Draft from findings" opens chat with research context pre-filled
+- Future: Perplexity API integration for real web search (needs `perplexityApiKey` in userSettings)
+
+#### P3: Reactive AI Notifications ✅ SHIPPED (Feb 14)
+**Goal:** AI proactively reaches out based on detected patterns and user goals.
+
+- ✅ `notifications` table with types: goal-check-in, stale-idea, overdue-action, pattern-detected, milestone
+- ✅ `convex/notifications.ts` — full CRUD + internal mutations for cron
+- ✅ `convex/ai/dailyNotifications.ts` — daily cron (7:00 UTC) with rule-based detection:
+  - Stale ideas (>14 days in same stage)
+  - Overdue mentorship action items
+  - Revenue milestones ($1k, $5k, $10k, etc.)
+  - No mentorship sessions in 7+ days
+- ✅ `NotificationBell` component in sidebar with unread count, color-coded notifications, mark-read/dismiss
+- ✅ Daily cron registered in `convex/crons.ts`
+- Future: AI-powered goal check-ins (needs soul file goal parsing), push notifications
+
+#### P4: Feedback & Usage Analytics ✅ SHIPPED (Feb 14)
+**Goal:** Understand how users actually use the app vs intended use.
+
+- ✅ Feedback widget implemented — bug/feature/general feedback from any dashboard page
+- ✅ PostHog analytics wrapper (`src/lib/analytics.ts`) — auto-initializes when user authenticates, page view tracking on route changes
+- ✅ `track()` and `trackPageView()` helpers for event tracking across the app
+- To activate: `npm install posthog-js` + set `NEXT_PUBLIC_POSTHOG_KEY` env var
+- Discovery: Users are using MNotes as a money management tracker and Trello-style project board — consider leaning into these use cases
+
+> **📋 Full implementation specs for all planned features are in [`docs/IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md).**
+> That document is designed for **multiple agents to work in parallel** — it defines 5 independent workstreams (A-E) with exact file ownership, schema additions, interface contracts, and verification steps.
 
 **You get:** An assistant you can talk to that knows who you are, can write directly into your income/ideas/mentorship data, guides you from onboarding to first value without friction, and proactively reaches out weekly with business insights.
 

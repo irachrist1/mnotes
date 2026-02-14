@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Lightbulb, Plus, Pencil, Trash2, Cpu, Wrench } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
+import { track } from "@/lib/analytics";
 
 type Stage = "raw-thought" | "researching" | "validating" | "developing" | "testing" | "launched";
 type Revenue = "low" | "medium" | "high" | "very-high";
@@ -51,7 +52,7 @@ const emptyForm: IdeaForm = {
   nextSteps: "", tags: "",
 };
 
-export default function IdeasPage() {
+export function IdeasContent() {
   const ideas = useQuery(api.ideas.list);
   const createIdea = useMutation(api.ideas.create);
   const updateIdea = useMutation(api.ideas.update);
@@ -84,8 +85,7 @@ export default function IdeasPage() {
     if (!form.title.trim()) { toast.error("Title is required"); return; }
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      const data = {
+      const baseData = {
         title: form.title.trim(), description: form.description.trim(),
         category: form.category.trim() || "General", stage: form.stage,
         potentialRevenue: form.potentialRevenue,
@@ -97,10 +97,16 @@ export default function IdeasPage() {
         sourceOfInspiration: form.sourceOfInspiration,
         nextSteps: form.nextSteps.split("\n").map((s) => s.trim()).filter(Boolean),
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
-        lastUpdated: now,
       };
-      if (editingId) { await updateIdea({ id: editingId, ...data }); toast.success("Idea updated"); }
-      else { await createIdea({ ...data }); toast.success("Idea created"); }
+      if (editingId) {
+        await updateIdea({ id: editingId, ...baseData });
+        track("idea_updated", { ideaId: editingId });
+        toast.success("Idea updated");
+      } else {
+        await createIdea({ ...baseData });
+        track("idea_created");
+        toast.success("Idea created");
+      }
       setShowForm(false);
     } catch { toast.error("Failed to save"); } finally { setSaving(false); }
   };
@@ -252,4 +258,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+export default function IdeasPage() {
+  return <IdeasContent />;
 }

@@ -68,12 +68,8 @@ export const create = mutation({
     const userId = await getUserId(ctx);
     validateShortText(args.title, "Title");
     validateMediumText(args.description, "Description");
-    validateShortText(args.category, "Category");
     validateNumber(args.implementationComplexity, "Implementation complexity", 1, 10);
-    validateShortText(args.timeToMarket, "Time to market");
     validateArray(args.requiredSkills, "Required skills");
-    validateShortText(args.marketSize, "Market size");
-    validateShortText(args.sourceOfInspiration, "Source of inspiration");
     validateArray(args.nextSteps, "Next steps");
     validateArray(args.tags, "Tags");
     const now = new Date().toISOString();

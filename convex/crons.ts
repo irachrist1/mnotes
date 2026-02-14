@@ -24,4 +24,11 @@ crons.weekly(
   {}
 );
 
+crons.daily(
+  "daily-ai-notifications",
+  { hourUTC: 7, minuteUTC: 0 },
+  internal.ai.dailyNotifications.runAll,
+  {}
+);
+
 export default crons;

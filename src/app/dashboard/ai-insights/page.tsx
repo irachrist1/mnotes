@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import type { Id } from "@convex/_generated/dataModel";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { getSaveButtonLabel } from "./saveButtonLabel";
 
 type InsightType = "all" | "revenue" | "idea" | "mentorship";
@@ -56,7 +56,8 @@ function timeAgo(timestamp: number): string {
   });
 }
 
-export default function AIInsightsPage() {
+export function AIInsightsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const streams = useQuery(api.incomeStreams.list);
   const ideas = useQuery(api.ideas.list);
@@ -76,6 +77,7 @@ export default function AIInsightsPage() {
   const togglePinSavedInsight = useMutation(api.savedInsights.togglePin);
   const removeSavedInsight = useMutation(api.savedInsights.remove);
   const touchSavedInsightUsage = useMutation(api.savedInsights.touchUsage);
+  const createActionsFromInsight = useMutation(api.actionableActions.createFromInsight);
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<InsightsTab>("generated");
@@ -494,11 +496,10 @@ export default function AIInsightsPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-            }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === tab.key
+              ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
+              : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
+              }`}
           >
             {tab.label}
           </button>
@@ -588,11 +589,10 @@ export default function AIInsightsPage() {
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                typeFilter === t
-                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
-                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-              }`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${typeFilter === t
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
+                }`}
             >
               {t === "all" ? "All" : typeLabel(t)}
             </button>
@@ -604,11 +604,10 @@ export default function AIInsightsPage() {
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  statusFilter === s
-                    ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
-                    : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-                }`}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${statusFilter === s
+                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
+                  }`}
               >
                 {s === "active" ? "Active" : s === "all" ? "All" : "Dismissed"}
               </button>
@@ -654,11 +653,10 @@ export default function AIInsightsPage() {
               return (
                 <div
                   key={insight._id}
-                  className={`card p-5 cursor-pointer card-hover ${
-                    insight.status === "unread"
-                      ? "ring-1 ring-purple-200 dark:ring-purple-800/50"
-                      : ""
-                  }`}
+                  className={`card p-5 cursor-pointer card-hover ${insight.status === "unread"
+                    ? "ring-1 ring-purple-200 dark:ring-purple-800/50"
+                    : ""
+                    }`}
                   onClick={() => openDetail(insight._id)}
                 >
                   <div className="flex items-start gap-3">
@@ -677,11 +675,10 @@ export default function AIInsightsPage() {
                               void handleSave(insight._id);
                             }}
                             disabled={isSaved || isSaving}
-                            className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                              isSaved
-                                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 cursor-default"
-                                : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800"
-                            } disabled:opacity-70`}
+                            className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${isSaved
+                              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 cursor-default"
+                              : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800"
+                              } disabled:opacity-70`}
                             title="Save insight"
                           >
                             {getSaveButtonLabel({
@@ -775,11 +772,10 @@ export default function AIInsightsPage() {
                             e.stopPropagation();
                             void handleToggleSavedPin(insight._id, insight.pinned);
                           }}
-                          className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                            insight.pinned
-                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                              : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800"
-                          }`}
+                          className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${insight.pinned
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                            : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800"
+                            }`}
                         >
                           {insight.pinned ? "Pinned" : "Pin"}
                         </button>
@@ -847,11 +843,10 @@ export default function AIInsightsPage() {
                   <button
                     onClick={() => void handleSave(selectedInsight._id)}
                     disabled={isSaved || isSaving}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      isSaved
-                        ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 cursor-default"
-                        : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
-                    } disabled:opacity-70`}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${isSaved
+                      ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 cursor-default"
+                      : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
+                      } disabled:opacity-70`}
                   >
                     <BookmarkPlus className="w-3.5 h-3.5" />
                     {getSaveButtonLabel({
@@ -924,6 +919,29 @@ export default function AIInsightsPage() {
                     </li>
                   ))}
                 </ul>
+                <button
+                  onClick={async () => {
+                    try {
+                      const result = await createActionsFromInsight({ insightId: selectedInsight._id });
+                      setSelectedInsightId(null);
+                      toast.success(
+                        `Created ${result.created} action${result.created !== 1 ? "s" : ""}`,
+                        {
+                          action: {
+                            label: "View Actions",
+                            onClick: () => router.push("/dashboard/actions"),
+                          },
+                        }
+                      );
+                    } catch {
+                      toast.error("Failed to create actions");
+                    }
+                  }}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Create Actions from These
+                </button>
               </div>
             )}
 
@@ -961,11 +979,10 @@ export default function AIInsightsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void handleToggleSavedPin(selectedSavedInsight._id, selectedSavedInsight.pinned)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  selectedSavedInsight.pinned
-                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                    : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedSavedInsight.pinned
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                  : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
+                  }`}
               >
                 {selectedSavedInsight.pinned ? "Unpin" : "Pin"}
               </button>
@@ -1045,4 +1062,8 @@ export default function AIInsightsPage() {
       </SlideOver>
     </>
   );
+}
+
+export default function AIInsightsPage() {
+  return <AIInsightsContent />;
 }

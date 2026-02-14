@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ConvexGuard } from "@/components/ConvexGuard";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
+import { identifyUser, trackPageView } from "@/lib/analytics";
 
 function DashboardConnectedLayout({
   children,
@@ -14,10 +15,13 @@ function DashboardConnectedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const claimLegacyData = useMutation(api.users.claimLegacyData);
   const hasAttemptedClaim = useRef(false);
+  const analyticsInitRef = useRef(false);
   const soulFile = useQuery(api.soulFile.get, {});
   const dashboardEmpty = useQuery(api.dashboard.isEmpty, {});
+  const user = useQuery(api.users.me);
 
   useEffect(() => {
     if (hasAttemptedClaim.current) return;
@@ -27,6 +31,18 @@ function DashboardConnectedLayout({
     });
   }, [claimLegacyData]);
 
+  // Identify user for analytics once known
+  useEffect(() => {
+    if (!user || analyticsInitRef.current) return;
+    analyticsInitRef.current = true;
+    identifyUser(user._id);
+  }, [user]);
+
+  // Track page views
+  useEffect(() => {
+    if (pathname) trackPageView(pathname);
+  }, [pathname]);
+
   // Redirect to onboarding if no soul file yet (but wait for query to load)
   useEffect(() => {
     if (soulFile === null) {
@@ -34,20 +50,13 @@ function DashboardConnectedLayout({
     }
   }, [soulFile, router]);
 
-  // Show nothing while checking soul file (avoids flash)
-  if (soulFile === undefined) {
+  // Show minimal loading screen while checking soul file (no shell = no flicker)
+  if (soulFile === undefined || soulFile === null) {
     return (
-      <DashboardShell>
-        <div className="flex items-center justify-center py-32">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600" />
-        </div>
-      </DashboardShell>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'rgb(var(--color-background))' }}>
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 animate-pulse" />
+      </div>
     );
-  }
-
-  if (soulFile === null) {
-    // Redirecting to onboarding
-    return null;
   }
 
   // Auto-open chat for freshly onboarded users with no data

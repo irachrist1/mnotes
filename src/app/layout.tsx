@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import PostHogProvider from "@/components/PostHogProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,11 +32,13 @@ export default function RootLayout({
   const hasConvexUrl = Boolean(convexUrl && !convexUrl.includes("placeholder"));
 
   const inner = (
-    <ConvexClientProvider>
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-        {children}
-      </div>
-    </ConvexClientProvider>
+    <PostHogProvider>
+      <ConvexClientProvider>
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+          {children}
+        </div>
+      </ConvexClientProvider>
+    </PostHogProvider>
   );
 
   return (

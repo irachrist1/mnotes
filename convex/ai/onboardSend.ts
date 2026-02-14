@@ -7,6 +7,7 @@ import {
   parseSoulFileFromResponse,
   summarizeLearnedInfo,
 } from "./onboardPrompt";
+import { captureAiGeneration } from "../lib/posthog";
 
 /**
  * Default model for onboarding. Reads from env var ONBOARD_MODEL,
@@ -71,12 +72,22 @@ export const send = action({
     ];
 
     // Call AI (model configurable via ONBOARD_MODEL env var)
+    const t0 = Date.now();
+    const onboardModel = getOnboardModel();
     const aiResponse = await callOpenRouter(
       systemPrompt,
       messages,
-      getOnboardModel(),
+      onboardModel,
       platformKey
     );
+    captureAiGeneration({
+      distinctId: "onboarding-anonymous",
+      model: onboardModel,
+      provider: "openrouter",
+      feature: "onboarding",
+      latencySeconds: (Date.now() - t0) / 1000,
+      output: aiResponse,
+    });
 
     // Parse for soul file
     const { reply, soulFileContent, assistantName } =
@@ -107,6 +118,8 @@ export const generateGreeting = action({
     const systemPrompt = buildOnboardingPrompt(null, null);
 
     // Ask the AI to generate its opening message
+    const t0 = Date.now();
+    const greetModel = getOnboardModel();
     const aiResponse = await callOpenRouter(
       systemPrompt,
       [
@@ -116,9 +129,17 @@ export const generateGreeting = action({
             "[SYSTEM: The user just arrived at the onboarding page. Generate your opening message to greet them and start getting to know them. This is your first message to them ever.]",
         },
       ],
-      getOnboardModel(),
+      greetModel,
       platformKey
     );
+    captureAiGeneration({
+      distinctId: "onboarding-anonymous",
+      model: greetModel,
+      provider: "openrouter",
+      feature: "onboarding",
+      latencySeconds: (Date.now() - t0) / 1000,
+      output: aiResponse,
+    });
 
     // Clean up — remove any accidental intent/soulfile blocks from greeting
     const cleanReply = aiResponse

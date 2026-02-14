@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { Toaster } from "sonner";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 const Sidebar = dynamic(
   () => import("@/components/layout/Sidebar").then((m) => m.Sidebar),
@@ -85,8 +87,10 @@ export function DashboardShell({
   initialChatOpen?: boolean;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const chatAutoOpened = useRef(false);
   const convexAvailable = useConvexAvailable();
+  const pathname = usePathname();
 
   // Auto-open chat for freshly onboarded users (initialChatOpen resolves async)
   useEffect(() => {
@@ -95,6 +99,24 @@ export function DashboardShell({
       setChatOpen(true);
     }
   }, [initialChatOpen]);
+
+  // Close chat panel when navigating to a different page
+  useEffect(() => {
+    setChatOpen(false);
+  }, [pathname]);
+
+  // Listen for "mnotes:open-chat" custom events from QuickActionCards
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ prompt: string }>).detail;
+      if (detail?.prompt) {
+        setPendingPrompt(detail.prompt);
+        setChatOpen(true);
+      }
+    };
+    window.addEventListener("mnotes:open-chat", handler);
+    return () => window.removeEventListener("mnotes:open-chat", handler);
+  }, []);
 
   // Lock page scroll immediately when chat opens (even while ChatPanel chunk is still loading).
   useEffect(() => {
@@ -150,13 +172,25 @@ export function DashboardShell({
       {convexAvailable && <Sidebar />}
       {convexAvailable && <CommandPalette />}
       <div className="relative lg:pl-16">
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
+        {convexAvailable && (
+          <div className="flex items-center justify-end max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-0">
+            <NotificationBell />
+          </div>
+        )}
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 animate-fade-in">
           {children}
         </main>
       </div>
 
       {/* Chat */}
-      {convexAvailable && <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />}
+      {convexAvailable && (
+        <ChatPanel
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          pendingPrompt={pendingPrompt}
+          onPromptConsumed={() => setPendingPrompt(null)}
+        />
+      )}
       {/* Never render the floating button while open: mobile uses full-screen, and panel has its own close button. */}
       {convexAvailable && !chatOpen && (
         <div onPointerDown={preloadChat} onMouseEnter={preloadChat}>

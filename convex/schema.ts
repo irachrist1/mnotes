@@ -223,4 +223,77 @@ export default defineSchema({
   }).index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_thread_created", ["threadId", "createdAt"]),
+
+  feedback: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("bug"),
+      v.literal("feature"),
+      v.literal("general")
+    ),
+    message: v.string(),
+    page: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_creation", ["createdAt"]),
+
+  notifications: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("goal-check-in"),
+      v.literal("stale-idea"),
+      v.literal("overdue-action"),
+      v.literal("pattern-detected"),
+      v.literal("milestone")
+    ),
+    title: v.string(),
+    body: v.string(),
+    actionUrl: v.optional(v.string()),
+    read: v.boolean(),
+    dismissed: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_user_read", ["userId", "read"])
+    .index("by_creation", ["createdAt"]),
+
+  tasks: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    note: v.optional(v.string()),
+    sourceType: v.union(
+      v.literal("manual"),
+      v.literal("ai-insight"),
+      v.literal("chat")
+    ),
+    sourceId: v.optional(v.string()),
+    dueDate: v.optional(v.string()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    done: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"]),
+
+  actionableActions: defineTable({
+    userId: v.string(),
+    sourceInsightId: v.optional(v.id("aiInsights")),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(
+      v.literal("proposed"),
+      v.literal("accepted"),
+      v.literal("in-progress"),
+      v.literal("completed"),
+      v.literal("dismissed")
+    ),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    dueDate: v.optional(v.string()),
+    calendarEventId: v.optional(v.string()),
+    aiNotes: v.optional(v.string()),
+    researchResults: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_user_created", ["userId", "createdAt"]),
 });
