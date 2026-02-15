@@ -153,6 +153,8 @@ async function runFromTaskState(
   let stepIndex = 0;
   let waitingForEventId: string | undefined;
   let waitingForKind: AgentState["waitingForKind"] | undefined;
+  let approvedTools: Record<string, true> = {};
+  let deniedTools: Record<string, true> = {};
   let resumeClarification: string | null = null;
 
   if (opts.resume) {
@@ -165,6 +167,8 @@ async function runFromTaskState(
     stepIndex = state.stepIndex;
     waitingForEventId = state.waitingForEventId;
     waitingForKind = state.waitingForKind;
+    approvedTools = state.approvedTools ?? {};
+    deniedTools = state.deniedTools ?? {};
 
     if (waitingForEventId) {
       const found = await ctx.runQuery(internal.taskEvents.getInternal, {
@@ -199,6 +203,16 @@ async function runFromTaskState(
         const params = found.approvalParams ?? "";
         resumeClarification = `## Approval Decision\nAction: ${action}\nApproved: ${found.approved ? "yes" : "no"}\nParams: ${params || "(none)"}`;
 
+        if (action && action !== "(unknown)") {
+          if (found.approved) {
+            approvedTools[action] = true;
+            delete deniedTools[action];
+          } else {
+            deniedTools[action] = true;
+            delete approvedTools[action];
+          }
+        }
+
         void captureEvent({
           distinctId: args.userId,
           event: "agent_approval_responded",
@@ -220,13 +234,13 @@ async function runFromTaskState(
       await ctx.runMutation(internal.tasks.patchAgentInternal, {
         userId: args.userId,
         id: args.taskId,
-        agentState: JSON.stringify({ v: 1, stepIndex, planSteps } satisfies AgentState),
+        agentState: JSON.stringify({ v: 1, stepIndex, planSteps, approvedTools, deniedTools } satisfies AgentState),
       });
     }
   }
 
-  if (!opts.resume) {
-    // PLAN
+  // PLAN (run if missing, including after resuming from a planning pause).
+  if (planSteps.length === 0) {
     await ctx.runMutation(internal.tasks.patchAgentInternal, {
       userId: args.userId,
       id: args.taskId,
@@ -234,11 +248,11 @@ async function runFromTaskState(
       agentPhase: "Planning",
     });
 
-    const planPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\nYou MUST first call read_soul_file, list_tasks, and search_insights (q=task title) if relevant.\n\nReturn ONLY valid JSON: {\n  \"planSteps\": string[]\n}\nRules: 3-7 short user-facing steps.`;
+    const planPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}You MUST first call read_soul_file, list_tasks, and search_insights (q=task title) if relevant.\n\nReturn ONLY valid JSON: {\n  \"planSteps\": string[]\n}\nRules: 3-7 short user-facing steps.`;
 
     const t0 = Date.now();
-    const planText = provider === "anthropic"
-      ? (await runClaudeToolLoop({
+    const planRun = provider === "anthropic"
+      ? await runClaudeToolLoop({
         ctx,
         userId: args.userId,
         taskId: args.taskId,
@@ -249,9 +263,9 @@ async function runFromTaskState(
         maxTokens: 900,
         temperature: 0.2,
         toolCallBudget: 10,
-      })).text
+      })
       : provider === "openrouter"
-        ? (await runOpenRouterToolLoop({
+        ? await runOpenRouterToolLoop({
           ctx,
           userId: args.userId,
           taskId: args.taskId,
@@ -263,8 +277,8 @@ async function runFromTaskState(
           temperature: 0.2,
           toolCallBudget: 10,
           title: "MNotes Agent Tasks",
-        })).text
-        : (await runFallbackCall({
+        })
+        : await runFallbackCall({
           ctx,
           userId: args.userId,
           taskId: args.taskId,
@@ -275,7 +289,9 @@ async function runFromTaskState(
           userPrompt: planPrompt,
           temperature: 0.2,
           maxTokens: 900,
-        })).text;
+        });
+
+    const planText = planRun.text;
 
     captureAiGeneration({
       distinctId: args.userId,
@@ -286,6 +302,37 @@ async function runFromTaskState(
       input: [{ role: "system", content: baseSystem }, { role: "user", content: planPrompt }],
       output: planText,
     });
+
+    if ((planRun as any).paused && (planRun as any).waitingForEventId) {
+      const paused = planRun as any;
+      const phase = paused.pauseReason === "approval" ? "Waiting for approval" : "Waiting for input";
+      await ctx.runMutation(internal.tasks.patchAgentInternal, {
+        userId: args.userId,
+        id: args.taskId,
+        agentPhase: phase,
+        agentState: JSON.stringify({
+          v: 1,
+          stepIndex: 0,
+          planSteps: [],
+          waitingForEventId: paused.waitingForEventId,
+          waitingForKind: paused.pauseReason === "approval" ? "approval" : "question",
+          approvedTools,
+          deniedTools,
+        } satisfies AgentState),
+      });
+
+      await ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "status",
+        title: phase,
+        detail: paused.pauseReason === "approval"
+          ? "Approve or deny to continue."
+          : "Answer the question to resume.",
+        progress: 12,
+      });
+      return;
+    }
 
     const parsedPlan = parsePlan(planText);
     planSteps = parsedPlan.length ? parsedPlan : ["Gather context", "Draft output", "Review and deliver"];
@@ -319,7 +366,7 @@ async function runFromTaskState(
       id: args.taskId,
       agentProgress: pct,
       agentPhase: `Step ${i + 1}/${total}: ${step}`,
-      agentState: JSON.stringify({ v: 1, stepIndex: i, planSteps } satisfies AgentState),
+      agentState: JSON.stringify({ v: 1, stepIndex: i, planSteps, approvedTools, deniedTools } satisfies AgentState),
     });
 
     await ctx.runMutation(internal.taskEvents.addInternal, {
@@ -400,6 +447,8 @@ async function runFromTaskState(
           planSteps,
           waitingForEventId: stepRun.waitingForEventId,
           waitingForKind: stepRun.pauseReason === "approval" ? "approval" : "question",
+          approvedTools,
+          deniedTools,
         } satisfies AgentState),
       });
 
@@ -437,7 +486,7 @@ async function runFromTaskState(
       id: args.taskId,
       agentResult: appended,
       agentSummary: stepSummary || undefined,
-      agentState: JSON.stringify({ v: 1, stepIndex: i + 1, planSteps } satisfies AgentState),
+      agentState: JSON.stringify({ v: 1, stepIndex: i + 1, planSteps, approvedTools, deniedTools } satisfies AgentState),
     });
 
     await ctx.runMutation(internal.taskEvents.addInternal, {
@@ -469,11 +518,11 @@ async function runFromTaskState(
   const current = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
   const draft = (current?.agentResult ?? "").trim();
 
-  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${draft.slice(0, 12000) || "(none)"}\n\nReturn ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
+  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${draft.slice(0, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
 
   const tFinal0 = Date.now();
-  const finalText = provider === "anthropic"
-    ? (await runClaudeToolLoop({
+  const finalRun = provider === "anthropic"
+    ? await runClaudeToolLoop({
       ctx,
       userId: args.userId,
       taskId: args.taskId,
@@ -484,9 +533,9 @@ async function runFromTaskState(
       maxTokens: 1600,
       temperature: 0.2,
       toolCallBudget: 4,
-    })).text
+    })
     : provider === "openrouter"
-      ? (await runOpenRouterToolLoop({
+      ? await runOpenRouterToolLoop({
         ctx,
         userId: args.userId,
         taskId: args.taskId,
@@ -498,8 +547,8 @@ async function runFromTaskState(
         maxTokens: 1600,
         toolCallBudget: 6,
         title: "MNotes Agent Tasks",
-      })).text
-      : (await runFallbackCall({
+      })
+      : await runFallbackCall({
         ctx,
         userId: args.userId,
         taskId: args.taskId,
@@ -510,7 +559,9 @@ async function runFromTaskState(
         userPrompt: finalPrompt,
         temperature: 0.2,
         maxTokens: 1600,
-      })).text;
+      });
+
+  const finalText = finalRun.text;
 
   void captureAiGeneration({
     distinctId: args.userId,
@@ -521,6 +572,37 @@ async function runFromTaskState(
     input: [{ role: "system", content: baseSystem }, { role: "user", content: finalPrompt.slice(0, 4000) }],
     output: finalText.slice(0, 8000),
   });
+
+  if ((finalRun as any).paused && (finalRun as any).waitingForEventId) {
+    const paused = finalRun as any;
+    const phase = paused.pauseReason === "approval" ? "Waiting for approval" : "Waiting for input";
+    await ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentPhase: phase,
+      agentState: JSON.stringify({
+        v: 1,
+        stepIndex: planSteps.length,
+        planSteps,
+        waitingForEventId: paused.waitingForEventId,
+        waitingForKind: paused.pauseReason === "approval" ? "approval" : "question",
+        approvedTools,
+        deniedTools,
+      } satisfies AgentState),
+    });
+
+    await ctx.runMutation(internal.taskEvents.addInternal, {
+      userId: args.userId,
+      taskId: args.taskId,
+      kind: "status",
+      title: phase,
+      detail: paused.pauseReason === "approval"
+        ? "Approve or deny to continue."
+        : "Answer the question to resume.",
+      progress: 95,
+    });
+    return;
+  }
 
   const finalPayload = parseFinalPayload(finalText, draft);
 
@@ -885,6 +967,7 @@ Rules:
 - Prefer action over analysis.
 - If the task is ambiguous, call ask_user with a concise question and 2-6 options.
 - If you need to perform an irreversible or external action, call request_approval first.
+- For public web research, you may use web_search and read_url (these will require user approval per task).
 - For deliverables (docs/checklists/tables), prefer create_file instead of dumping huge text.
 - Return ONLY valid JSON when the user prompt demands JSON.
 - Produce outputs the user can use immediately (tables, checklists, structured docs when helpful).`;

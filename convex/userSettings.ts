@@ -1,7 +1,8 @@
 import { mutation, query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getUserId } from "./lib/auth";
-import { validateShortText, validateApiKey } from "./lib/validate";
+import { validateApiKey, validateShortText } from "./lib/validate";
+import { buildUserSettingsInsert, buildUserSettingsPatch } from "./userSettingsPatch";
 
 // SECURITY NOTE: API keys are stored in plaintext in Convex. For production,
 // consider using Convex environment variables or a secrets manager. Full
@@ -16,12 +17,15 @@ export const get = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     if (!settings) return null;
+
     // Mask API keys before sending to client. Only return whether they are set.
+    const MASK = "********";
     return {
       ...settings,
-      openrouterApiKey: settings.openrouterApiKey ? "••••••••" : undefined,
-      googleApiKey: settings.googleApiKey ? "••••••••" : undefined,
-      anthropicApiKey: settings.anthropicApiKey ? "••••••••" : undefined,
+      openrouterApiKey: settings.openrouterApiKey ? MASK : undefined,
+      googleApiKey: settings.googleApiKey ? MASK : undefined,
+      anthropicApiKey: settings.anthropicApiKey ? MASK : undefined,
+      searchApiKey: (settings as any).searchApiKey ? MASK : undefined,
     };
   },
 });
@@ -46,35 +50,51 @@ export const upsert = mutation({
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
     anthropicApiKey: v.optional(v.string()),
+    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"))),
+    searchApiKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     validateShortText(args.aiModel, "AI model");
     validateApiKey(args.openrouterApiKey);
     validateApiKey(args.googleApiKey);
-
     validateApiKey(args.anthropicApiKey);
+    validateApiKey(args.searchApiKey);
+
     const existing = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
-    const data = {
+    const now = Date.now();
+    if (existing) {
+      // Preserve existing API keys unless a new value was explicitly provided.
+      const patch = buildUserSettingsPatch({
+        aiProvider: args.aiProvider,
+        aiModel: args.aiModel,
+        openrouterApiKey: args.openrouterApiKey,
+        googleApiKey: args.googleApiKey,
+        anthropicApiKey: args.anthropicApiKey,
+        searchProvider: args.searchProvider,
+        searchApiKey: args.searchApiKey,
+        updatedAt: now,
+      });
+      await ctx.db.patch(existing._id, patch);
+      return existing._id;
+    }
+
+    const insert = buildUserSettingsInsert({
       userId,
       aiProvider: args.aiProvider,
       aiModel: args.aiModel,
       openrouterApiKey: args.openrouterApiKey,
       googleApiKey: args.googleApiKey,
       anthropicApiKey: args.anthropicApiKey,
-      updatedAt: Date.now(),
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, data);
-      return existing._id;
-    } else {
-      return await ctx.db.insert("userSettings", data);
-    }
+      searchProvider: args.searchProvider,
+      searchApiKey: args.searchApiKey,
+      updatedAt: now,
+    });
+    return await ctx.db.insert("userSettings", insert);
   },
 });
 

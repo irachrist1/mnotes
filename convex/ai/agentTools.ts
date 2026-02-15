@@ -2,6 +2,7 @@
 
 import { internal } from "../_generated/api";
 import { captureEvent } from "../lib/posthog";
+import { parseAgentState } from "./taskAgentParsing";
 
 type ToolSchema = Record<string, unknown>;
 
@@ -145,6 +146,34 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "web_search",
+      description:
+        "Search the web. Returns results or a readable search digest. Requires user approval the first time per task.",
+      input_schema: {
+        type: "object",
+        properties: {
+          q: { type: "string", description: "Search query." },
+          maxResults: { type: "number", description: "Max results (default 5)." },
+        },
+        required: ["q"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_url",
+      description:
+        "Fetch and extract the content of a URL as text/markdown. Requires user approval the first time per task.",
+      input_schema: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL starting with http:// or https://." },
+          maxChars: { type: "number", description: "Max characters to return (default 20000)." },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -161,6 +190,62 @@ function truncate(value: string, max = 4000): string {
 function truncateSoft(value: string, max = 60000): string {
   if (value.length <= max) return value;
   return `${value.slice(0, max - 3)}...`;
+}
+
+async function getApprovalMaps(ctx: any, userId: string, taskId: any): Promise<{
+  approvedTools: Record<string, true>;
+  deniedTools: Record<string, true>;
+}> {
+  const task = await ctx.runQuery(internal.tasks.getInternal, { id: taskId, userId });
+  const state = task?.agentState ? parseAgentState(task.agentState) : null;
+  return {
+    approvedTools: state?.approvedTools ?? {},
+    deniedTools: state?.deniedTools ?? {},
+  };
+}
+
+async function ensureApprovedOrPause(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  toolName: string;
+  detail: string;
+  params: unknown;
+}): Promise<null | ToolExecResult> {
+  const { approvedTools, deniedTools } = await getApprovalMaps(args.ctx, args.userId, args.taskId);
+  if (deniedTools[args.toolName]) {
+    return { ok: false, error: `User denied approval for: ${args.toolName}` };
+  }
+  if (approvedTools[args.toolName]) return null;
+
+  const eventId = await args.ctx.runMutation(internal.taskEvents.addInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+    kind: "approval-request",
+    title: `Approval requested: ${args.toolName}`,
+    detail: args.detail,
+    approvalAction: args.toolName,
+    approvalParams: JSON.stringify(args.params ?? {}).slice(0, 8000),
+  });
+
+  void captureEvent({
+    distinctId: args.userId,
+    event: "agent_approval_requested",
+    properties: {
+      taskId: String(args.taskId),
+      approvalEventId: String(eventId),
+      action: args.toolName,
+    },
+  });
+
+  return {
+    ok: true,
+    pause: true,
+    pauseReason: "approval",
+    eventId: String(eventId),
+    result: { eventId: String(eventId), action: args.toolName, params: args.params ?? null },
+    summary: "Requested approval from user.",
+  };
 }
 
 export async function executeTool(args: {
@@ -404,6 +489,125 @@ export async function executeTool(args: {
         eventId: String(eventId),
         result: { eventId: String(eventId), action, reason, params: params ?? null },
         summary: "Requested approval from user.",
+      };
+    }
+
+    if (name === "web_search") {
+      const q = typeof input?.q === "string" ? input.q.trim() : "";
+      if (!q) return { ok: false, error: "q is required" };
+      const maxResults = clampInt(input?.maxResults, 5, 1, 10);
+
+      const approval = await ensureApprovedOrPause({
+        ctx,
+        userId,
+        taskId,
+        toolName: "web_search",
+        detail: "Allow Jarvis to search the public web for this task.",
+        params: { q, maxResults },
+      });
+      if (approval) return approval;
+
+      const settings = await ctx.runQuery(internal.userSettings.getForUser, { userId });
+      const provider = (settings as any)?.searchProvider === "tavily" ? "tavily" : "jina";
+      const apiKey = typeof (settings as any)?.searchApiKey === "string" ? (settings as any).searchApiKey : "";
+
+      if (provider === "tavily") {
+        if (!apiKey) return { ok: false, error: "Tavily API key not configured in Settings." };
+        const res = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            query: q,
+            max_results: maxResults,
+            search_depth: "basic",
+            include_answer: false,
+            include_raw_content: false,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          return { ok: false, error: `Tavily error (${res.status}): ${truncate(text, 800)}` };
+        }
+        const data = (await res.json()) as any;
+        const results = Array.isArray(data?.results) ? data.results : [];
+        const simplified = results.slice(0, maxResults).map((r: any) => ({
+          title: String(r?.title ?? ""),
+          url: String(r?.url ?? ""),
+          content: truncate(String(r?.content ?? ""), 1200),
+          score: typeof r?.score === "number" ? r.score : undefined,
+        }));
+
+        void captureEvent({
+          distinctId: userId,
+          event: "agent_web_search",
+          properties: { provider: "tavily", q, results: simplified.length },
+        });
+
+        return { ok: true, result: { provider: "tavily", q, results: simplified }, summary: `Found ${simplified.length} results.` };
+      }
+
+      // Jina search returns a readable, LLM-friendly digest (unstructured).
+      const res = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`);
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `Jina search error (${res.status}): ${truncate(text, 800)}` };
+      }
+      const text = await res.text();
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_web_search",
+        properties: { provider: "jina", q },
+      });
+
+      return {
+        ok: true,
+        result: { provider: "jina", q, digest: truncateSoft(text, 22000) },
+        summary: "Returned search digest.",
+      };
+    }
+
+    if (name === "read_url") {
+      const url = typeof input?.url === "string" ? input.url.trim() : "";
+      if (!url) return { ok: false, error: "url is required" };
+      const lower = url.toLowerCase();
+      if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+        return { ok: false, error: "url must start with http:// or https://" };
+      }
+      const maxChars = clampInt(input?.maxChars, 20000, 2000, 80000);
+
+      const approval = await ensureApprovedOrPause({
+        ctx,
+        userId,
+        taskId,
+        toolName: "read_url",
+        detail: "Allow Jarvis to fetch and read a public URL for this task.",
+        params: { url },
+      });
+      if (approval) return approval;
+
+      const readerUrl = `https://r.jina.ai/${url}`;
+      const res = await fetch(readerUrl);
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `read_url error (${res.status}): ${truncate(text, 800)}` };
+      }
+      const text = await res.text();
+      const content = truncateSoft(text, maxChars);
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_read_url",
+        properties: { url },
+      });
+
+      return {
+        ok: true,
+        result: { url, content, truncated: text.length > content.length },
+        summary: `Read ${url}`,
       };
     }
 

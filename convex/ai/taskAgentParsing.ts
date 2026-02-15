@@ -10,6 +10,8 @@ export type AgentState = {
   planSteps: string[];
   waitingForEventId?: string;
   waitingForKind?: "question" | "approval";
+  approvedTools?: Record<string, true>;
+  deniedTools?: Record<string, true>;
 };
 
 function parseJsonCandidate(raw: string): string | null {
@@ -76,15 +78,34 @@ export function parseAgentState(raw: unknown): AgentState | null {
       obj.waitingForKind === "question" || obj.waitingForKind === "approval"
         ? (obj.waitingForKind as AgentState["waitingForKind"])
         : undefined;
+
+    let approvedTools: Record<string, true> | undefined;
+    if (obj.approvedTools && typeof obj.approvedTools === "object") {
+      approvedTools = {};
+      for (const [k, v] of Object.entries(obj.approvedTools as Record<string, unknown>)) {
+        if (typeof k === "string" && v === true) approvedTools[k] = true;
+      }
+      if (Object.keys(approvedTools).length === 0) approvedTools = undefined;
+    }
+
+    let deniedTools: Record<string, true> | undefined;
+    if (obj.deniedTools && typeof obj.deniedTools === "object") {
+      deniedTools = {};
+      for (const [k, v] of Object.entries(obj.deniedTools as Record<string, unknown>)) {
+        if (typeof k === "string" && v === true) deniedTools[k] = true;
+      }
+      if (Object.keys(deniedTools).length === 0) deniedTools = undefined;
+    }
     return {
       v: 1,
       stepIndex: Math.max(0, Math.floor(obj.stepIndex)),
       planSteps: obj.planSteps.map(String).filter(Boolean).slice(0, 10),
       waitingForEventId: typeof obj.waitingForEventId === "string" ? obj.waitingForEventId : undefined,
       waitingForKind,
+      approvedTools,
+      deniedTools,
     };
   } catch {
     return null;
   }
 }
-

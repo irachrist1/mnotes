@@ -27,7 +27,8 @@ The product is the loop + the visible work, not the final text.
 In our codebase:
 
 - Anthropic: real tool loop (native `tool_use` / `tool_result`).
-- OpenRouter + Google: fallback mode today (we run a couple read tools explicitly, then call the model; the model does not autonomously call tools).
+- OpenRouter: tool loop via OpenAI-style function calling (`tools` + `tool_calls`). Reliability depends on the specific model.
+- Google: fallback mode today (we run a couple read tools explicitly, then call the model; the model does not autonomously call tools).
 
 ### Why would you want real function-calling with OpenRouter?
 
@@ -41,13 +42,13 @@ You want it if any of these are true:
 
 In practice:
 
-- **Anthropic tool_use is the most reliable today** for agentic work. Fewer "JSON drift" failures, better tool selection, and better follow-through step to step.
-- **OpenRouter function-calling can be cheaper and sometimes faster**, but reliability depends on the specific model and how strictly it follows the function schema.
+- Anthropic tool_use is the most reliable today for agentic work. Fewer "JSON drift" failures, better tool selection, and better follow-through step to step.
+- OpenRouter function-calling can be cheaper and sometimes faster, but reliability depends on the specific model and how strictly it follows the function schema.
 
 Simple rule:
 
-- If your priority is "it actually uses tools correctly": prefer **Anthropic**.
-- If your priority is "cost, breadth of models, one key": implement **OpenRouter function-calling** next.
+- If your priority is "it actually uses tools correctly": prefer Anthropic.
+- If your priority is "cost, breadth of models, one key": OpenRouter function-calling is a good option (but test model-by-model).
 
 This is not a philosophical choice. It's an engineering tradeoff between reliability and provider flexibility.
 
@@ -70,26 +71,38 @@ Policy:
 
 ## File Creation: Shipped (P2.6)
 
-Jarvis can now create first-class draft documents:
+Jarvis can create first-class draft documents:
 
 - `agentFiles` table (`convex/schema.ts`)
 - CRUD (`convex/agentFiles.ts`)
 - `create_file` tool (`convex/ai/agentTools.ts`)
-- Dashboard viewer/editor (`src/components/dashboard/AgentFileViewer.tsx` + "Files" section in task panel)
+- Dashboard viewer/editor (`src/components/dashboard/AgentFileViewer.tsx`)
 
-Remaining follow-ups are UX polish, not core capability: better discovery (a dedicated Files page), export flows, and richer output renderers.
+Remaining follow-ups are UX polish, not core capability: better discovery, export flows, and richer output renderers.
+
+## Web Tools: Shipped (P4)
+
+Jarvis can now:
+
+- `web_search` (public web search, gated by approvals per task; can use Tavily or Jina)
+- `read_url` (fetch + extract a public URL into readable text, gated by approvals per task)
+
+Product requirement:
+
+- The agent must ask for approval before using web tools.
+- The approval decision should be sticky per task (approve once, reuse).
 
 ## Tool Registry vs Connector Dashboard
 
 There are two kinds of tools:
 
-1. **Built-in tools**: always available (read your MNotes data, ask_user).
-2. **Connector tools**: require user setup (OAuth/API keys), have connect/disconnect status, and often require approvals.
+1. Built-in tools: always available (read your MNotes data, ask_user, create_file).
+2. Connector tools: require user setup (OAuth/API keys), have connect/disconnect status, and often require approvals.
 
 Product requirement:
 
-- The dashboard must expose a clear list of "what Jarvis can do right now" based on connections.
-- The agent must never "pretend" it can do a connector action if it's not connected.
+- The dashboard must expose a clear list of "what Jarvis can do right now" based on connections/settings.
+- The agent must never pretend it can do a connector action if it's not connected.
 
 ## Approval and Safety: Default Policies
 
@@ -97,7 +110,7 @@ We categorize every tool:
 
 - `read`: safe, auto-approved
 - `write_internal`: writes to the user's MNotes data (usually auto-approved, but still logged)
-- `write_external`: sends emails, creates calendar events, posts to GitHub, web writes (must require explicit approval)
+- `write_external`: irreversible or external side-effects (must require explicit approval)
 
 Policy:
 
@@ -118,7 +131,7 @@ If you add a tool or connector, you must ship all of this (or explicitly mark wh
 
 If we skip these, we get "agent cosplay": impressive text, broken actions, and user distrust.
 
-## “Make MNotes Like OpenClaw, But Better”
+## "Make MNotes Like OpenClaw, But Better"
 
 OpenClaw is an agent runtime/control plane. Our advantage is we can ship a productized version of that loop:
 
@@ -133,3 +146,4 @@ The core is consistency:
 - every tool is visible
 - every external side-effect is approved
 - every task produces a tangible deliverable
+

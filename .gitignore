@@ -20,6 +20,9 @@
 # production
 /build
 
+# coretests build output
+/dist-coretests/
+
 # misc
 .DS_Store
 *.pem

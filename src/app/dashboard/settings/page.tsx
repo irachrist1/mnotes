@@ -28,6 +28,8 @@ const BUILTIN_AGENT_TOOLS: { name: string; description: string }[] = [
   { name: "ask_user", description: "Asks a clarifying question and pauses the agent." },
   { name: "create_file", description: "Creates a draft document/checklist/table and saves it as an agent file." },
   { name: "request_approval", description: "Requests approval for external or irreversible actions (pause/resume)." },
+  { name: "web_search", description: "Searches the public web (requires approval per task; optional Tavily key)." },
+  { name: "read_url", description: "Reads a public URL into text/markdown (requires approval per task)." },
 ];
 
 export default function SettingsPage() {
@@ -39,12 +41,15 @@ export default function SettingsPage() {
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
+  const [searchProvider, setSearchProvider] = useState<"jina" | "tavily">("jina");
+  const [searchApiKey, setSearchApiKey] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
   const [hasGoogleKey, setHasGoogleKey] = useState(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
+  const [hasSearchKey, setHasSearchKey] = useState(false);
 
   // Load settings when available (API keys are masked, don't populate inputs)
   useEffect(() => {
@@ -54,6 +59,8 @@ export default function SettingsPage() {
       setHasOpenrouterKey(!!settings.openrouterApiKey);
       setHasGoogleKey(!!settings.googleApiKey);
       setHasAnthropicKey(!!(settings as any).anthropicApiKey);
+      setSearchProvider(((settings as any).searchProvider as "jina" | "tavily" | undefined) ?? "jina");
+      setHasSearchKey(!!(settings as any).searchApiKey);
       // Don't load masked key values into the input fields
     }
   }, [settings]);
@@ -79,6 +86,8 @@ export default function SettingsPage() {
         openrouterApiKey: openrouterKey || undefined,
         googleApiKey: googleKey || undefined,
         anthropicApiKey: anthropicKey || undefined,
+        searchProvider,
+        searchApiKey: searchProvider === "tavily" ? (searchApiKey || undefined) : undefined,
       });
       track("settings_saved", { provider, model });
       toast.success("Settings saved successfully");
@@ -94,6 +103,10 @@ export default function SettingsPage() {
       if (anthropicKey) {
         setHasAnthropicKey(true);
         setAnthropicKey("");
+      }
+      if (searchApiKey && searchProvider === "tavily") {
+        setHasSearchKey(true);
+        setSearchApiKey("");
       }
     } catch (err) {
       console.error(err);
@@ -332,6 +345,68 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Web Tools */}
+        <div className="card p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                Web Tools (Search + Read URL)
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                These tools let Jarvis search the public web and read links. The agent will always ask for approval before using them.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                Search provider
+              </label>
+              <Select
+                value={searchProvider}
+                onChange={(val) => setSearchProvider(val as "jina" | "tavily")}
+                options={[
+                  { value: "jina", label: "Jina (no key, returns digest)" },
+                  { value: "tavily", label: "Tavily (API key required)" },
+                ]}
+              />
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                Jina works without a key, but results are less structured. Tavily returns structured results but needs a key.
+              </p>
+            </div>
+
+            {searchProvider === "tavily" && (
+              <div>
+                <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                  Tavily API Key
+                </label>
+                <input
+                  type="password"
+                  value={searchApiKey}
+                  onChange={(e) => setSearchApiKey(e.target.value)}
+                  placeholder={hasSearchKey ? "Key configured. Enter new key to replace." : "tvly-..."}
+                  className="input-field w-full"
+                />
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                  Get a key at{" "}
+                  <a
+                    href="https://app.tavily.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-stone-900 dark:text-stone-100 hover:underline"
+                  >
+                    app.tavily.com
+                  </a>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Agent Tools */}
         <div className="card p-6">
           <div className="flex items-start gap-3 mb-4">
@@ -374,7 +449,7 @@ export default function SettingsPage() {
             <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
               <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Connections (coming next)</p>
               <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                Email, calendar, GitHub, web search, and other external tools will appear here once the connector system ships (with connect/disconnect and approvals).
+                Email, calendar, GitHub, and other external tools will appear here once the connector system ships (with connect/disconnect and approvals).
               </p>
             </div>
           </div>

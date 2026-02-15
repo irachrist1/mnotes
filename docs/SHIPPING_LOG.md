@@ -278,3 +278,21 @@ These are the guiding principles for the agent task experience, to be implemente
   - Updated default model selections to prefer `gemini-3-flash-preview` / `google/gemini-3-flash-preview` across the app (`src/lib/aiModels.ts`, `convex/ai/taskAgent.ts`, `convex/ai/chatSend.ts`, `convex/ai/taskExecute.ts`)
   - Added PostHog `agent_tool_failed` event capture on tool execution exceptions/unknown tools (`convex/ai/agentTools.ts`)
   - Updated `vitest.config.ts` to prefer threads pool and preserve symlinks (helps in some Windows environments where spawning OS commands is restricted)
+
+---
+
+## P4 -- Web Search + Browser Tool
+
+### P4.0: Web Tools Settings + Key-Preserving Upsert + Files Tab
+- **Status:** Shipped
+- **Goal:** Make web tools usable end-to-end (settings + approvals), prevent accidental API key wipe on save, and surface agent deliverables as first-class files.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Fixed `userSettings.upsert` to preserve existing API keys unless a new value is explicitly provided (`convex/userSettings.ts`, `convex/userSettingsPatch.ts` + coretests).
+  - Added Settings UI for web tools:
+    - Search provider selector (`jina` or `tavily`)
+    - Tavily API key field (masked like other keys)
+    - Saved to `userSettings.searchProvider` / `userSettings.searchApiKey` (`src/app/dashboard/settings/page.tsx`)
+  - Hardened agent pause/resume for planning/finalize:
+    - Planning/finalizing can now pause for approval/questions and resume cleanly (`convex/ai/taskAgent.ts`)
+  - Added a dedicated Files tab in the Data zone listing all `agentFiles` with open/delete (`src/components/dashboard/AgentFilesContent.tsx`, `src/app/dashboard/data/page.tsx`)

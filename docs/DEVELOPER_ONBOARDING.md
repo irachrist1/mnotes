@@ -283,6 +283,9 @@ Queued (3%) → Planning (12%) → Plan ready (20%) → Step 1..N (20-90%) → F
 - `ask_user` tool can pause execution and resume on answer
 - `create_file` tool persists draft documents in `agentFiles`
 - `request_approval` tool pauses for Approve/Deny (used for external/irreversible actions)
+- Web tools:
+  - `web_search` (uses Jina by default; can use Tavily when `userSettings.searchProvider="tavily"` + `searchApiKey` is configured; requires approval per task)
+  - `read_url` (Jina Reader; requires approval per task)
 
 **Implementation details:** see `docs/AGENTIC_CORE.md` and `docs/AGENT_PLATFORM_PRINCIPLES.md`
 

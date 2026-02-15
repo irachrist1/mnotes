@@ -158,8 +158,20 @@ Shipped tools:
 - `ask_user` (pause point)
 - `create_file` (creates a draft in `agentFiles` linked to the current task)
 - `request_approval` (pause point for irreversible/external actions)
+- `web_search` (public web search, requires approval per task)
+- `read_url` (public URL read, requires approval per task)
 
 These tools execute on the backend using internal queries so they can be called from Convex actions without a client auth context.
+
+### Approval Scopes (Per-Task)
+
+Some tools (web tools today; connector tools later) must be approved before use.
+
+- The first time `web_search` or `read_url` runs for a task, the tool executor emits `taskEvents(kind="approval-request")` and pauses the agent.
+- When the user approves/denies, `continueInternal` updates `tasks.agentState` with:
+  - `approvedTools`: `{ [toolName]: true }`
+  - `deniedTools`: `{ [toolName]: true }`
+- Subsequent tool calls in the same task reuse that decision without re-prompting.
 
 ## Prompts Used (Task Agent)
 
@@ -233,11 +245,10 @@ The output panel supports:
 
 ## What Is NOT Done Yet (On Purpose)
 
-- Enforcing approvals on real connector tools (email/calendar/github) (roadmap P2.7)
-- True OpenRouter function calling/tool loop (roadmap P2.2 but for OpenRouter)
-- Web search / read URL tools (P4)
+- Enforcing approvals on real connector tools (email/calendar/github) (roadmap P6)
 - Connector tools (P6)
 - Conversation context summarization/truncation (P2.8)
+ - Google provider tool-use loop (Google still runs in fallback mode; no model-driven tool calling yet)
 
 ## Where Vercel AI SDK or Anthropic SDK Helps
 

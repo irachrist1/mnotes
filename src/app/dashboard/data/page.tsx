@@ -3,7 +3,7 @@
 import { Suspense, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { DollarSign, Lightbulb, Users, ListTodo } from "lucide-react";
+import { DollarSign, Lightbulb, Users, ListTodo, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 // Lazy-load each tab's content — only the active tab is mounted
@@ -24,12 +24,18 @@ const TasksContent = dynamic(
         import("@/components/dashboard/TasksContent").then((m) => m.TasksContent),
     { ssr: false, loading: () => <TabSkeleton /> }
 );
+const AgentFilesContent = dynamic(
+    () =>
+        import("@/components/dashboard/AgentFilesContent").then((m) => m.AgentFilesContent),
+    { ssr: false, loading: () => <TabSkeleton /> }
+);
 
 const TABS = [
     { key: "income", label: "Income", icon: DollarSign },
     { key: "ideas", label: "Ideas", icon: Lightbulb },
     { key: "mentorship", label: "Mentorship", icon: Users },
     { key: "tasks", label: "Agent Tasks", icon: ListTodo },
+    { key: "files", label: "Files", icon: FileText },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -94,6 +100,7 @@ function DataPageInner() {
                 {activeTab === "ideas" && <IdeasContent />}
                 {activeTab === "mentorship" && <MentorshipContent />}
                 {activeTab === "tasks" && <TasksContent />}
+                {activeTab === "files" && <AgentFilesContent />}
             </div>
         </>
     );

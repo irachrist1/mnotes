@@ -50,6 +50,7 @@ import type * as soulFile from "../soulFile.js";
 import type * as taskEvents from "../taskEvents.js";
 import type * as tasks from "../tasks.js";
 import type * as userSettings from "../userSettings.js";
+import type * as userSettingsPatch from "../userSettingsPatch.js";
 import type * as users from "../users.js";
 
 import type {
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   taskEvents: typeof taskEvents;
   tasks: typeof tasks;
   userSettings: typeof userSettings;
+  userSettingsPatch: typeof userSettingsPatch;
   users: typeof users;
 }>;
 

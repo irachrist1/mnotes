@@ -119,6 +119,10 @@ export default defineSchema({
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
     anthropicApiKey: v.optional(v.string()),
+
+    // Web tools (P4): search + browser read
+    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"))),
+    searchApiKey: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
