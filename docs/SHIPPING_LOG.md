@@ -387,6 +387,13 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added table renderer with “Copy markdown” and “Copy CSV” (`src/components/dashboard/TaskOutputRenderers.tsx`).
   - Added coretest coverage for table parsing (`scripts/run-coretests.js`).
 
+### P7.2: Output Export (Save As Agent File)
+- **Status:** ✅ Shipped
+- **Goal:** Let users save agent output as a durable deliverable object.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added “Save as file” on task output; stores the output in `agentFiles` linked to the task (`src/components/dashboard/TasksContent.tsx`).
+
 ### P9.0: Proactive Suggestions (Approve → Agent Task)
 - **Status:** ✅ Shipped (minimal initial)
 - **Goal:** Jarvis proposes work to run, user approves, and a real agent task is queued.

@@ -89,6 +89,7 @@ export function TasksContent() {
   const removeTask = useMutation(api.tasks.remove);
   const answerQuestion = useMutation(api.taskEvents.answerQuestion);
   const respondApproval = useMutation(api.taskEvents.respondApproval);
+  const createAgentFile = useMutation(api.agentFiles.create);
   const startAgent = useAction(api.ai.taskAgent.start);
 
   const searchParams = useSearchParams();
@@ -772,6 +773,28 @@ export function TasksContent() {
                       className="text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors duration-150"
                     >
                       Copy
+                    </button>
+                  )}
+                  {selectedTask.agentResult && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const id = await createAgentFile({
+                            taskId: selectedTask._id,
+                            title: `${selectedTask.title} (Output)`,
+                            content: selectedTask.agentResult!,
+                            fileType: "document",
+                          });
+                          toast.success("Saved as file");
+                          setOpenFileId(id);
+                          track("agent_output_saved_as_file", { taskId: selectedTask._id, fileId: id });
+                        } catch {
+                          toast.error("Failed to save file");
+                        }
+                      }}
+                      className="text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors duration-150"
+                    >
+                      Save as file
                     </button>
                   )}
                 </div>
