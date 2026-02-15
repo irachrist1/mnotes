@@ -244,7 +244,7 @@ export default function DashboardPage() {
         title: digest.title || "Weekly digest",
         body: (digest.body || "").replace(/\s+/g, " ").slice(0, 180),
         meta: "Weekly digest",
-        href: "/dashboard/intelligence",
+        href: `/dashboard/intelligence?insightId=${digest._id}`,
         tone: "blue",
         onDismiss: () => void markInsightStatus({ id: digest._id as Id<"aiInsights">, status: "read" }),
         dismissLabel: "Mark digest as read",
@@ -481,8 +481,8 @@ export default function DashboardPage() {
                     act.type === "income" ? "/dashboard/data?tab=income" :
                       act.type === "idea" ? "/dashboard/data?tab=ideas" :
                         act.type === "mentorship" ? "/dashboard/data?tab=mentorship" :
-                          act.type === "task" ? "/dashboard/data?tab=tasks" :
-                            "/dashboard/intelligence"
+                          act.type === "task" ? `/dashboard/data?tab=tasks&taskId=${act.id}` :
+                            `/dashboard/intelligence?insightId=${act.id}`
                   }
                   className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md hover:bg-stone-50 dark:hover:bg-white/[0.04] transition-colors duration-150"
                 >
