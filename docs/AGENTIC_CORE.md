@@ -25,6 +25,7 @@ If you're adding tools/connectors or changing provider behavior, also read:
 - Task state + events schema: `convex/schema.ts`
 - Task events storage/mutations: `convex/taskEvents.ts`
 - Activity UI + question cards: `src/components/dashboard/TasksContent.tsx`
+- Output renderers (rich formats): `src/components/dashboard/TaskOutputRenderers.tsx`
 - Settings UI (Anthropic + OpenRouter + Google): `src/app/dashboard/settings/page.tsx`
 
 ## Data Model Changes
@@ -166,8 +167,29 @@ Shipped tools:
 - `read_url` (public URL read, requires approval per task)
 - `github_list_my_pull_requests` (requires GitHub connection)
 - `github_create_issue` (requires GitHub connection + approval)
+- `gmail_list_recent` (requires Gmail connection; read-only)
+- `calendar_list_upcoming` (requires Google Calendar connection; read-only)
 
 These tools execute on the backend using internal queries so they can be called from Convex actions without a client auth context.
+
+## Connectors (OAuth)
+
+Connector tokens are stored in:
+
+- `connectorTokens` (long-lived tokens: `accessToken`, optional `refreshToken`, optional `expiresAt`)
+- `connectorAuthSessions` (short-lived handshake sessions keyed by OAuth `state`)
+
+Google OAuth flow (Gmail + Calendar):
+
+1. Settings UI calls `connectors.googleOauth.start(provider, origin)` to create a `connectorAuthSessions` row and get an `authUrl`.
+2. The app opens `authUrl` in a popup.
+3. Google redirects to Convex `GET /connectors/google/callback` with `code` + `state`.
+4. Callback exchanges code for tokens, stores them in `connectorTokens`, deletes the session, then returns HTML that `postMessage`s `{ type: "mnotes:connector_connected", provider }` to the opener.
+5. The Settings UI listens for that message and updates the “Connected” state reactively.
+
+Token refresh:
+
+- When a Google tool runs, it checks `expiresAt` and refreshes using `refreshToken` + `GOOGLE_OAUTH_CLIENT_ID/SECRET` if needed.
 
 ### Approval Scopes (Per-Task)
 

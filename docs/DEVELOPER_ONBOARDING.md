@@ -467,6 +467,10 @@ The current agent can only generate text. The next phase is making it actually D
 - Mobile polish (native feel)
 - Jarvis status indicator (sidebar shows what AI is doing)
 
+Shipped connector docs:
+
+- Google OAuth (Gmail + Calendar): `docs/CONNECTORS_GOOGLE_OAUTH.md`
+
 ---
 
 ## 13. Key Files Quick Reference
@@ -488,6 +492,7 @@ The current agent can only generate text. The next phase is making it actually D
 | PostHog server | `convex/lib/posthog.ts` |
 | Validation | `convex/lib/validate.ts` |
 | AI models list | `src/lib/aiModels.ts` |
+| Connectors (OAuth) | `convex/connectors/*`, `convex/http.ts`, `docs/CONNECTORS_GOOGLE_OAUTH.md` |
 | Shipping log | `docs/SHIPPING_LOG.md` |
 | Full roadmap | `docs/JARVIS_ROADMAP.md` |
 | This doc | `docs/DEVELOPER_ONBOARDING.md` |

@@ -327,6 +327,36 @@ These are the guiding principles for the agent task experience, to be implemente
     - `github_create_issue` (requires approval per task)
     (`convex/ai/agentTools.ts`)
 
+### P6.1: Google OAuth Connectors (Gmail + Calendar)
+- **Status:** Shipped (read-only tools + OAuth connect flow)
+- **Goal:** Add OAuth-based connectors for Gmail + Google Calendar, store tokens safely, and expose read-only tools to the agent.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `connectorAuthSessions` table for short-lived OAuth handshakes (`convex/schema.ts`).
+  - Added OAuth session helpers (`convex/connectors/authSessions.ts`).
+  - Implemented Google OAuth connect flow:
+    - `connectors.googleOauth.start` action returns `authUrl` and writes a `connectorAuthSessions` row (`convex/connectors/googleOauth.ts`).
+    - `connectors/googleOauth.callback` `httpAction` exchanges code for tokens and `postMessage`s back to the app (`convex/connectors/googleOauth.ts`).
+    - HTTP route registered at `GET /connectors/google/callback` (`convex/http.ts`).
+  - Updated token upsert to preserve `refreshToken` by default (prevents accidental refresh-token loss) (`convex/connectors/tokens.ts`).
+  - Added Settings UI connect/disconnect for Gmail and Calendar using popup OAuth (`src/app/dashboard/settings/page.tsx`).
+  - Added agent tools (read-only):
+    - `gmail_list_recent`
+    - `calendar_list_upcoming`
+    (`convex/ai/agentTools.ts`)
+  - Added token refresh-on-expiry for Google tools (uses `GOOGLE_OAUTH_CLIENT_ID/SECRET`) (`convex/ai/agentTools.ts`).
+  - Added PostHog events: `connector_oauth_started`, `connector_oauth_connected`, `connector_oauth_failed`, `agent_gmail_list_recent`, `agent_calendar_list_upcoming`, `agent_google_token_refreshed`.
+
+### P7.0: Rich Output Renderers (Interactive Checklists)
+- **Status:** Shipped (initial renderer)
+- **Goal:** Render agent output as more than markdown paragraphs when appropriate.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `parseTaskOutput()` + `serializeChecklist()` helpers (`src/lib/outputFormats.ts`).
+  - Added output renderer that detects checklists and renders them as interactive checkboxes (local UI state) with “Copy updated” (`src/components/dashboard/TaskOutputRenderers.tsx`).
+  - Swapped task output rich view to use the renderer (raw view remains unchanged) (`src/components/dashboard/TasksContent.tsx`).
+  - Added coretest coverage for checklist parse/serialize (`scripts/run-coretests.js`, `tsconfig.coretests.json`).
+
 ### P3.1: Activity Feed Improvements (More Events + Tool Durations)
 - **Status:** Shipped (incremental)
 - **Goal:** Make the agent's work more legible by allowing full activity expansion and surfacing tool durations.
