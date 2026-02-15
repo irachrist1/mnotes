@@ -27,9 +27,25 @@
 | P1.4 | Dashboard copy reframe (AI does work, not user) | ✅ Shipped |
 | P1.5 | Landing page polish (gap fix, deep-research preview widget) | ✅ Shipped |
 
+## Status Update (Read This Before Starting)
+
+**As of 2026-02-16, the majority of P2–P10 has been shipped** (agentic core + tools + approvals + web tools + connectors + rich outputs + proactive loop + memory evolution UI).
+
+If you're starting work now:
+- Treat `docs/SHIPPING_LOG.md` as the canonical "what's shipped" ledger (it is updated per ship).
+- Treat `docs/AGENT_PLATFORM_PRINCIPLES.md` as the non-negotiable ruleset for tools/connectors/output.
+- Treat `docs/AGENTIC_CORE.md` as the "how it works" doc for the agent loop and prompts.
+
+Remaining roadmap work is mostly polish/expansion:
+- True streaming (token-level) vs pseudo-streaming
+- Deeper activity/timeline UX polish and source chips
+- Connector tool expansion (more Gmail/Calendar/GitHub actions)
+- Longer-run continuation (5-min Convex action chaining) and smarter context management
+- P11 landing/auth polish
+
 **Key files to understand before starting:**
 - `convex/schema.ts` — all tables (tasks, taskEvents, notifications, etc.)
-- `convex/ai/taskAgent.ts` — current agent pipeline (single LLM call, returns JSON)
+- `convex/ai/taskAgent.ts` — multi-step agent loop (plan → steps → finalize) with tool calls + pause/resume
 - `src/components/dashboard/TasksContent.tsx` — agent tasks UI
 - `src/app/dashboard/page.tsx` — dashboard home with nudge cards
 - `docs/SHIPPING_LOG.md` — detailed changelog of everything shipped
@@ -591,4 +607,4 @@ Work units without arrows (P3, P7, P8, P10, P11) can run in parallel with anythi
 
 ---
 
-*Last updated: February 15, 2026*
+*Last updated: February 16, 2026*
