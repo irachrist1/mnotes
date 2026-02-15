@@ -31,4 +31,11 @@ crons.daily(
   {}
 );
 
+crons.daily(
+  "proactive-suggestions",
+  { hourUTC: 7, minuteUTC: 20 },
+  internal.ai.proactiveAgent.runAll,
+  {}
+);
+
 export default crons;

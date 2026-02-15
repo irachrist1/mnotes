@@ -387,6 +387,16 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added table renderer with “Copy markdown” and “Copy CSV” (`src/components/dashboard/TaskOutputRenderers.tsx`).
   - Added coretest coverage for table parsing (`scripts/run-coretests.js`).
 
+### P9.0: Proactive Suggestions (Approve → Agent Task)
+- **Status:** ✅ Shipped (minimal initial)
+- **Goal:** Jarvis proposes work to run, user approves, and a real agent task is queued.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `proactiveSuggestions` table (`convex/schema.ts`).
+  - Added suggestion CRUD + approve-to-task pipeline (`convex/proactiveSuggestions.ts`).
+  - Added proactive generator cron (rule-based: suggests running Jarvis on top undone tasks) (`convex/ai/proactiveAgent.ts`, `convex/crons.ts`).
+  - Dashboard Home now renders suggestions as nudge cards with Approve/Dismiss (`src/app/dashboard/page.tsx`).
+
 ### P3.1: Activity Feed Improvements (More Events + Tool Durations)
 - **Status:** Shipped (incremental)
 - **Goal:** Make the agent's work more legible by allowing full activity expansion and surfacing tool durations.

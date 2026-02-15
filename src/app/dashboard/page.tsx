@@ -186,9 +186,12 @@ export default function DashboardPage() {
 
   const unreadDigests = useQuery(api.aiInsights.getUnreadDigests, {});
   const notifications = useQuery(api.notifications.list, {});
+  const proactive = useQuery(api.proactiveSuggestions.list, { limit: 4 });
 
   const dismissNotification = useMutation(api.notifications.dismiss);
   const markInsightStatus = useMutation(api.aiInsights.updateStatus);
+  const dismissProactive = useMutation(api.proactiveSuggestions.dismiss);
+  const approveProactive = useMutation(api.proactiveSuggestions.approve);
 
   const [chatActive, setChatActive] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
@@ -221,7 +224,7 @@ export default function DashboardPage() {
   const toggleTaskDone = useMutation(api.tasks.toggleDone);
 
   const nudges = useMemo(() => {
-    if (unreadDigests === undefined || notifications === undefined || overdueTasks === undefined) return null;
+    if (unreadDigests === undefined || notifications === undefined || overdueTasks === undefined || proactive === undefined) return null;
 
     const cards: Array<{
       key: string;
@@ -268,6 +271,29 @@ export default function DashboardPage() {
       });
     }
 
+    // Proactive suggestions (approve -> creates task and queues agent)
+    for (const s of (proactive ?? []).slice(0, 2)) {
+      cards.push({
+        key: `proactive-${s._id}`,
+        icon: Sparkles,
+        title: s.title,
+        body: s.body,
+        meta: "Suggestion",
+        href: "/dashboard/data?tab=tasks",
+        tone: "amber",
+        onDismiss: () => void dismissProactive({ id: s._id }),
+        dismissLabel: "Dismiss suggestion",
+        actions: [
+          {
+            label: "Approve",
+            onClick: () => {
+              void approveProactive({ id: s._id });
+            },
+          },
+        ],
+      });
+    }
+
     const unreadNotifications = (notifications ?? []).filter((n) => !n.read).slice(0, 4);
     for (const n of unreadNotifications) {
       const tone: NudgeTone =
@@ -305,7 +331,7 @@ export default function DashboardPage() {
     }
 
     return cards;
-  }, [dismissNotification, markInsightStatus, notifications, overdueTasks, toggleTaskDone, unreadDigests, undoneTaskCount]);
+  }, [approveProactive, dismissNotification, dismissProactive, markInsightStatus, notifications, overdueTasks, proactive, toggleTaskDone, unreadDigests, undoneTaskCount]);
 
   if (chatActive) {
     return (

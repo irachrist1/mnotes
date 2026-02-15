@@ -404,4 +404,25 @@ export default defineSchema({
   })
     .index("by_state", ["state"])
     .index("by_user_created", ["userId", "createdAt"]),
+
+  // Proactive suggestions (P9): nudges that can be approved to create/queue agent tasks.
+  proactiveSuggestions: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    body: v.string(),
+    // Suggested task payload (created when approved).
+    taskTitle: v.string(),
+    taskNote: v.optional(v.string()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+
+    // Dedupe against source objects (optional).
+    sourceTaskId: v.optional(v.id("tasks")),
+
+    createdAt: v.number(),
+    dismissedAt: v.optional(v.number()),
+    approvedAt: v.optional(v.number()),
+    approvedTaskId: v.optional(v.id("tasks")),
+  })
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_sourceTask", ["userId", "sourceTaskId"]),
 });
