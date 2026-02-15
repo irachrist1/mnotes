@@ -6,6 +6,16 @@ Source: live OpenClaw workspace on `root@24.144.92.122` (`/root/clawd` + `/root/
 This document captures reusable patterns from the OpenClaw/Jarvis setup so other agents can copy what works.
 All secrets are intentionally omitted.
 
+## 0) Public Docs Confirmations (Verified 2026-02-16)
+
+The private workspace notes below match what OpenClaw describes publicly:
+
+- **Skills** are loaded from bundled + managed (`~/.openclaw/skills`) + workspace (`<workspace>/skills`) with deterministic precedence (workspace wins). See OpenClaw "Skills" docs: `docs.openclaw.ai/skills`.
+- **Tools** are first-class and can be allow/deny listed in `openclaw.json`, with tool profiles like `minimal` and `coding`. See OpenClaw "Tools" docs: `docs.openclaw.ai/tools`.
+- **Hooks** exist as a stable extension mechanism (e.g., session-memory, command-logger, boot-md). See OpenClaw "Hooks" docs: `docs.openclaw.ai/automation/hooks`.
+
+These public docs are useful for understanding the excitement: OpenClaw is treating agent runtime controls (tools, skills, hooks) as a product, not just a prompt.
+
 ## 1) Architecture Pattern: Memory-First Agent
 
 OpenClaw works because memory is treated as a first-class runtime input, not an afterthought.

@@ -4,7 +4,7 @@ This is a practical comparison to guide product and engineering choices.
 
 Sources:
 - Internal: `docs/OPENCLAW_LEARNINGS.md` (last verified 2026-02-12)
-- External reading (as of 2026-02-15): OpenClaw docs/site and third-party coverage (see links at bottom)
+- External reading (verified 2026-02-16): OpenClaw docs + GitHub (see links at bottom)
 
 ## What OpenClaw Is (Simple)
 
@@ -12,8 +12,8 @@ OpenClaw is an agent runtime/control plane:
 
 - You give it a workspace (files + memory).
 - You give it tools/connectors.
-- It runs an agent loop with a deterministic boot sequence (read memory first), plus hooks and scheduled loops.
-- It often ships with multi-channel bots (e.g., Telegram/Discord) and a "skills" ecosystem.
+- It runs an agent loop with a deterministic boot sequence (read memory first), plus hooks/automation and scheduled loops.
+- It has a "skills" ecosystem (skills directories + a managed install path) and explicit tool allow/deny controls.
 
 In practice, it feels like a programmable "always-on" agent operating system.
 
@@ -24,12 +24,14 @@ In practice, it feels like a programmable "always-on" agent operating system.
 - Multi-channel: agents can live in places people already work (chat apps), not only in a web UI.
 - Extensibility: connectors/skills can be added without rewriting the core agent loop.
 - Operational loops: heartbeat + cron patterns enable proactive behavior.
+- Tool governance: explicit allow/deny lists and tool profiles make "agent permissions" feel real.
 
 ## Where OpenClaw Is Better Than MNotes Today
 
 - Broader tool surface (connectors/skills ecosystem).
 - Stronger "agent runtime" primitives (hooks, heartbeat loops, compaction modes) as first-class features.
 - More mature multi-channel deployment patterns (bots, presence).
+- Skills distribution story is more mature (managed skill installs + potential marketplace dynamics).
 
 ## Where MNotes Is Better (and Why You’d Use Ours)
 
@@ -66,6 +68,7 @@ From `docs/OPENCLAW_LEARNINGS.md`, the highest-leverage ideas to adopt in MNotes
 - Memory taxonomy (semantic/procedural/episodic) instead of one long blob.
 - Hooks for session logging and "always write outcomes somewhere durable".
 - Heartbeat + cron pattern for proactive loops.
+- Tool allow/deny configuration that maps cleanly to user-visible permissions.
 
 ## What We Should Not Copy (Or Should Productize Differently)
 
@@ -86,8 +89,8 @@ If we ever ship a marketplace:
 
 ## Links (External)
 
-- OpenClaw docs/site: https://openclaw.ai/
+- OpenClaw docs: https://docs.openclaw.ai/
+- Skills docs: https://docs.openclaw.ai/skills
+- Tools docs: https://docs.openclaw.ai/tools
+- Hooks docs: https://docs.openclaw.ai/automation/hooks
 - OpenClaw org: https://github.com/openclaw
-- Notes on the ecosystem / tooling (ClawSuite): https://github.com/openclaw/clawsuite
-- Third-party coverage (security discussions / marketplace risk): search for "OpenClaw malicious skills" and "OpenClaw marketplace security"
-
