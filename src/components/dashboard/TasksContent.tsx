@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
@@ -100,6 +100,7 @@ export function TasksContent() {
 
   const [selectedId, setSelectedId] = useState<Id<"tasks"> | null>(null);
   const [agentRestarting, setAgentRestarting] = useState(false);
+  const closingPanelRef = useRef(false);
 
   const isLoading = tasks === undefined;
   const runningTasks = tasks?.filter((t) => !t.done && (t.agentStatus === "queued" || t.agentStatus === "running")) ?? [];
@@ -129,6 +130,10 @@ export function TasksContent() {
 
   // Deep-link support: /dashboard/data?tab=tasks&taskId=...
   useEffect(() => {
+    if (closingPanelRef.current) {
+      closingPanelRef.current = false;
+      return;
+    }
     const raw = searchParams.get("taskId");
     if (!raw) return;
     if (tasks === undefined) return;
@@ -421,6 +426,7 @@ export function TasksContent() {
       <SlideOver
         open={!!selectedId}
         onClose={() => {
+          closingPanelRef.current = true;
           setSelectedId(null);
           setTaskIdParam(null);
         }}

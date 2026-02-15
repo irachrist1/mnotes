@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, BarChart3, ChevronDown, Brain, X, Clock } from "lucide-react";
+import { Sparkles, BarChart3, ChevronDown, Brain, X, Clock, Play, CheckCircle2, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 
@@ -66,6 +66,11 @@ function InsightDetailModal({
 }) {
     const insights = useQuery(api.aiInsights.listGenerated, {});
     const insight = insights?.find((i) => String(i._id) === insightId);
+    const createTask = useMutation(api.tasks.create);
+
+    const [dispatchedItems, setDispatchedItems] = useState<Set<number>>(new Set());
+    const [dispatchingItems, setDispatchingItems] = useState<Set<number>>(new Set());
+    const [agentsStartedCount, setAgentsStartedCount] = useState(0);
 
     if (insights === undefined) {
         return (
@@ -100,6 +105,29 @@ function InsightDetailModal({
             case "high": return "danger" as const;
             case "medium": return "warning" as const;
             default: return "default" as const;
+        }
+    };
+
+    const handleRunItem = async (index: number, item: string) => {
+        if (dispatchedItems.has(index) || dispatchingItems.has(index)) return;
+        setDispatchingItems((prev) => new Set(prev).add(index));
+        try {
+            await createTask({
+                title: item,
+                sourceType: "ai-insight",
+                sourceId: String(insight._id),
+                priority: insight.priority as "low" | "medium" | "high",
+            });
+            setDispatchedItems((prev) => new Set(prev).add(index));
+            setAgentsStartedCount((c) => c + 1);
+        } catch (err) {
+            console.error("Failed to create task:", err);
+        } finally {
+            setDispatchingItems((prev) => {
+                const next = new Set(prev);
+                next.delete(index);
+                return next;
+            });
         }
     };
 
@@ -140,6 +168,24 @@ function InsightDetailModal({
                     </button>
                 </div>
 
+                {/* Agent started banner */}
+                {agentsStartedCount > 0 && (
+                    <div className="mx-6 mt-4 flex items-center gap-3 rounded-lg bg-blue-50 dark:bg-blue-500/[0.08] border border-blue-200 dark:border-blue-500/20 px-4 py-3">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                        <p className="text-sm text-blue-800 dark:text-blue-300 flex-1">
+                            {agentsStartedCount === 1
+                                ? "1 agent is now working in the background."
+                                : `${agentsStartedCount} agents are now working in the background.`}
+                        </p>
+                        <a
+                            href="/dashboard/data?tab=tasks"
+                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                        >
+                            View tasks
+                        </a>
+                    </div>
+                )}
+
                 {/* Body */}
                 <div className="px-6 py-5 space-y-5">
                     <div>
@@ -153,12 +199,53 @@ function InsightDetailModal({
                         <div>
                             <h4 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Recommended Actions</h4>
                             <ul className="space-y-2">
-                                {insight.actionItems.map((item, j) => (
-                                    <li key={j} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/50 rounded-lg p-3">
-                                        <Sparkles className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                        {item}
-                                    </li>
-                                ))}
+                                {insight.actionItems.map((item, j) => {
+                                    const isDispatched = dispatchedItems.has(j);
+                                    const isDispatching = dispatchingItems.has(j);
+
+                                    return (
+                                        <li
+                                            key={j}
+                                            className={`flex items-start gap-3 text-sm rounded-lg p-3 transition-colors ${
+                                                isDispatched
+                                                    ? "bg-emerald-50 dark:bg-emerald-500/[0.06] border border-emerald-200 dark:border-emerald-500/20"
+                                                    : "bg-stone-50 dark:bg-stone-800/50"
+                                            }`}
+                                        >
+                                            {isDispatched ? (
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                            ) : (
+                                                <Sparkles className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                            )}
+                                            <span className={`flex-1 ${isDispatched ? "text-stone-500 dark:text-stone-400" : "text-stone-700 dark:text-stone-300"}`}>
+                                                {item}
+                                                {isDispatched && (
+                                                    <span className="block text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                                                        Agent started
+                                                    </span>
+                                                )}
+                                            </span>
+                                            {!isDispatched && (
+                                                <button
+                                                    onClick={() => handleRunItem(j, item)}
+                                                    disabled={isDispatching}
+                                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors shrink-0 mt-0.5 ${
+                                                        isDispatching
+                                                            ? "bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                                            : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                                                    }`}
+                                                >
+                                                    {isDispatching ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                        <Play className="w-3 h-3" />
+                                                    )}
+                                                    {isDispatching ? "Starting..." : "Run"}
+                                                </button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     )}

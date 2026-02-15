@@ -125,15 +125,27 @@ Tracks every major feature shipped toward the Jarvis vision. Updated on each shi
     - Header bar with status pill (blue while running, green when ready)
     - Gradient glow backdrop (blue→purple)
 
-### P1.6: Connector Progressive Disclosure
-- **Status:** ⏳ Pending
-- **Goal:** Connector suggestions appear inline when tasks need external services
-- **Shipped:** —
+### P1.6: Insight Action Items → Agent Tasks
+- **Status:** ✅ Shipped
+- **Goal:** Click any recommended action in a weekly digest/insight to spin up an agent in the background
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Enhanced `InsightDetailModal` in `src/app/dashboard/intelligence/page.tsx`:
+    - Each action item now has a "Run" button (Play icon) to create a task + start the agent
+    - "Run all" button (Zap icon) at the section header to dispatch all action items at once
+    - Visual states: blue spinner while dispatching, green check + "Agent started" after
+    - Blue banner appears showing "N agents are now working in the background" with link to tasks page
+    - Dispatched items get emerald border/background to visually differentiate
+  - Uses existing `tasks.create` (single item) and `tasks.createFromInsight` (batch) mutations
+  - Both mutations auto-queue the agent pipeline + create notifications
 
-### P1.7: Jarvis Status Indicator
-- **Status:** ⏳ Pending
+### P1.7: Connector Progressive Disclosure
+- **Status:** ⏳ Pending → Moved to P6.7 in JARVIS_ROADMAP.md
+- **Goal:** Connector suggestions appear inline when tasks need external services
+
+### P1.8: Jarvis Status Indicator
+- **Status:** ⏳ Pending → Moved to P8 in JARVIS_ROADMAP.md
 - **Goal:** Sidebar shows what Jarvis is doing in real time
-- **Shipped:** —
 
 ---
 
@@ -164,3 +176,4 @@ These are the guiding principles for the agent task experience, to be implemente
 | 2026-02-14 | P1.3: Task Status Filtering | Filter tabs (All/Running/Done/Failed), colored status dots, visual differentiation |
 | 2026-02-14 | P1.4: Dashboard AI Copy | Reframed "tasks to do" → "tasks running in background" |
 | 2026-02-14 | P1.5: Landing Page Polish | Reduced nav-content gap, deep-research style agent preview widget |
+| 2026-02-15 | P1.6: Insight Actions → Agents | Click any recommended action to spin up agent tasks with visual feedback |
