@@ -334,3 +334,11 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added Show all/Show less toggle for task events (`src/components/dashboard/TasksContent.tsx`).
   - Tool result events now include duration in `detail` (e.g. `(... 123ms)`) (`convex/ai/taskAgent.ts`).
+
+### P2.6.1: Agent Files Tools (List/Read/Update)
+- **Status:** Shipped
+- **Goal:** Let the agent manage its own created deliverables as first-class objects (not only create).
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added tools: `list_agent_files`, `read_agent_file`, `update_agent_file` (`convex/ai/agentTools.ts`).
+  - Added internal list API for agent files (`convex/agentFiles.ts`).

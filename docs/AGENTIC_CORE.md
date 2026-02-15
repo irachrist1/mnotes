@@ -157,6 +157,7 @@ Shipped tools:
 - `get_task_result`
 - `ask_user` (pause point)
 - `create_file` (creates a draft in `agentFiles` linked to the current task)
+- `list_agent_files` / `read_agent_file` / `update_agent_file` (manage agent-created draft files)
 - `create_task` (creates a new task; can optionally queue the agent on it)
 - `update_task` (updates an existing task)
 - `send_notification` (sends an in-app notification)

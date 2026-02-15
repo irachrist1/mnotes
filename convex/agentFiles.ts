@@ -135,6 +135,18 @@ export const listByTaskInternal = internalQuery({
   },
 });
 
+export const listInternal = internalQuery({
+  args: { userId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = clampInt(args.limit, 30, 1, 200);
+    return await ctx.db
+      .query("agentFiles")
+      .withIndex("by_user_updated", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
+  },
+});
+
 export const createInternal = internalMutation({
   args: {
     userId: v.string(),
@@ -180,4 +192,3 @@ export const updateInternal = internalMutation({
     await ctx.db.patch(args.id, updates);
   },
 });
-

@@ -132,6 +132,49 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
       },
     },
     {
+      name: "list_agent_files",
+      description:
+        "List agent-created draft files (optionally filtered to this task).",
+      input_schema: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max files (default 20)." },
+          taskOnly: { type: "boolean", description: "If true, only return files created for this task." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_agent_file",
+      description:
+        "Read an agent-created draft file by fileId.",
+      input_schema: {
+        type: "object",
+        properties: {
+          fileId: { type: "string", description: "Agent file id string." },
+          maxChars: { type: "number", description: "Max chars to return (default 20000)." },
+        },
+        required: ["fileId"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "update_agent_file",
+      description:
+        "Update an agent-created draft file (title/content/fileType).",
+      input_schema: {
+        type: "object",
+        properties: {
+          fileId: { type: "string", description: "Agent file id string." },
+          title: { type: "string", description: "Optional new title." },
+          content: { type: "string", description: "Optional new content (markdown)." },
+          fileType: { type: "string", description: "Optional new fileType label." },
+        },
+        required: ["fileId"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "create_task",
       description:
         "Create a new task in MNotes. By default it is created as an idle draft (no agent run) unless startAgent=true.",
@@ -540,6 +583,66 @@ export async function executeTool(args: {
         result: { id: String(id), title, fileType: fileType || "document" },
         summary: `Created file: ${title}`,
       };
+    }
+
+    if (name === "list_agent_files") {
+      const limit = clampInt(input?.limit, 20, 1, 100);
+      const taskOnly = Boolean(input?.taskOnly);
+      const files = taskOnly
+        ? await ctx.runQuery(internal.agentFiles.listByTaskInternal, { userId, taskId, limit })
+        : await ctx.runQuery(internal.agentFiles.listInternal, { userId, limit });
+
+      const simplified = (files as any[]).map((f) => ({
+        id: String(f._id),
+        title: f.title,
+        fileType: f.fileType,
+        taskId: f.taskId ? String(f.taskId) : null,
+        updatedAt: f.updatedAt,
+      }));
+      return { ok: true, result: simplified, summary: `Returned ${simplified.length} files.` };
+    }
+
+    if (name === "read_agent_file") {
+      const rawId = typeof input?.fileId === "string" ? input.fileId.trim() : "";
+      if (!rawId) return { ok: false, error: "fileId is required" };
+      const maxChars = clampInt(input?.maxChars, 20000, 1000, 80000);
+      const file = await ctx.runQuery(internal.agentFiles.getInternal, { userId, id: rawId as any });
+      if (!file) return { ok: false, error: "File not found" };
+      return {
+        ok: true,
+        result: {
+          id: String(file._id),
+          title: file.title,
+          fileType: file.fileType,
+          content: truncateSoft(String(file.content ?? ""), maxChars),
+          updatedAt: file.updatedAt,
+        },
+        summary: `Read file: ${file.title}`,
+      };
+    }
+
+    if (name === "update_agent_file") {
+      const rawId = typeof input?.fileId === "string" ? input.fileId.trim() : "";
+      if (!rawId) return { ok: false, error: "fileId is required" };
+      const title = typeof input?.title === "string" ? input.title.trim() : undefined;
+      const content = typeof input?.content === "string" ? truncateSoft(input.content, 80000) : undefined;
+      const fileType = typeof input?.fileType === "string" ? input.fileType.trim() : undefined;
+
+      await ctx.runMutation(internal.agentFiles.updateInternal, {
+        userId,
+        id: rawId as any,
+        title: title || undefined,
+        content,
+        fileType: fileType || undefined,
+      });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_file_updated",
+        properties: { taskId: String(taskId), fileId: rawId },
+      });
+
+      return { ok: true, result: { id: rawId }, summary: "Updated file." };
     }
 
     if (name === "request_approval") {
