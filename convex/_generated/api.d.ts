@@ -33,6 +33,7 @@ import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as commandPalette from "../commandPalette.js";
 import type * as connectors_authSessions from "../connectors/authSessions.js";
+import type * as connectors_githubOauth from "../connectors/githubOauth.js";
 import type * as connectors_googleOauth from "../connectors/googleOauth.js";
 import type * as connectors_tokens from "../connectors/tokens.js";
 import type * as crons from "../crons.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   commandPalette: typeof commandPalette;
   "connectors/authSessions": typeof connectors_authSessions;
+  "connectors/githubOauth": typeof connectors_githubOauth;
   "connectors/googleOauth": typeof connectors_googleOauth;
   "connectors/tokens": typeof connectors_tokens;
   crons: typeof crons;

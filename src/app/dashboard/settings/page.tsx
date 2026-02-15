@@ -42,9 +42,9 @@ export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
   const upsertSettings = useMutation(api.userSettings.upsert);
   const connectors = useQuery(api.connectors.tokens.list, {});
-  const setConnectorToken = useMutation(api.connectors.tokens.setToken);
   const clearConnectorToken = useMutation(api.connectors.tokens.clearToken);
   const startGoogleOauth = useAction(api.connectors.googleOauth.start);
+  const startGithubOauth = useAction(api.connectors.githubOauth.start);
 
   const [provider, setProvider] = useState<"openrouter" | "google" | "anthropic">(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -54,9 +54,8 @@ export default function SettingsPage() {
   const [searchProvider, setSearchProvider] = useState<"jina" | "tavily" | "perplexity">("jina");
   const [searchApiKey, setSearchApiKey] = useState("");
   const [saving, setSaving] = useState(false);
-  const [githubToken, setGithubToken] = useState("");
   const [hasGithubToken, setHasGithubToken] = useState(false);
-  const [connectingGithub, setConnectingGithub] = useState(false);
+  const [connectingGithub, setConnectingGithub] = useState<null | "read" | "write">(null);
   const [connectingGoogle, setConnectingGoogle] = useState<null | "gmail" | "google-calendar">(null);
 
   // Track whether keys are already configured server-side
@@ -85,6 +84,10 @@ export default function SettingsPage() {
     setHasGithubToken(Boolean(gh?.connected));
   }, [connectors]);
 
+  const githubConn = connectors?.find((c) => c.provider === "github");
+  const githubScopes = Array.isArray((githubConn as any)?.scopes) ? (githubConn as any).scopes as string[] : [];
+  const hasGithubWrite = githubScopes.includes("repo") || githubScopes.includes("public_repo");
+
   const gmailConn = connectors?.find((c) => c.provider === "gmail");
   const calConn = connectors?.find((c) => c.provider === "google-calendar");
   const hasGmail = Boolean(gmailConn?.connected);
@@ -109,15 +112,20 @@ export default function SettingsPage() {
         if (provider === "gmail" || provider === "google-calendar") {
           toast.success(provider === "gmail" ? "Gmail connected" : "Google Calendar connected");
           track("connector_connected", { provider });
+        } else if (provider === "github") {
+          toast.success("GitHub connected");
+          track("connector_connected", { provider });
         } else {
           toast.success("Connector connected");
         }
+        setConnectingGithub(null);
         setConnectingGoogle(null);
       }
       if (type === "mnotes:connector_error") {
         const err = String((data as any).error || "Connection failed");
         toast.error(err);
         track("connector_error", { provider: provider || undefined, error: err });
+        setConnectingGithub(null);
         setConnectingGoogle(null);
       }
     };
@@ -215,6 +223,40 @@ export default function SettingsPage() {
       console.error(err);
       toast.error("Failed to start Google OAuth");
       setConnectingGoogle(null);
+    }
+  };
+
+  const connectGithub = async (access: "read" | "write") => {
+    if (connectingGithub) return;
+    setConnectingGithub(access);
+    try {
+      const { authUrl } = await startGithubOauth({ origin: window.location.origin, access });
+      const w = 520;
+      const h = 680;
+      const left = Math.max(0, Math.round((window.screen.width - w) / 2));
+      const top = Math.max(0, Math.round((window.screen.height - h) / 2));
+      const popup = window.open(
+        authUrl,
+        "mnotes_github_oauth",
+        `popup=yes,width=${w},height=${h},left=${left},top=${top}`
+      );
+      if (!popup) {
+        toast.error("Popup blocked. Allow popups and try again.");
+        setConnectingGithub(null);
+        return;
+      }
+
+      const startedAt = Date.now();
+      const timer = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(timer);
+          if (Date.now() - startedAt > 1500) setConnectingGithub(null);
+        }
+      }, 700);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to start GitHub OAuth");
+      setConnectingGithub(null);
     }
   };
 
@@ -582,66 +624,32 @@ export default function SettingsPage() {
                 {hasGithubToken ? (
                   <button
                     onClick={async () => {
-                      setConnectingGithub(true);
                       try {
                         await clearConnectorToken({ provider: "github" });
                         toast.success("GitHub disconnected");
                         setHasGithubToken(false);
+                        track("connector_disconnected", { provider: "github" });
                       } catch {
                         toast.error("Failed to disconnect GitHub");
                       } finally {
-                        setConnectingGithub(false);
+                        setConnectingGithub(null);
                       }
                     }}
-                    disabled={connectingGithub}
+                    disabled={!!connectingGithub}
                     className="px-3 py-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
                   >
                     Disconnect
                   </button>
                 ) : (
                   <button
-                    onClick={async () => {
-                      if (!githubToken.trim()) {
-                        toast.error("Enter a GitHub token first");
-                        return;
-                      }
-                      setConnectingGithub(true);
-                      try {
-                        await setConnectorToken({ provider: "github", accessToken: githubToken.trim() });
-                        toast.success("GitHub connected");
-                        setHasGithubToken(true);
-                        setGithubToken("");
-                      } catch {
-                        toast.error("Failed to connect GitHub");
-                      } finally {
-                        setConnectingGithub(false);
-                      }
-                    }}
-                    disabled={connectingGithub}
+                    onClick={() => void connectGithub("read")}
+                    disabled={!!connectingGithub}
                     className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
                   >
-                    Connect
+                    {connectingGithub ? "Connecting…" : "Connect"}
                   </button>
                 )}
               </div>
-
-              {!hasGithubToken && (
-                <div className="mt-3">
-                  <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
-                    GitHub Personal Access Token
-                  </label>
-                  <input
-                    type="password"
-                    value={githubToken}
-                    onChange={(e) => setGithubToken(e.target.value)}
-                    placeholder="ghp_..."
-                    className="input-field w-full"
-                  />
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                    This is a temporary setup (PAT). OAuth-based connections will replace this in P6.
-                  </p>
-                </div>
-              )}
 
               {hasGithubToken && (
                 <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
@@ -651,7 +659,7 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "github_list_my_pull_requests", desc: "Lists your open PRs (read-only)." },
-                      { name: "github_create_issue", desc: "Creates an issue (requires approval)." },
+                      ...(hasGithubWrite ? [{ name: "github_create_issue", desc: "Creates an issue (requires approval)." }] : []),
                     ].map((t) => (
                       <div key={t.name} className="flex items-start justify-between gap-3">
                         <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
@@ -663,6 +671,21 @@ export default function SettingsPage() {
                       </div>
                     ))}
                   </div>
+
+                  {!hasGithubWrite && (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Connected without repo write scope. Enable write to create issues (scope: repo).
+                      </p>
+                      <button
+                        onClick={() => void connectGithub("write")}
+                        disabled={!!connectingGithub}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                      >
+                        Enable write
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

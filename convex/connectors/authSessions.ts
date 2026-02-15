@@ -4,7 +4,7 @@ import { internalMutation, internalQuery } from "../_generated/server";
 export const createInternal = internalMutation({
   args: {
     userId: v.string(),
-    provider: v.union(v.literal("google-calendar"), v.literal("gmail")),
+    provider: v.union(v.literal("github"), v.literal("google-calendar"), v.literal("gmail")),
     state: v.string(),
     origin: v.string(),
     scopes: v.array(v.string()),
@@ -40,4 +40,3 @@ export const deleteInternal = internalMutation({
     await ctx.db.delete(args.id);
   },
 });
-

@@ -470,6 +470,7 @@ The current agent can only generate text. The next phase is making it actually D
 Shipped connector docs:
 
 - Google OAuth (Gmail + Calendar): `docs/CONNECTORS_GOOGLE_OAUTH.md`
+- GitHub OAuth: `docs/CONNECTORS_GITHUB_OAUTH.md`
 
 ---
 

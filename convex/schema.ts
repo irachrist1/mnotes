@@ -392,6 +392,7 @@ export default defineSchema({
   connectorAuthSessions: defineTable({
     userId: v.string(),
     provider: v.union(
+      v.literal("github"),
       v.literal("google-calendar"),
       v.literal("gmail")
     ),

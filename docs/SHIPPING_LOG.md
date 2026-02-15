@@ -353,6 +353,21 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added token refresh-on-expiry for Google tools (uses `GOOGLE_OAUTH_CLIENT_ID/SECRET`) (`convex/ai/agentTools.ts`).
   - Added PostHog events: `connector_oauth_started`, `connector_oauth_connected`, `connector_oauth_failed`, `agent_gmail_list_recent`, `agent_calendar_list_upcoming`, `agent_google_token_refreshed`, `agent_gmail_draft_created`, `agent_gmail_email_sent`, `agent_calendar_event_created`.
 
+### P6.2: GitHub OAuth Connector (Replaces PAT)
+- **Status:** ✅ Shipped
+- **Goal:** Replace GitHub PAT connection with OAuth and keep GitHub tools working (with approvals for write).
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Extended `connectorAuthSessions.provider` to include `github` (`convex/schema.ts`, `convex/connectors/authSessions.ts`).
+  - Added GitHub OAuth flow:
+    - `connectors.githubOauth.start` action returns `authUrl` and creates a session row (`convex/connectors/githubOauth.ts`).
+    - `connectors.githubOauth.callback` `httpAction` exchanges code for token and posts success/failure back to opener (`convex/connectors/githubOauth.ts`).
+    - HTTP route registered at `GET /connectors/github/callback` (`convex/http.ts`).
+  - Updated Settings Connections UI:
+    - GitHub connect/disconnect uses popup OAuth (no PAT input)
+    - “Enable write” reconnect requests `repo` scope (`src/app/dashboard/settings/page.tsx`).
+  - Added docs: `docs/CONNECTORS_GITHUB_OAUTH.md`
+
 ### P7.0: Rich Output Renderers (Interactive Checklists)
 - **Status:** Shipped (initial renderer)
 - **Goal:** Render agent output as more than markdown paragraphs when appropriate.
