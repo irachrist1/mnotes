@@ -43,13 +43,18 @@ export const setToken = mutation({
       .first();
 
     const now = Date.now();
+    // Preserve refresh tokens unless explicitly replaced. Google often omits refresh_token on
+    // subsequent OAuth exchanges, and refresh is required for long-lived access.
+    const refreshToken = args.refreshToken !== undefined ? args.refreshToken : existing?.refreshToken;
+    const scopes = args.scopes !== undefined ? args.scopes : existing?.scopes;
+    const expiresAt = args.expiresAt !== undefined ? args.expiresAt : existing?.expiresAt;
     const data = {
       userId,
       provider: args.provider,
       accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      scopes: args.scopes,
-      expiresAt: args.expiresAt,
+      refreshToken,
+      scopes,
+      expiresAt,
       updatedAt: now,
     };
 
@@ -107,13 +112,16 @@ export const setInternal = internalMutation({
       .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("provider", args.provider))
       .first();
     const now = Date.now();
+    const refreshToken = args.refreshToken !== undefined ? args.refreshToken : existing?.refreshToken;
+    const scopes = args.scopes !== undefined ? args.scopes : existing?.scopes;
+    const expiresAt = args.expiresAt !== undefined ? args.expiresAt : existing?.expiresAt;
     const data = {
       userId: args.userId,
       provider: args.provider,
       accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      scopes: args.scopes,
-      expiresAt: args.expiresAt,
+      refreshToken,
+      scopes,
+      expiresAt,
       updatedAt: now,
     };
     if (existing) {

@@ -32,6 +32,8 @@ import type * as ai_weeklyDigest from "../ai/weeklyDigest.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as commandPalette from "../commandPalette.js";
+import type * as connectors_authSessions from "../connectors/authSessions.js";
+import type * as connectors_googleOauth from "../connectors/googleOauth.js";
 import type * as connectors_tokens from "../connectors/tokens.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
@@ -85,6 +87,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
   commandPalette: typeof commandPalette;
+  "connectors/authSessions": typeof connectors_authSessions;
+  "connectors/googleOauth": typeof connectors_googleOauth;
   "connectors/tokens": typeof connectors_tokens;
   crons: typeof crons;
   dashboard: typeof dashboard;

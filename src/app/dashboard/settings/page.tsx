@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Save, Key, Sparkles } from "lucide-react";
@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const connectors = useQuery(api.connectors.tokens.list, {});
   const setConnectorToken = useMutation(api.connectors.tokens.setToken);
   const clearConnectorToken = useMutation(api.connectors.tokens.clearToken);
+  const startGoogleOauth = useAction(api.connectors.googleOauth.start);
 
   const [provider, setProvider] = useState<"openrouter" | "google" | "anthropic">(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const [githubToken, setGithubToken] = useState("");
   const [hasGithubToken, setHasGithubToken] = useState(false);
   const [connectingGithub, setConnectingGithub] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState<null | "gmail" | "google-calendar">(null);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
@@ -82,6 +84,37 @@ export default function SettingsPage() {
     const gh = connectors.find((c) => c.provider === "github");
     setHasGithubToken(Boolean(gh?.connected));
   }, [connectors]);
+
+  const hasGmail = Boolean(connectors?.find((c) => c.provider === "gmail")?.connected);
+  const hasCalendar = Boolean(connectors?.find((c) => c.provider === "google-calendar")?.connected);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = (event as any)?.data;
+      if (!data || typeof data !== "object") return;
+
+      const type = String((data as any).type || "");
+      const provider = String((data as any).provider || "");
+      if (type === "mnotes:connector_connected") {
+        if (provider === "gmail" || provider === "google-calendar") {
+          toast.success(provider === "gmail" ? "Gmail connected" : "Google Calendar connected");
+          track("connector_connected", { provider });
+        } else {
+          toast.success("Connector connected");
+        }
+        setConnectingGoogle(null);
+      }
+      if (type === "mnotes:connector_error") {
+        const err = String((data as any).error || "Connection failed");
+        toast.error(err);
+        track("connector_error", { provider: provider || undefined, error: err });
+        setConnectingGoogle(null);
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
 
   // Keep model sane when switching providers.
   useEffect(() => {
@@ -139,6 +172,41 @@ export default function SettingsPage() {
     : provider === "google"
       ? GOOGLE_MODELS
       : ANTHROPIC_MODELS;
+
+  const connectGoogle = async (provider: "gmail" | "google-calendar") => {
+    if (connectingGoogle) return;
+    setConnectingGoogle(provider);
+    try {
+      const { authUrl } = await startGoogleOauth({ provider, origin: window.location.origin });
+      const w = 520;
+      const h = 680;
+      const left = Math.max(0, Math.round((window.screen.width - w) / 2));
+      const top = Math.max(0, Math.round((window.screen.height - h) / 2));
+      const popup = window.open(
+        authUrl,
+        "mnotes_google_oauth",
+        `popup=yes,width=${w},height=${h},left=${left},top=${top}`
+      );
+      if (!popup) {
+        toast.error("Popup blocked. Allow popups and try again.");
+        setConnectingGoogle(null);
+        return;
+      }
+
+      // Best-effort: clear the "connecting" state if the user closes the popup without completing.
+      const startedAt = Date.now();
+      const timer = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(timer);
+          if (Date.now() - startedAt > 1500) setConnectingGoogle(null);
+        }
+      }, 700);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to start Google OAuth");
+      setConnectingGoogle(null);
+    }
+  };
 
   return (
     <>
@@ -466,9 +534,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
-              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Connections (coming next)</p>
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Connections</p>
               <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                Email, calendar, GitHub, and other external tools appear here when connected. External side-effects will always require approval.
+                When a service is connected below, Jarvis can use it as tools during tasks. External side-effects will always require approval.
               </p>
             </div>
           </div>
@@ -589,13 +657,124 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4 bg-white/50 dark:bg-black/10">
-              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
-                Gmail + Calendar
-              </p>
-              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                OAuth-based connections coming next. Writes will require approval.
-              </p>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                    Gmail
+                  </p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                    {hasGmail ? "Connected" : "Not connected"}
+                  </p>
+                </div>
+                {hasGmail ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await clearConnectorToken({ provider: "gmail" });
+                        toast.success("Gmail disconnected");
+                        track("connector_disconnected", { provider: "gmail" });
+                      } catch {
+                        toast.error("Failed to disconnect Gmail");
+                      }
+                    }}
+                    disabled={connectingGoogle === "gmail"}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void connectGoogle("gmail")}
+                    disabled={!!connectingGoogle}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
+                  >
+                    {connectingGoogle === "gmail" ? "Connecting…" : "Connect"}
+                  </button>
+                )}
+              </div>
+
+              {hasGmail && (
+                <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
+                    Tools unlocked
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2">
+                    {[
+                      { name: "gmail_list_recent", desc: "Lists recent email headers (read-only)." },
+                    ].map((t) => (
+                      <div key={t.name} className="flex items-start justify-between gap-3">
+                        <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
+                          {t.name}
+                        </span>
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                          {t.desc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                    Google Calendar
+                  </p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                    {hasCalendar ? "Connected" : "Not connected"}
+                  </p>
+                </div>
+                {hasCalendar ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await clearConnectorToken({ provider: "google-calendar" });
+                        toast.success("Google Calendar disconnected");
+                        track("connector_disconnected", { provider: "google-calendar" });
+                      } catch {
+                        toast.error("Failed to disconnect Google Calendar");
+                      }
+                    }}
+                    disabled={connectingGoogle === "google-calendar"}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void connectGoogle("google-calendar")}
+                    disabled={!!connectingGoogle}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
+                  >
+                    {connectingGoogle === "google-calendar" ? "Connecting…" : "Connect"}
+                  </button>
+                )}
+              </div>
+
+              {hasCalendar && (
+                <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
+                    Tools unlocked
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2">
+                    {[
+                      { name: "calendar_list_upcoming", desc: "Lists upcoming events (read-only)." },
+                    ].map((t) => (
+                      <div key={t.name} className="flex items-start justify-between gap-3">
+                        <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
+                          {t.name}
+                        </span>
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                          {t.desc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

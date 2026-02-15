@@ -298,6 +298,30 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "gmail_list_recent",
+      description: "List recent Gmail messages (headers/snippet). Requires Gmail connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max messages (default 10)." },
+          q: { type: "string", description: "Optional Gmail search query (e.g. from:alice subject:\"invoice\")." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "calendar_list_upcoming",
+      description: "List upcoming Google Calendar events. Requires Google Calendar connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max events (default 10)." },
+          daysAhead: { type: "number", description: "How many days ahead to look (default 7)." },
+        },
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -320,6 +344,73 @@ async function getConnectorToken(ctx: any, userId: string, provider: string): Pr
   const tok = await ctx.runQuery(internal.connectors.tokens.getInternal, { userId, provider });
   const accessToken = typeof tok?.accessToken === "string" ? tok.accessToken : "";
   return accessToken ? accessToken : null;
+}
+
+async function getConnectorTokenDoc(ctx: any, userId: string, provider: "gmail" | "google-calendar") {
+  return await ctx.runQuery(internal.connectors.tokens.getInternal, { userId, provider });
+}
+
+async function getGoogleAccessToken(args: {
+  ctx: any;
+  userId: string;
+  provider: "gmail" | "google-calendar";
+}): Promise<{ accessToken: string; refreshed: boolean }> {
+  const tok = await getConnectorTokenDoc(args.ctx, args.userId, args.provider);
+  if (!tok?.accessToken) {
+    throw new Error(`${args.provider === "gmail" ? "Gmail" : "Google Calendar"} is not connected. Go to Settings > Connections.`);
+  }
+
+  const expiresAt = typeof tok.expiresAt === "number" ? tok.expiresAt : undefined;
+  if (expiresAt && Date.now() < expiresAt - 60_000) {
+    return { accessToken: tok.accessToken, refreshed: false };
+  }
+
+  const refreshToken = typeof tok.refreshToken === "string" ? tok.refreshToken : "";
+  if (!refreshToken) {
+    throw new Error("Google refresh token missing. Disconnect and reconnect to enable offline access.");
+  }
+
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("Server missing GOOGLE_OAUTH_CLIENT_ID/GOOGLE_OAUTH_CLIENT_SECRET.");
+  }
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }).toString(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Google token refresh failed (${res.status}): ${truncate(text, 240)}`);
+  }
+
+  const data = (await res.json()) as any;
+  const nextAccess = String(data?.access_token ?? "");
+  const expiresIn = typeof data?.expires_in === "number" ? data.expires_in : 3600;
+  if (!nextAccess) throw new Error("Google token refresh returned no access_token.");
+
+  await args.ctx.runMutation(internal.connectors.tokens.setInternal, {
+    userId: args.userId,
+    provider: args.provider,
+    accessToken: nextAccess,
+    refreshToken, // preserve
+    expiresAt: Date.now() + expiresIn * 1000,
+  });
+
+  void captureEvent({
+    distinctId: args.userId,
+    event: "agent_google_token_refreshed",
+    properties: { provider: args.provider },
+  });
+
+  return { accessToken: nextAccess, refreshed: true };
 }
 
 async function getApprovalMaps(ctx: any, userId: string, taskId: any): Promise<{
@@ -1093,6 +1184,108 @@ export async function executeTool(args: {
         ok: true,
         result: { repo, title, url: htmlUrl || null, number: typeof data?.number === "number" ? data.number : null },
         summary: htmlUrl ? "Created GitHub issue." : "Created GitHub issue (no URL returned).",
+      };
+    }
+
+    if (name === "gmail_list_recent") {
+      const limit = clampInt(input?.limit, 10, 1, 20);
+      const q = typeof input?.q === "string" ? input.q.trim() : "";
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail" });
+
+      const params = new URLSearchParams();
+      params.set("maxResults", String(limit));
+      if (q) params.set("q", q);
+
+      const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!listRes.ok) {
+        const text = await listRes.text();
+        return { ok: false, error: `Gmail list failed (${listRes.status}): ${truncate(text, 400)}` };
+      }
+
+      const listData = (await listRes.json()) as any;
+      const msgs = Array.isArray(listData?.messages) ? listData.messages : [];
+      const ids = msgs.map((m: any) => String(m?.id ?? "")).filter(Boolean).slice(0, limit);
+
+      const out = await Promise.all(ids.map(async (id: string) => {
+        const metaRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!metaRes.ok) return null;
+        const meta = (await metaRes.json()) as any;
+        const headers = Array.isArray(meta?.payload?.headers) ? meta.payload.headers : [];
+        const getH = (name: string) => String(headers.find((h: any) => String(h?.name ?? "").toLowerCase() === name.toLowerCase())?.value ?? "");
+        return {
+          id: String(meta?.id ?? id),
+          threadId: String(meta?.threadId ?? ""),
+          subject: truncate(getH("Subject"), 180),
+          from: truncate(getH("From"), 220),
+          date: truncate(getH("Date"), 120),
+          snippet: truncate(String(meta?.snippet ?? ""), 280),
+        };
+      }));
+
+      const simplified = out.filter(Boolean);
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_gmail_list_recent",
+        properties: { taskId: String(taskId), q: q || undefined, results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { q: q || null, messages: simplified },
+        summary: `Returned ${simplified.length} messages.`,
+      };
+    }
+
+    if (name === "calendar_list_upcoming") {
+      const limit = clampInt(input?.limit, 10, 1, 30);
+      const daysAhead = clampInt(input?.daysAhead, 7, 1, 30);
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar" });
+
+      const now = new Date();
+      const timeMin = now.toISOString();
+      const timeMax = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
+      const params = new URLSearchParams({
+        timeMin,
+        timeMax,
+        maxResults: String(limit),
+        singleEvents: "true",
+        orderBy: "startTime",
+      });
+
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `Calendar list failed (${res.status}): ${truncate(text, 400)}` };
+      }
+
+      const data = (await res.json()) as any;
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const simplified = items.slice(0, limit).map((it: any) => ({
+        id: String(it?.id ?? ""),
+        summary: truncate(String(it?.summary ?? "(no title)"), 200),
+        start: String(it?.start?.dateTime ?? it?.start?.date ?? ""),
+        end: String(it?.end?.dateTime ?? it?.end?.date ?? ""),
+        location: truncate(String(it?.location ?? ""), 220),
+        htmlLink: String(it?.htmlLink ?? ""),
+      }));
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_calendar_list_upcoming",
+        properties: { taskId: String(taskId), daysAhead, results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { daysAhead, events: simplified },
+        summary: `Returned ${simplified.length} events.`,
       };
     }
 

@@ -387,4 +387,20 @@ export default defineSchema({
   })
     .index("by_user_provider", ["userId", "provider"])
     .index("by_user_updated", ["userId", "updatedAt"]),
+
+  // OAuth handshake sessions (short-lived, for connector setup).
+  connectorAuthSessions: defineTable({
+    userId: v.string(),
+    provider: v.union(
+      v.literal("google-calendar"),
+      v.literal("gmail")
+    ),
+    state: v.string(),
+    origin: v.string(), // the app origin to postMessage back to after callback
+    scopes: v.array(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_state", ["state"])
+    .index("by_user_created", ["userId", "createdAt"]),
 });
