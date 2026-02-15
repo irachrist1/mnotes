@@ -305,6 +305,7 @@ function MobileUserProfile() {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const agentStatus = useQuery(api.tasks.currentAgentStatus);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [desktopContentVisible, setDesktopContentVisible] = useState(false);
@@ -488,6 +489,56 @@ export function Sidebar() {
             </ul>
 
             <div className="flex-1" />
+
+            {/* Jarvis status widget */}
+            <div className="px-1 pb-3">
+              <Link
+                href={agentStatus ? `/dashboard/data?tab=tasks&taskId=${agentStatus.taskId}` : "/dashboard/data?tab=tasks"}
+                className={[
+                  "block rounded-xl border border-stone-200 dark:border-white/[0.08] p-3 transition-colors",
+                  "hover:bg-stone-100 dark:hover:bg-white/[0.06]",
+                ].join(" ")}
+                aria-label="Jarvis status"
+                title={agentStatus ? "Open running task" : "Open agent tasks"}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
+                    Jarvis
+                  </span>
+                  {agentStatus ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      Working
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Idle
+                    </span>
+                  )}
+                </div>
+                {agentStatus ? (
+                  <div className="mt-2">
+                    <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate">
+                      {agentStatus.title}
+                    </p>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-500 truncate mt-0.5">
+                      {agentStatus.phase}
+                    </p>
+                    <div className="mt-2 h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 dark:bg-blue-400 rounded-full transition-[width] duration-500"
+                        style={{ width: `${Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-stone-500 dark:text-stone-500">
+                    All clear.
+                  </p>
+                )}
+              </Link>
+            </div>
           </nav>
 
           <DesktopUserSection contentVisible={desktopContentVisible} />

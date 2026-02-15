@@ -7,6 +7,9 @@ import { usePathname } from "next/navigation";
 import { Toaster } from "sonner";
 import { useConvexAvailable } from "@/components/ConvexClientProvider";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import Link from "next/link";
 
 const Sidebar = dynamic(
   () => import("@/components/layout/Sidebar").then((m) => m.Sidebar),
@@ -91,6 +94,7 @@ export function DashboardShell({
   const chatAutoOpened = useRef(false);
   const convexAvailable = useConvexAvailable();
   const pathname = usePathname();
+  const agentStatus = useQuery(api.tasks.currentAgentStatus);
 
   // Auto-open chat for freshly onboarded users (initialChatOpen resolves async)
   useEffect(() => {
@@ -194,6 +198,32 @@ export function DashboardShell({
           pendingPrompt={pendingPrompt}
           onPromptConsumed={() => setPendingPrompt(null)}
         />
+      )}
+
+      {/* Mobile Jarvis status pill */}
+      {convexAvailable && agentStatus && (
+        <div className="fixed bottom-4 left-4 right-4 z-[45] sm:hidden">
+          <Link
+            href={`/dashboard/data?tab=tasks&taskId=${agentStatus.taskId}`}
+            className="card px-4 py-3 flex items-center justify-between gap-3 border border-stone-200 dark:border-white/[0.08]"
+            aria-label="Open running task"
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
+                Jarvis is working
+              </p>
+              <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
+                {agentStatus.title}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
+                {Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%
+              </span>
+            </div>
+          </Link>
+        </div>
       )}
 
     </div>

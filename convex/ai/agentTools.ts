@@ -132,6 +132,58 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
       },
     },
     {
+      name: "create_task",
+      description:
+        "Create a new task in MNotes. By default it is created as an idle draft (no agent run) unless startAgent=true.",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Task title." },
+          note: { type: "string", description: "Optional task context/notes (markdown or text)." },
+          dueDate: { type: "string", description: "Optional due date (YYYY-MM-DD)." },
+          priority: { type: "string", description: "low | medium | high (default medium)." },
+          startAgent: { type: "boolean", description: "If true, queue the agent to run on this task (default false)." },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "update_task",
+      description:
+        "Update an existing task (mark done, change title, update notes).",
+      input_schema: {
+        type: "object",
+        properties: {
+          taskId: { type: "string", description: "Task id string." },
+          title: { type: "string", description: "New title (optional)." },
+          note: { type: "string", description: "New full note content (optional)." },
+          appendNote: { type: "string", description: "Append this text to the existing note (optional)." },
+          dueDate: { type: "string", description: "Due date (YYYY-MM-DD) or empty to clear (optional)." },
+          priority: { type: "string", description: "low | medium | high (optional)." },
+          done: { type: "boolean", description: "Mark done/undone (optional)." },
+        },
+        required: ["taskId"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "send_notification",
+      description:
+        "Send an in-app notification to the user (for important updates or next steps).",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Short notification title." },
+          body: { type: "string", description: "Notification body." },
+          actionUrl: { type: "string", description: "Optional link the user can click (dashboard route)." },
+          type: { type: "string", description: "Notification type (default agent-task)." },
+        },
+        required: ["title", "body"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "request_approval",
       description:
         "Request user approval before performing an irreversible or external side-effect. Pauses execution until approved/denied.",
@@ -489,6 +541,144 @@ export async function executeTool(args: {
         eventId: String(eventId),
         result: { eventId: String(eventId), action, reason, params: params ?? null },
         summary: "Requested approval from user.",
+      };
+    }
+
+    if (name === "create_task") {
+      const title = typeof input?.title === "string" ? input.title.trim() : "";
+      const note = typeof input?.note === "string" ? input.note : undefined;
+      const dueDate = typeof input?.dueDate === "string" ? input.dueDate.trim() : undefined;
+      const priorityRaw = typeof input?.priority === "string" ? input.priority.trim().toLowerCase() : "";
+      const startAgent = Boolean(input?.startAgent);
+      if (!title) return { ok: false, error: "title is required" };
+
+      const priority = priorityRaw === "low" || priorityRaw === "high" || priorityRaw === "medium"
+        ? (priorityRaw as "low" | "medium" | "high")
+        : undefined;
+
+      const id = await ctx.runMutation(internal.tasks.createInternal, {
+        userId,
+        title,
+        note,
+        dueDate: dueDate || undefined,
+        priority,
+        sourceType: "manual",
+        startAgent,
+      });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_task_created",
+        properties: {
+          parentTaskId: String(taskId),
+          createdTaskId: String(id),
+          startAgent,
+        },
+      });
+
+      return {
+        ok: true,
+        result: { id: String(id), title, startAgent: Boolean(startAgent) },
+        summary: startAgent ? `Created and queued task: ${title}` : `Created task: ${title}`,
+      };
+    }
+
+    if (name === "update_task") {
+      const rawId = typeof input?.taskId === "string" ? input.taskId.trim() : "";
+      if (!rawId) return { ok: false, error: "taskId is required" };
+
+      const existing = await ctx.runQuery(internal.tasks.getInternal, { id: rawId as any, userId });
+      if (!existing) return { ok: false, error: "Task not found" };
+
+      const title = typeof input?.title === "string" ? input.title.trim() : undefined;
+      const note = typeof input?.note === "string" ? input.note : undefined;
+      const appendNote = typeof input?.appendNote === "string" ? input.appendNote : undefined;
+      const dueDateRaw = typeof input?.dueDate === "string" ? input.dueDate.trim() : undefined;
+      const done = typeof input?.done === "boolean" ? input.done : undefined;
+      const priorityRaw = typeof input?.priority === "string" ? input.priority.trim().toLowerCase() : undefined;
+      const priority = priorityRaw === "low" || priorityRaw === "high" || priorityRaw === "medium"
+        ? (priorityRaw as "low" | "medium" | "high")
+        : undefined;
+
+      const nextNote = note !== undefined
+        ? note
+        : appendNote
+          ? [existing.note?.trim() ? existing.note.trim() : null, appendNote.trim()].filter(Boolean).join("\n\n")
+          : undefined;
+
+      await ctx.runMutation(internal.tasks.patchTaskInternal, {
+        userId,
+        id: existing._id,
+        title: title || undefined,
+        note: nextNote,
+        dueDate: dueDateRaw === "" ? undefined : dueDateRaw,
+        priority,
+        done,
+      });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_task_updated",
+        properties: {
+          parentTaskId: String(taskId),
+          updatedTaskId: String(existing._id),
+          fields: {
+            title: title !== undefined,
+            note: note !== undefined,
+            appendNote: appendNote !== undefined,
+            dueDate: dueDateRaw !== undefined,
+            priority: priority !== undefined,
+            done: done !== undefined,
+          },
+        },
+      });
+
+      return {
+        ok: true,
+        result: { id: String(existing._id) },
+        summary: `Updated task: ${existing.title}`,
+      };
+    }
+
+    if (name === "send_notification") {
+      const title = typeof input?.title === "string" ? input.title.trim() : "";
+      const body = typeof input?.body === "string" ? input.body.trim() : "";
+      const actionUrl = typeof input?.actionUrl === "string" ? input.actionUrl.trim() : undefined;
+      const typeRaw = typeof input?.type === "string" ? input.type.trim() : "agent-task";
+      const type = (
+        typeRaw === "goal-check-in"
+        || typeRaw === "stale-idea"
+        || typeRaw === "overdue-action"
+        || typeRaw === "pattern-detected"
+        || typeRaw === "milestone"
+        || typeRaw === "agent-task"
+      ) ? typeRaw : "agent-task";
+
+      if (!title) return { ok: false, error: "title is required" };
+      if (!body) return { ok: false, error: "body is required" };
+
+      const id = await ctx.runMutation(internal.notifications.createInternal, {
+        userId,
+        type,
+        title,
+        body,
+        actionUrl: actionUrl || undefined,
+      });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_notification_sent",
+        properties: {
+          taskId: String(taskId),
+          notificationId: String(id),
+          type,
+        },
+      });
+
+      return {
+        ok: true,
+        result: { id: String(id), title, type },
+        summary: "Sent notification.",
       };
     }
 

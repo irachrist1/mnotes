@@ -157,6 +157,9 @@ Shipped tools:
 - `get_task_result`
 - `ask_user` (pause point)
 - `create_file` (creates a draft in `agentFiles` linked to the current task)
+- `create_task` (creates a new task; can optionally queue the agent on it)
+- `update_task` (updates an existing task)
+- `send_notification` (sends an in-app notification)
 - `request_approval` (pause point for irreversible/external actions)
 - `web_search` (public web search, requires approval per task)
 - `read_url` (public URL read, requires approval per task)

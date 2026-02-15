@@ -283,6 +283,29 @@ export const getInternal = internalQuery({
     },
 });
 
+/** Current agent status for ambient UI (Sidebar status widget). */
+export const currentAgentStatus = query({
+    args: {},
+    handler: async (ctx): Promise<null | { taskId: string; title: string; phase: string; progress: number }> => {
+        const userId = await getUserId(ctx);
+        // Keep it cheap: scan recent tasks only.
+        const recent = await ctx.db
+            .query("tasks")
+            .withIndex("by_user_created", (q) => q.eq("userId", userId))
+            .order("desc")
+            .take(60);
+
+        const running = recent.find((t) => t.agentStatus === "running" || t.agentStatus === "queued");
+        if (!running) return null;
+        return {
+            taskId: String(running._id),
+            title: running.title,
+            phase: running.agentPhase ?? (running.agentStatus === "queued" ? "Queued" : "Working"),
+            progress: typeof running.agentProgress === "number" ? running.agentProgress : 0,
+        };
+    },
+});
+
 export const listForUserInternal = internalQuery({
     args: {
         userId: v.string(),
@@ -351,6 +374,86 @@ export const patchAgentInternal = internalMutation({
     handler: async (ctx, args) => {
         const task = await ctx.db.get(args.id);
         if (!task || task.userId !== args.userId) throw new Error("Not found");
+        const { id, userId, ...updates } = args;
+        await ctx.db.patch(id, updates);
+    },
+});
+
+// Internal APIs for agent tools (write actions).
+
+export const createInternal = internalMutation({
+    args: {
+        userId: v.string(),
+        title: v.string(),
+        note: v.optional(v.string()),
+        dueDate: v.optional(v.string()),
+        priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+        sourceType: v.optional(v.union(v.literal("manual"), v.literal("ai-insight"), v.literal("chat"))),
+        sourceId: v.optional(v.string()),
+        startAgent: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        validateShortText(args.title, "Title");
+        const now = Date.now();
+        const startAgent = Boolean(args.startAgent);
+        const priority = args.priority ?? "medium";
+        const sourceType = args.sourceType ?? "manual";
+
+        const taskId = await ctx.db.insert("tasks", {
+            userId: args.userId,
+            title: args.title.trim(),
+            note: args.note,
+            sourceType,
+            sourceId: args.sourceId,
+            dueDate: args.dueDate,
+            priority,
+            done: false,
+            createdAt: now,
+
+            ...(startAgent
+                ? {
+                    agentStatus: "queued",
+                    agentProgress: 3,
+                    agentPhase: "Queued",
+                    agentStartedAt: now,
+                }
+                : {}),
+        });
+
+        if (startAgent) {
+            await ctx.db.insert("taskEvents", {
+                userId: args.userId,
+                taskId,
+                kind: "status",
+                title: "Queued",
+                detail: "Agent is about to start.",
+                progress: 3,
+                createdAt: now,
+            });
+
+            await ctx.scheduler.runAfter(0, internal.ai.taskAgent.runInternal, {
+                userId: args.userId,
+                taskId,
+            });
+        }
+
+        return taskId;
+    },
+});
+
+export const patchTaskInternal = internalMutation({
+    args: {
+        userId: v.string(),
+        id: v.id("tasks"),
+        title: v.optional(v.string()),
+        note: v.optional(v.string()),
+        dueDate: v.optional(v.string()),
+        priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+        done: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db.get(args.id);
+        if (!existing || existing.userId !== args.userId) throw new Error("Not found");
         const { id, userId, ...updates } = args;
         await ctx.db.patch(id, updates);
     },

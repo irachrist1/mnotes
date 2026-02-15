@@ -282,6 +282,9 @@ Queued (3%) → Planning (12%) → Plan ready (20%) → Step 1..N (20-90%) → F
 - Data tools: soul file, tasks, income, ideas, mentorship, saved insights
 - `ask_user` tool can pause execution and resume on answer
 - `create_file` tool persists draft documents in `agentFiles`
+- Write tools:
+  - `create_task` / `update_task` (creates/updates tasks)
+  - `send_notification` (in-app notification)
 - `request_approval` tool pauses for Approve/Deny (used for external/irreversible actions)
 - Web tools:
   - `web_search` (uses Jina by default; can use Tavily or Perplexity when `userSettings.searchProvider` + `searchApiKey` is configured; requires approval per task)

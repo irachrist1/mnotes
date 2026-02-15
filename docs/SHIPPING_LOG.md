@@ -305,3 +305,12 @@ These are the guiding principles for the agent task experience, to be implemente
   - Expanded `userSettings.searchProvider` union to include `"perplexity"` (`convex/schema.ts`, `convex/userSettings.ts`).
   - Added Perplexity option to Settings UI (shares the `searchApiKey` field) (`src/app/dashboard/settings/page.tsx`).
   - Implemented Perplexity Search API executor in `web_search` tool (`convex/ai/agentTools.ts`).
+
+### P2.3: Built-In Write Tools (Tasks + Notifications)
+- **Status:** Shipped
+- **Goal:** Give Jarvis basic write capabilities inside MNotes (create/update tasks, send notifications) as tool calls.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added tools: `create_task`, `update_task`, `send_notification` (`convex/ai/agentTools.ts`).
+  - Added internal mutations for agent tools: `tasks.createInternal`, `tasks.patchTaskInternal` (`convex/tasks.ts`).
+  - Added capability listing in Settings (`src/app/dashboard/settings/page.tsx`) and docs updates.
