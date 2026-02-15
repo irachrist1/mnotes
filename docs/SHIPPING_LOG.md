@@ -314,3 +314,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added tools: `create_task`, `update_task`, `send_notification` (`convex/ai/agentTools.ts`).
   - Added internal mutations for agent tools: `tasks.createInternal`, `tasks.patchTaskInternal` (`convex/tasks.ts`).
   - Added capability listing in Settings (`src/app/dashboard/settings/page.tsx`) and docs updates.
+
+### P6.0: Connector Token Store + GitHub (PAT) Connection + GitHub Tools
+- **Status:** Shipped (initial)
+- **Goal:** Start the connector system with a minimal token store, a connect/disconnect UI, and the first real external tools (GitHub).
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `connectorTokens` table (`convex/schema.ts`) and token CRUD (`convex/connectors/tokens.ts`).
+  - Added Settings UI Connections section with GitHub connect/disconnect via PAT (`src/app/dashboard/settings/page.tsx`).
+  - Added agent tools:
+    - `github_list_my_pull_requests` (read-only)
+    - `github_create_issue` (requires approval per task)
+    (`convex/ai/agentTools.ts`)

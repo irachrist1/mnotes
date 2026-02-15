@@ -32,6 +32,7 @@ import type * as ai_weeklyDigest from "../ai/weeklyDigest.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as commandPalette from "../commandPalette.js";
+import type * as connectors_tokens from "../connectors/tokens.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as feedback from "../feedback.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
   commandPalette: typeof commandPalette;
+  "connectors/tokens": typeof connectors_tokens;
   crons: typeof crons;
   dashboard: typeof dashboard;
   feedback: typeof feedback;

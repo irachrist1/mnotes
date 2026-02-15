@@ -38,6 +38,9 @@ const BUILTIN_AGENT_TOOLS: { name: string; description: string }[] = [
 export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
   const upsertSettings = useMutation(api.userSettings.upsert);
+  const connectors = useQuery(api.connectors.tokens.list, {});
+  const setConnectorToken = useMutation(api.connectors.tokens.setToken);
+  const clearConnectorToken = useMutation(api.connectors.tokens.clearToken);
 
   const [provider, setProvider] = useState<"openrouter" | "google" | "anthropic">(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -47,6 +50,9 @@ export default function SettingsPage() {
   const [searchProvider, setSearchProvider] = useState<"jina" | "tavily" | "perplexity">("jina");
   const [searchApiKey, setSearchApiKey] = useState("");
   const [saving, setSaving] = useState(false);
+  const [githubToken, setGithubToken] = useState("");
+  const [hasGithubToken, setHasGithubToken] = useState(false);
+  const [connectingGithub, setConnectingGithub] = useState(false);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
@@ -67,6 +73,12 @@ export default function SettingsPage() {
       // Don't load masked key values into the input fields
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (!connectors) return;
+    const gh = connectors.find((c) => c.provider === "github");
+    setHasGithubToken(Boolean(gh?.connected));
+  }, [connectors]);
 
   // Keep model sane when switching providers.
   useEffect(() => {
@@ -453,7 +465,133 @@ export default function SettingsPage() {
             <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
               <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Connections (coming next)</p>
               <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                Email, calendar, GitHub, and other external tools will appear here once the connector system ships (with connect/disconnect and approvals).
+                Email, calendar, GitHub, and other external tools appear here when connected. External side-effects will always require approval.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Connections */}
+        <div className="card p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                Connections
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                Connect external services so Jarvis can take real actions (with approvals).
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                    GitHub
+                  </p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                    {hasGithubToken ? "Connected" : "Not connected"}
+                  </p>
+                </div>
+                {hasGithubToken ? (
+                  <button
+                    onClick={async () => {
+                      setConnectingGithub(true);
+                      try {
+                        await clearConnectorToken({ provider: "github" });
+                        toast.success("GitHub disconnected");
+                        setHasGithubToken(false);
+                      } catch {
+                        toast.error("Failed to disconnect GitHub");
+                      } finally {
+                        setConnectingGithub(false);
+                      }
+                    }}
+                    disabled={connectingGithub}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!githubToken.trim()) {
+                        toast.error("Enter a GitHub token first");
+                        return;
+                      }
+                      setConnectingGithub(true);
+                      try {
+                        await setConnectorToken({ provider: "github", accessToken: githubToken.trim() });
+                        toast.success("GitHub connected");
+                        setHasGithubToken(true);
+                        setGithubToken("");
+                      } catch {
+                        toast.error("Failed to connect GitHub");
+                      } finally {
+                        setConnectingGithub(false);
+                      }
+                    }}
+                    disabled={connectingGithub}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
+
+              {!hasGithubToken && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                    GitHub Personal Access Token
+                  </label>
+                  <input
+                    type="password"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder="ghp_..."
+                    className="input-field w-full"
+                  />
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    This is a temporary setup (PAT). OAuth-based connections will replace this in P6.
+                  </p>
+                </div>
+              )}
+
+              {hasGithubToken && (
+                <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
+                    Tools unlocked
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2">
+                    {[
+                      { name: "github_list_my_pull_requests", desc: "Lists your open PRs (read-only)." },
+                      { name: "github_create_issue", desc: "Creates an issue (requires approval)." },
+                    ].map((t) => (
+                      <div key={t.name} className="flex items-start justify-between gap-3">
+                        <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
+                          {t.name}
+                        </span>
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                          {t.desc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4 bg-white/50 dark:bg-black/10">
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                Gmail + Calendar
+              </p>
+              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                OAuth-based connections coming next. Writes will require approval.
               </p>
             </div>
           </div>

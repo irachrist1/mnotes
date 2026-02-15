@@ -163,6 +163,8 @@ Shipped tools:
 - `request_approval` (pause point for irreversible/external actions)
 - `web_search` (public web search, requires approval per task)
 - `read_url` (public URL read, requires approval per task)
+- `github_list_my_pull_requests` (requires GitHub connection)
+- `github_create_issue` (requires GitHub connection + approval)
 
 These tools execute on the backend using internal queries so they can be called from Convex actions without a client auth context.
 

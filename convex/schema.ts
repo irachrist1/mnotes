@@ -369,4 +369,22 @@ export default defineSchema({
   })
     .index("by_user_task_created", ["userId", "taskId", "createdAt"])
     .index("by_task_created", ["taskId", "createdAt"]),
+
+  // Connector tokens for external services (P6).
+  connectorTokens: defineTable({
+    userId: v.string(),
+    provider: v.union(
+      v.literal("github"),
+      v.literal("google-calendar"),
+      v.literal("gmail")
+    ),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    scopes: v.optional(v.array(v.string())),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_provider", ["userId", "provider"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
 });

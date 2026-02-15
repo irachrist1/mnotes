@@ -226,6 +226,35 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "github_list_my_pull_requests",
+      description:
+        "List my open GitHub pull requests (requires GitHub connection).",
+      input_schema: {
+        type: "object",
+        properties: {
+          q: { type: "string", description: "Optional extra GitHub search query terms (e.g. repo:owner/name)." },
+          limit: { type: "number", description: "Max results (default 10)." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "github_create_issue",
+      description:
+        "Create a GitHub issue in a repo (external side-effect; requires approval). Requires GitHub connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          repo: { type: "string", description: "Repo in owner/name format." },
+          title: { type: "string", description: "Issue title." },
+          body: { type: "string", description: "Issue body/description (optional)." },
+          labels: { type: "array", items: { type: "string" }, description: "Optional labels." },
+        },
+        required: ["repo", "title"],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -242,6 +271,12 @@ function truncate(value: string, max = 4000): string {
 function truncateSoft(value: string, max = 60000): string {
   if (value.length <= max) return value;
   return `${value.slice(0, max - 3)}...`;
+}
+
+async function getConnectorToken(ctx: any, userId: string, provider: string): Promise<string | null> {
+  const tok = await ctx.runQuery(internal.connectors.tokens.getInternal, { userId, provider });
+  const accessToken = typeof tok?.accessToken === "string" ? tok.accessToken : "";
+  return accessToken ? accessToken : null;
 }
 
 async function getApprovalMaps(ctx: any, userId: string, taskId: any): Promise<{
@@ -836,6 +871,125 @@ export async function executeTool(args: {
         ok: true,
         result: { url, content, truncated: text.length > content.length },
         summary: `Read ${url}`,
+      };
+    }
+
+    if (name === "github_list_my_pull_requests") {
+      const token = await getConnectorToken(ctx, userId, "github");
+      if (!token) return { ok: false, error: "GitHub is not connected. Add a token in Settings > Connections." };
+
+      const limit = clampInt(input?.limit, 10, 1, 20);
+      const extra = typeof input?.q === "string" ? input.q.trim() : "";
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (!userRes.ok) {
+        const text = await userRes.text();
+        return { ok: false, error: `GitHub auth failed (${userRes.status}): ${truncate(text, 300)}` };
+      }
+      const userData = (await userRes.json()) as any;
+      const login = String(userData?.login ?? "").trim();
+      if (!login) return { ok: false, error: "GitHub auth succeeded but user login was missing." };
+
+      const query = [
+        "is:pr",
+        "is:open",
+        `author:${login}`,
+        extra ? extra : null,
+      ].filter(Boolean).join(" ");
+
+      const searchUrl = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=${limit}`;
+      const res = await fetch(searchUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `GitHub search failed (${res.status}): ${truncate(text, 300)}` };
+      }
+      const data = (await res.json()) as any;
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const simplified = items.slice(0, limit).map((it: any) => ({
+        title: String(it?.title ?? ""),
+        url: String(it?.html_url ?? ""),
+        repo: String(it?.repository_url ?? "").replace("https://api.github.com/repos/", ""),
+        number: typeof it?.number === "number" ? it.number : undefined,
+        updatedAt: String(it?.updated_at ?? ""),
+      }));
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_github_list_prs",
+        properties: { taskId: String(taskId), results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { query, results: simplified },
+        summary: `Returned ${simplified.length} PRs.`,
+      };
+    }
+
+    if (name === "github_create_issue") {
+      const token = await getConnectorToken(ctx, userId, "github");
+      if (!token) return { ok: false, error: "GitHub is not connected. Add a token in Settings > Connections." };
+
+      const repo = typeof input?.repo === "string" ? input.repo.trim() : "";
+      const title = typeof input?.title === "string" ? input.title.trim() : "";
+      const body = typeof input?.body === "string" ? input.body : undefined;
+      const labels = Array.isArray(input?.labels) ? input.labels.map(String).map((s: string) => s.trim()).filter(Boolean).slice(0, 10) : undefined;
+      if (!repo) return { ok: false, error: "repo is required" };
+      if (!title) return { ok: false, error: "title is required" };
+
+      const approval = await ensureApprovedOrPause({
+        ctx,
+        userId,
+        taskId,
+        toolName: "github_create_issue",
+        detail: `Allow Jarvis to create a GitHub issue in ${repo}.`,
+        params: { repo, title, body: body ? truncate(body, 1200) : undefined, labels },
+      });
+      if (approval) return approval;
+
+      const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          body,
+          labels,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `GitHub create issue failed (${res.status}): ${truncate(text, 500)}` };
+      }
+      const data = (await res.json()) as any;
+      const htmlUrl = String(data?.html_url ?? "");
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_github_issue_created",
+        properties: { taskId: String(taskId), repo, url: htmlUrl || undefined },
+      });
+
+      return {
+        ok: true,
+        result: { repo, title, url: htmlUrl || null, number: typeof data?.number === "number" ? data.number : null },
+        summary: htmlUrl ? "Created GitHub issue." : "Created GitHub issue (no URL returned).",
       };
     }
 

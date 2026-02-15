@@ -104,6 +104,11 @@ Product requirement:
 - The dashboard must expose a clear list of "what Jarvis can do right now" based on connections/settings.
 - The agent must never pretend it can do a connector action if it's not connected.
 
+Current state (Feb 15, 2026):
+
+- A minimal connector token store exists (`connectorTokens` table) with a Settings UI section to connect GitHub via a Personal Access Token (PAT).
+- OAuth flows for Gmail/Calendar are still pending, but the framework is in place.
+
 ## Approval and Safety: Default Policies
 
 We categorize every tool:
@@ -146,4 +151,3 @@ The core is consistency:
 - every tool is visible
 - every external side-effect is approved
 - every task produces a tangible deliverable
-
