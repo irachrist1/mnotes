@@ -9,6 +9,10 @@ export type ParsedTaskOutput =
     markdown: string;
   }
   | {
+    type: "plaintext";
+    text: string;
+  }
+  | {
     type: "checklist";
     introMarkdown: string;
     items: ChecklistItem[];
@@ -42,7 +46,10 @@ export function parseTaskOutput(markdown: string): ParsedTaskOutput {
   // Only treat as a checklist when the output is clearly intended to be one.
   if (matches.length < 2) {
     const table = parseFirstMarkdownTable(lines);
-    if (!table) return { type: "markdown", markdown: raw };
+    if (!table) {
+      if (!looksLikeMarkdown(raw)) return { type: "plaintext", text: raw };
+      return { type: "markdown", markdown: raw };
+    }
 
     const introMarkdown = lines.slice(0, table.startLine).join("\n").trimEnd();
     const outroMarkdown = lines.slice(table.endLine + 1).join("\n").trimStart();
@@ -66,6 +73,19 @@ export function parseTaskOutput(markdown: string): ParsedTaskOutput {
 }
 
 type ParsedTable = { startLine: number; endLine: number; header: string[]; rows: string[][] };
+
+function looksLikeMarkdown(raw: string): boolean {
+  // Conservative: only opt into plaintext when the output is clearly not using markdown features.
+  const s = String(raw ?? "");
+  if (!s.trim()) return false;
+  if (s.includes("```")) return true;
+  if (/^\s*#{1,6}\s+\S/m.test(s)) return true; // headings
+  if (/^\s*(?:[-*+]\s+|\d+\.\s+)\S/m.test(s)) return true; // lists
+  if (/^\s*>\s+\S/m.test(s)) return true; // blockquote
+  if (/^\s*---\s*$/m.test(s)) return true; // horizontal rule
+  if (/\[[^\]]+\]\([^)]+\)/.test(s)) return true; // links/images
+  return false;
+}
 
 function splitTableRow(line: string): string[] {
   const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");

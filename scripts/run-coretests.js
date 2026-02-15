@@ -79,6 +79,9 @@ function run() {
   const parsed2 = parseTaskOutput("hello\n- [ ] only one\n");
   assert.equal(parsed2.type, "markdown");
 
+  const parsedText = parseTaskOutput("Just text\nSecond line\n");
+  assert.equal(parsedText.type, "plaintext");
+
   const tableRaw = [
     "Intro",
     "",

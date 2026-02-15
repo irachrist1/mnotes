@@ -13,6 +13,14 @@ export function TaskOutputRenderers(props: { markdown: string }) {
     return <MarkdownMessage content={props.markdown} />;
   }
 
+  if (parsed.type === "plaintext") {
+    return (
+      <div className="whitespace-pre-wrap break-words leading-relaxed">
+        {parsed.text}
+      </div>
+    );
+  }
+
   if (parsed.type === "checklist") {
     return <ChecklistRenderer parsed={parsed} />;
   }

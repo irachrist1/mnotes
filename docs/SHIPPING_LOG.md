@@ -394,6 +394,15 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added “Save as file” on task output; stores the output in `agentFiles` linked to the task (`src/components/dashboard/TasksContent.tsx`).
 
+### P7.3: Plaintext Output Rendering (Avoid Markdown When Not Needed)
+- **Status:** ✅ Shipped
+- **Goal:** Ensure normal text renders cleanly (no markdown quirks) while preserving rich formats when present.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added a `plaintext` output type heuristic in `src/lib/outputFormats.ts` for outputs that don't look like markdown.
+  - Updated `src/components/dashboard/TaskOutputRenderers.tsx` to render plaintext with `whitespace-pre-wrap` (no markdown parsing).
+  - Added coretest coverage in `scripts/run-coretests.js`.
+
 ### P3.2: Progressive Output (Pseudo-Streaming)
 - **Status:** ✅ Shipped (initial)
 - **Goal:** Output should visibly progress while Jarvis works, not appear all at once.

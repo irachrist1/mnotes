@@ -104,10 +104,13 @@ Product requirement:
 - The dashboard must expose a clear list of "what Jarvis can do right now" based on connections/settings.
 - The agent must never pretend it can do a connector action if it's not connected.
 
-Current state (Feb 15, 2026):
+Current state (Feb 16, 2026):
 
-- A minimal connector token store exists (`connectorTokens` table) with a Settings UI section to connect GitHub via a Personal Access Token (PAT).
-- OAuth flows for Gmail/Calendar are still pending, but the framework is in place.
+- Connector token store exists (`connectorTokens` table) with per-connector connect/disconnect UI in Settings.
+- OAuth flows are shipped:
+  - GitHub OAuth (read + approval-gated write, plus "Enable write" reconnect for `repo` scope).
+  - Google OAuth for Gmail + Calendar (read tools + approval-gated write tools, with progressive "Enable write" reconnect).
+- Connector usage is tracked (`connectorTokens.lastUsedAt`) so users can see which connections are actually being used.
 
 ## Approval and Safety: Default Policies
 
