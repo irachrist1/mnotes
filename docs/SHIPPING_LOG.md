@@ -260,3 +260,12 @@ These are the guiding principles for the agent task experience, to be implemente
     - `agent_file_created`, `agent_approval_requested` in `convex/ai/agentTools.ts`
     - `agent_task_succeeded`, `agent_task_failed`, `agent_approval_responded` in `convex/ai/taskAgent.ts`
   - Added step/final phase $ai_generation capture in `convex/ai/taskAgent.ts` (truncated prompt/output for safety)
+
+### P2.2.1: OpenRouter Tool Loop (Function Calling)
+- **Status:** Shipped (initial)
+- **Goal:** Enable autonomous tool calling without requiring Anthropic provider (useful for one-key OpenRouter setups).
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added OpenRouter function-calling tool loop in `convex/ai/taskAgent.ts` (`tools` + `tool_calls` + `role="tool"` results)
+  - Updated provider routing so `aiProvider="openrouter"` uses the tool loop (Google remains fallback)
+  - Updated docs and Settings UI copy to reflect OpenRouter tool-use support

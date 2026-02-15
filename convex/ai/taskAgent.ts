@@ -250,18 +250,32 @@ async function runFromTaskState(
         temperature: 0.2,
         toolCallBudget: 10,
       })).text
-      : (await runFallbackCall({
-        ctx,
-        userId: args.userId,
-        taskId: args.taskId,
-        provider,
-        apiKey,
-        model,
-        system: baseSystem,
-        userPrompt: planPrompt,
-        temperature: 0.2,
-        maxTokens: 900,
-      })).text;
+      : provider === "openrouter"
+        ? (await runOpenRouterToolLoop({
+          ctx,
+          userId: args.userId,
+          taskId: args.taskId,
+          apiKey,
+          model,
+          system: baseSystem,
+          userPrompt: planPrompt,
+          maxTokens: 900,
+          temperature: 0.2,
+          toolCallBudget: 10,
+          title: "MNotes Agent Tasks",
+        })).text
+        : (await runFallbackCall({
+          ctx,
+          userId: args.userId,
+          taskId: args.taskId,
+          provider,
+          apiKey,
+          model,
+          system: baseSystem,
+          userPrompt: planPrompt,
+          temperature: 0.2,
+          maxTokens: 900,
+        })).text;
 
     captureAiGeneration({
       distinctId: args.userId,
@@ -337,18 +351,32 @@ async function runFromTaskState(
         temperature: 0.25,
         toolCallBudget: 10,
       })
-      : await runFallbackCall({
-        ctx,
-        userId: args.userId,
-        taskId: args.taskId,
-        provider,
-        apiKey,
-        model,
-        system: baseSystem,
-        userPrompt: stepPrompt,
-        temperature: 0.25,
-        maxTokens: 1400,
-      });
+      : provider === "openrouter"
+        ? await runOpenRouterToolLoop({
+          ctx,
+          userId: args.userId,
+          taskId: args.taskId,
+          apiKey,
+          model,
+          system: baseSystem,
+          userPrompt: stepPrompt,
+          temperature: 0.25,
+          maxTokens: 1400,
+          toolCallBudget: 10,
+          title: "MNotes Agent Tasks",
+        })
+        : await runFallbackCall({
+          ctx,
+          userId: args.userId,
+          taskId: args.taskId,
+          provider,
+          apiKey,
+          model,
+          system: baseSystem,
+          userPrompt: stepPrompt,
+          temperature: 0.25,
+          maxTokens: 1400,
+        });
 
     void captureAiGeneration({
       distinctId: args.userId,
@@ -457,18 +485,32 @@ async function runFromTaskState(
       temperature: 0.2,
       toolCallBudget: 4,
     })).text
-    : (await runFallbackCall({
-      ctx,
-      userId: args.userId,
-      taskId: args.taskId,
-      provider,
-      apiKey,
-      model,
-      system: baseSystem,
-      userPrompt: finalPrompt,
-      temperature: 0.2,
-      maxTokens: 1600,
-    })).text;
+    : provider === "openrouter"
+      ? (await runOpenRouterToolLoop({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: finalPrompt,
+        temperature: 0.2,
+        maxTokens: 1600,
+        toolCallBudget: 6,
+        title: "MNotes Agent Tasks",
+      })).text
+      : (await runFallbackCall({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        provider,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: finalPrompt,
+        temperature: 0.2,
+        maxTokens: 1600,
+      })).text;
 
   void captureAiGeneration({
     distinctId: args.userId,
@@ -685,6 +727,137 @@ async function runClaudeToolLoop(args: {
             content: JSON.stringify(toolResultPayload),
           },
         ],
+      });
+
+      if (res.ok && (res as any).pause) {
+        return {
+          text,
+          paused: true,
+          waitingForEventId: (res as any).eventId,
+          pauseReason: (res as any).pauseReason,
+        };
+      }
+    }
+  }
+
+  return { text: "{\"error\":\"Exceeded iteration limit\"}" };
+}
+
+async function runOpenRouterToolLoop(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  apiKey: string;
+  model: string;
+  system: string;
+  userPrompt: string;
+  temperature: number;
+  maxTokens: number;
+  toolCallBudget: number;
+  title: string;
+}): Promise<{ text: string; paused?: boolean; waitingForEventId?: string; pauseReason?: "ask_user" | "approval" }> {
+  const toolDefs = getBuiltInToolDefs();
+  const tools = toolDefs.map((t) => ({
+    type: "function",
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    },
+  }));
+
+  const messages: any[] = [
+    { role: "system", content: args.system },
+    { role: "user", content: args.userPrompt },
+  ];
+
+  let toolCalls = 0;
+
+  for (let iter = 0; iter < 12; iter++) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${args.apiKey}`,
+        "HTTP-Referer": "https://mnotes.app",
+        "X-Title": args.title,
+      },
+      body: JSON.stringify({
+        model: args.model || "google/gemini-3-flash-preview",
+        messages,
+        temperature: args.temperature,
+        max_tokens: args.maxTokens,
+        tools,
+        tool_choice: "auto",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { text: `{"error":"OpenRouter API error (${response.status}): ${errorText.replace(/\"/g, "\\\"")}"}` };
+    }
+
+    const data = (await response.json()) as any;
+    const msg = data?.choices?.[0]?.message ?? {};
+    const text = typeof msg.content === "string" ? msg.content : "";
+    const toolUses = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+
+    // Always preserve the assistant message, even if it contains tool calls.
+    messages.push(msg);
+
+    if (toolUses.length === 0) {
+      return { text };
+    }
+
+    for (const tu of toolUses) {
+      toolCalls++;
+      if (toolCalls > args.toolCallBudget) {
+        return { text: text || "{\"error\":\"Tool call limit exceeded\"}" };
+      }
+
+      const toolName = String(tu?.function?.name || "");
+      const rawArgs = String(tu?.function?.arguments || "{}");
+      let toolInput: any = {};
+      try {
+        toolInput = JSON.parse(rawArgs);
+      } catch {
+        toolInput = { __parseError: "Invalid JSON arguments", raw: rawArgs.slice(0, 2000) };
+      }
+
+      await args.ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "tool",
+        title: `Tool: ${toolName || "(unknown)"}`,
+        toolName,
+        toolInput: JSON.stringify(toolInput).slice(0, 4000),
+        detail: "Executing.",
+      });
+
+      const res = await executeTool({
+        ctx: args.ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        name: toolName,
+        input: toolInput,
+      });
+
+      await args.ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "tool",
+        title: `Tool result: ${toolName || "(unknown)"}`,
+        toolName,
+        toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
+        detail: res.ok ? (res.summary ?? "ok") : res.error,
+      });
+
+      const toolResultPayload = res.ok ? res.result : { error: res.error };
+      const toolCallId = String(tu?.id || "");
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCallId,
+        content: JSON.stringify(toolResultPayload).slice(0, 15000),
       });
 
       if (res.ok && (res as any).pause) {

@@ -72,9 +72,10 @@ The task agent now **respects the selected provider**.
 ### Tool-use support by provider
 
 - `anthropic`: full tool loop via the Anthropic SDK (real `tool_use` -> tool execution -> `tool_result` -> continue).
-- `openrouter` and `google`: "fallback mode" (no model-driven tool calls yet). The agent still emits tool events by explicitly running a couple basic tools (read soul file, list tasks) and then calling the LLM once per step with those results injected as text.
+- `openrouter`: tool loop via OpenAI-style function calling (`tools` + `tool_calls`). This works best on models that reliably support tool calling; if a model doesn't call tools, the loop just returns text.
+- `google`: "fallback mode" (no model-driven tool calls yet). The agent still emits tool events by explicitly running a couple basic tools (read soul file, list tasks) and then calling the LLM once per step with those results injected as text.
 
-If you want real function-calling with OpenRouter models, that is a separate follow-up change.
+Note: OpenRouter tool calling is supported now, but model quality varies by model.
 
 ## Analytics (PostHog)
 

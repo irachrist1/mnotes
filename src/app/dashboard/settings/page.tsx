@@ -352,7 +352,7 @@ export default function SettingsPage() {
             <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
               <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Tool-use mode</p>
               <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                Full model-driven tool calling is enabled when Provider is <span className="font-medium">Anthropic</span>. OpenRouter and Google currently run in a fallback mode (the agent still reads some data, but the model does not autonomously call tools yet).
+                Full model-driven tool calling is enabled for <span className="font-medium">Anthropic</span> (best reliability) and <span className="font-medium">OpenRouter</span> (model-dependent). Google currently runs in a fallback mode (the agent reads some data, but the model does not autonomously call tools yet).
               </p>
             </div>
 
