@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { getUserId } from "./lib/auth";
 import { validateShortText, validateMediumText, validateNumber } from "./lib/validate";
 
@@ -12,6 +12,21 @@ export const list = query({
       .withIndex("by_user_created", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
+  },
+});
+
+export const listForUserInternal = internalQuery({
+  args: {
+    userId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(Math.floor(args.limit ?? 50), 200));
+    return await ctx.db
+      .query("incomeStreams")
+      .withIndex("by_user_created", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
   },
 });
 

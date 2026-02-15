@@ -21,6 +21,7 @@ export const get = query({
       ...settings,
       openrouterApiKey: settings.openrouterApiKey ? "••••••••" : undefined,
       googleApiKey: settings.googleApiKey ? "••••••••" : undefined,
+      anthropicApiKey: settings.anthropicApiKey ? "••••••••" : undefined,
     };
   },
 });
@@ -40,10 +41,11 @@ export const getWithKeys = internalQuery({
 
 export const upsert = mutation({
   args: {
-    aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
+    aiProvider: v.union(v.literal("openrouter"), v.literal("google"), v.literal("anthropic")),
     aiModel: v.string(),
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
+    anthropicApiKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -51,6 +53,7 @@ export const upsert = mutation({
     validateApiKey(args.openrouterApiKey);
     validateApiKey(args.googleApiKey);
 
+    validateApiKey(args.anthropicApiKey);
     const existing = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -62,6 +65,7 @@ export const upsert = mutation({
       aiModel: args.aiModel,
       openrouterApiKey: args.openrouterApiKey,
       googleApiKey: args.googleApiKey,
+      anthropicApiKey: args.anthropicApiKey,
       updatedAt: Date.now(),
     };
 
@@ -87,3 +91,4 @@ export const getForUser = internalQuery({
       .first();
   },
 });
+

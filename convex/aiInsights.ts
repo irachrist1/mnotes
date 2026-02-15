@@ -307,9 +307,10 @@ async function tryEmbedForDedupe(ctx: {
 }, args: {
   text: string;
   settings: {
-    aiProvider: "openrouter" | "google";
+    aiProvider: "openrouter" | "google" | "anthropic";
     openrouterApiKey?: string;
     googleApiKey?: string;
+    anthropicApiKey?: string;
   } | null;
 }): Promise<{
   embedding: number[];
@@ -318,6 +319,7 @@ async function tryEmbedForDedupe(ctx: {
 } | null> {
   if (!args.settings) return null;
   const provider = args.settings.aiProvider;
+  if (provider === "anthropic") return null;
   const apiKey = provider === "openrouter"
     ? args.settings.openrouterApiKey
     : args.settings.googleApiKey;

@@ -7,6 +7,7 @@ import { parseAIResponse, ParsedInsight } from "./parseAIResponse";
 import type { Id } from "../_generated/dataModel";
 import { getUserId } from "../lib/auth";
 import { createHash } from "node:crypto";
+import { resolveApiKeyFromSettings, type AiProvider } from "./llm";
 
 const INSIGHT_PROMPT_CACHE_TTL_SECONDS = 10 * 60;
 
@@ -34,12 +35,16 @@ export const analyze = action({
       throw new Error("Please configure AI settings first (Settings page)");
     }
 
-    const apiKey = settings.aiProvider === "openrouter"
-      ? settings.openrouterApiKey
-      : settings.googleApiKey;
+    const provider = settings.aiProvider as AiProvider;
+    const { apiKey, missingReason } = resolveApiKeyFromSettings({
+      aiProvider: provider,
+      openrouterApiKey: settings.openrouterApiKey,
+      googleApiKey: settings.googleApiKey,
+      anthropicApiKey: (settings as any).anthropicApiKey,
+    });
 
     if (!apiKey) {
-      throw new Error(`Please add your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key in Settings`);
+      throw new Error(missingReason ?? "Please add your API key in Settings");
     }
 
     // Build the prompt based on analysis type
@@ -75,7 +80,7 @@ export const analyze = action({
       : await ctx.runAction(api.ai.generate.generate, {
         prompt,
         model,
-        provider: settings.aiProvider,
+        provider,
         apiKey,
       });
 
@@ -84,7 +89,7 @@ export const analyze = action({
         userId,
         scope: "insight",
         cacheKey,
-        provider: settings.aiProvider,
+        provider,
         model,
         responseText: aiResponse,
         ttlSeconds: INSIGHT_PROMPT_CACHE_TTL_SECONDS,

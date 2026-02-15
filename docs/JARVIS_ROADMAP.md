@@ -33,6 +33,7 @@
 - `src/components/dashboard/TasksContent.tsx` — agent tasks UI
 - `src/app/dashboard/page.tsx` — dashboard home with nudge cards
 - `docs/SHIPPING_LOG.md` — detailed changelog of everything shipped
+- `docs/AGENT_PLATFORM_PRINCIPLES.md` — non-negotiable rules for tools/connectors/output (read before adding tools)
 
 ---
 

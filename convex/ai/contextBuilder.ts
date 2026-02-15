@@ -62,7 +62,11 @@ export const buildContextPacket = action({
     let providerForCacheHint: "google" | "openrouter" | null = null;
     if (queryText.length > 0) {
       const provider = settings?.aiProvider;
-      const apiKey = provider === "openrouter" ? settings?.openrouterApiKey : settings?.googleApiKey;
+      if (provider === "anthropic") {
+        // Anthropic doesn't provide embeddings in this codebase; fall back to lexical retrieval only.
+        providerForCacheHint = null;
+      } else {
+        const apiKey = provider === "openrouter" ? settings?.openrouterApiKey : settings?.googleApiKey;
       try {
         if (!provider || !apiKey) {
           throw new Error("No embedding credentials configured");
@@ -88,6 +92,7 @@ export const buildContextPacket = action({
           .slice(0, DEFAULT_RETRIEVAL_LIMIT);
       } catch {
         // Ignore embedding failures and continue with lexical retrieval only.
+      }
       }
     }
 

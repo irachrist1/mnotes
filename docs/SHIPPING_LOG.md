@@ -177,3 +177,86 @@ These are the guiding principles for the agent task experience, to be implemente
 | 2026-02-14 | P1.4: Dashboard AI Copy | Reframed "tasks to do" → "tasks running in background" |
 | 2026-02-14 | P1.5: Landing Page Polish | Reduced nav-content gap, deep-research style agent preview widget |
 | 2026-02-15 | P1.6: Insight Actions → Agents | Click any recommended action to spin up agent tasks with visual feedback |
+| 2026-02-15 | Mobile animation fix | AgentTaskPreview freezes on final frame on mobile to prevent scroll jumps |
+| 2026-02-15 | Developer onboarding doc | Comprehensive `docs/DEVELOPER_ONBOARDING.md` — schema, prompts, analytics, working/broken features |
+
+---
+
+## P2 -- Agentic Core (Multi-Step + Tools)
+
+### P2.0: Multi-Step Agent Loop + Data Tools + Pause/Resume Questions
+- **Status:** Shipped
+- **Goal:** Turn taskAgent into a real multi-step agent with visible progress, tool-driven data access, and mid-run clarifying questions.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added Anthropic as a first-class AI provider:
+    - Expanded `userSettings` schema to support `aiProvider: "anthropic"` + `anthropicApiKey`
+    - Added Anthropic model options in `src/lib/aiModels.ts` and Settings UI in `src/app/dashboard/settings/page.tsx`
+  - Added richer agent event types to support tool visualization + questions:
+    - Expanded `taskEvents.kind` to include `tool`, `question`, `approval-request`
+    - Added optional fields for tool input/output, question options/answers, and approval metadata
+    - Added `taskEvents.answerQuestion` mutation to resume the agent after a user answers
+  - Shipped the agent tool framework + built-in read tools:
+    - New `convex/ai/agentTools.ts` tool registry + executors
+    - Tools: `read_soul_file`, `list_tasks`, `list_income_streams`, `list_ideas`, `list_mentorship_sessions`, `search_insights`, `get_task_result`, `ask_user`
+    - Added internal list queries for tools to work inside Convex actions: `listForUserInternal` across tasks/income/ideas/mentorship
+  - Rewrote `convex/ai/taskAgent.ts` into a real multi-step loop:
+    - PLAN phase produces `agentPlan` then EXECUTE runs steps sequentially
+    - Each tool call emits `taskEvents` so the UI shows progress in real time
+    - `ask_user` pauses execution (sets `agentPhase: "Waiting for input"`) and resumes via `continueInternal`
+    - Incremental output: step outputs append into `agentResult` as the agent progresses
+  - Updated tasks UI to render interactive question cards:
+    - `src/components/dashboard/TasksContent.tsx` shows `question` events with option buttons and resumes agent on click
+
+### P2.0.1: Output Raw View + Capability Listing + Platform Principles Doc
+- **Status:** Shipped
+- **Goal:** Make agent output trustworthy (raw text view) and document the non-negotiable rules for tools/connectors so future agents build consistently.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added Rich vs Raw output toggle in `src/components/dashboard/TasksContent.tsx`
+  - Added "Agent Capabilities" section in `src/app/dashboard/settings/page.tsx` listing built-in tools and clarifying provider tool-use behavior
+  - Added `docs/AGENT_PLATFORM_PRINCIPLES.md` and linked it from `docs/JARVIS_ROADMAP.md` and `docs/AGENTIC_CORE.md`
+
+### P2.6: File Creation System (agentFiles + create_file tool + viewer/editor)
+- **Status:** Shipped
+- **Goal:** Jarvis can create real draft documents as first-class objects, not just inline text.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `agentFiles` table to `convex/schema.ts`
+  - Added `convex/agentFiles.ts` CRUD (public + internal) for listing, getting, creating, updating, deleting files
+  - Added `create_file` tool to `convex/ai/agentTools.ts` so Claude tool-use can persist drafts linked to a task
+  - Added `src/components/dashboard/AgentFileViewer.tsx` (inline viewer/editor with Rich/Raw view + copy + save)
+  - Added a "Files" section to the agent task activity panel in `src/components/dashboard/TasksContent.tsx`
+
+### P2.7: Approval Requests (approval-request events + approve/deny UI + request_approval tool)
+- **Status:** Shipped (infrastructure)
+- **Goal:** Support human-in-the-loop for irreversible/external actions.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `request_approval` tool to `convex/ai/agentTools.ts` (creates `taskEvents(kind="approval-request")` and pauses)
+  - Added `taskEvents.respondApproval` mutation to `convex/taskEvents.ts` to approve/deny and resume the agent
+  - Updated `convex/ai/taskAgent.ts` resume logic to support both `question` and `approval-request` pause points
+  - Updated `src/components/dashboard/TasksContent.tsx` to render approval cards with Approve/Deny buttons
+
+---
+
+## P3 — Deep Research Agent UI
+
+### P3.1: Tool Call Visualization (Cards + Input/Output)
+- **Status:** Shipped (partial)
+- **Goal:** Make the agent's work legible by rendering tool calls as first-class UI cards.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `kind="tool"` event card rendering in `src/components/dashboard/TasksContent.tsx` showing tool name, input payload, and output summary
+
+### Tests + Analytics: Agent Parsing Tests + PostHog Agent Lifecycle Events
+- **Status:** Shipped
+- **Goal:** Raise the engineering bar: unit-test core parsing and instrument agent lifecycle/errors in PostHog.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added pure parsing module `convex/ai/taskAgentParsing.ts` and unit tests `convex/ai/taskAgentParsing.test.ts`
+  - Expanded API export validation test to include `convex/agentFiles.ts` exports in `src/test/api-exports.test.ts`
+  - Added `captureEvent()` to `convex/lib/posthog.ts` and instrumented:
+    - `agent_file_created`, `agent_approval_requested` in `convex/ai/agentTools.ts`
+    - `agent_task_succeeded`, `agent_task_failed`, `agent_approval_responded` in `convex/ai/taskAgent.ts`
+  - Added step/final phase $ai_generation capture in `convex/ai/taskAgent.ts` (truncated prompt/output for safety)

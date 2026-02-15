@@ -4,14 +4,21 @@ import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { captureAiGeneration } from "../lib/posthog";
+import { captureAiGeneration, captureEvent } from "../lib/posthog";
+import Anthropic from "@anthropic-ai/sdk";
 
-type AgentPayload = {
-  planSteps: string[];
-  summary: string;
-  resultMarkdown: string;
-};
+import { getBuiltInToolDefs, executeTool } from "./agentTools";
+import { callChat, resolveApiKeyFromSettings, type AiProvider } from "./llm";
+import {
+  parseAgentState,
+  parseFinalPayload,
+  parsePlan,
+  parseStepPayload,
+  type AgentPayload,
+  type AgentState,
+} from "./taskAgentParsing";
+
+// AgentPayload/AgentState live in taskAgentParsing.ts (kept pure for testing).
 
 export const start = action({
   args: { taskId: v.id("tasks") },
@@ -36,6 +43,7 @@ export const start = action({
       agentSummary: undefined,
       agentPlan: undefined,
       agentResult: undefined,
+      agentState: undefined,
     });
 
     await ctx.runMutation(internal.taskEvents.clearForTaskInternal, {
@@ -71,161 +79,652 @@ export const start = action({
 export const runInternal = internalAction({
   args: { userId: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, args) => {
-    const [task, settings, soulFile] = await Promise.all([
-      ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }),
-      ctx.runQuery(internal.userSettings.getForUser, { userId: args.userId }),
-      ctx.runQuery(internal.soulFile.getByUserId, { userId: args.userId }),
-    ]);
+    await runFromTaskState(ctx, args, { resume: false });
+  },
+});
 
-    if (!task) return;
+export const continueInternal = internalAction({
+  args: { userId: v.string(), taskId: v.id("tasks") },
+  handler: async (ctx, args) => {
+    await runFromTaskState(ctx, args, { resume: true });
+  },
+});
 
-    const now = Date.now();
+async function runFromTaskState(
+  ctx: any,
+  args: { userId: string; taskId: any },
+  opts: { resume: boolean }
+) {
+  const [task, settings, soulFile] = await Promise.all([
+    ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }),
+    ctx.runQuery(internal.userSettings.getForUser, { userId: args.userId }),
+    ctx.runQuery(internal.soulFile.getByUserId, { userId: args.userId }),
+  ]);
+
+  if (!task) return;
+
+  const now = Date.now();
+  await ctx.runMutation(internal.tasks.patchAgentInternal, {
+    userId: args.userId,
+    id: args.taskId,
+    agentStatus: "running",
+    agentProgress: 8,
+    agentPhase: opts.resume ? "Resuming" : "Planning",
+    agentError: undefined,
+    agentCompletedAt: undefined,
+  });
+
+  await ctx.runMutation(internal.taskEvents.addInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+    kind: "progress",
+    title: opts.resume ? "Resuming" : "Planning",
+    detail: opts.resume ? "Picking up where we left off." : "Breaking the work into steps.",
+    progress: 8,
+  });
+
+  if (!settings) {
+    await fail(ctx, args.userId, args.taskId, task, "Please configure AI settings first.");
+    return;
+  }
+
+  // Respect the user's selected provider. Tool-use loop is only implemented for Anthropic currently.
+  const provider: AiProvider = settings.aiProvider as AiProvider;
+
+  const { apiKey, missingReason } = resolveApiKeyFromSettings({
+    aiProvider: provider,
+    openrouterApiKey: settings.openrouterApiKey,
+    googleApiKey: settings.googleApiKey,
+    anthropicApiKey: (settings as any).anthropicApiKey,
+  });
+
+  if (!apiKey) {
+    await fail(ctx, args.userId, args.taskId, task, missingReason ?? "No API key configured (Settings).");
+    return;
+  }
+
+  const model = normalizeModelForProvider(provider, settings.aiModel);
+
+  const baseSystem = buildAgentSystemPrompt();
+  const taskBlock = `## Task\nTitle: ${task.title}\nNote: ${task.note ?? "(none)"}`;
+  const soulExcerpt = (soulFile?.content ?? "").slice(0, 7000);
+
+  let planSteps: string[] = Array.isArray(task.agentPlan) ? task.agentPlan : [];
+  let stepIndex = 0;
+  let waitingForEventId: string | undefined;
+  let waitingForKind: AgentState["waitingForKind"] | undefined;
+  let resumeClarification: string | null = null;
+
+  if (opts.resume) {
+    const state = parseAgentState(task.agentState);
+    if (!state) {
+      await fail(ctx, args.userId, args.taskId, task, "Cannot resume: missing agent state.");
+      return;
+    }
+    planSteps = state.planSteps;
+    stepIndex = state.stepIndex;
+    waitingForEventId = state.waitingForEventId;
+    waitingForKind = state.waitingForKind;
+
+    if (waitingForEventId) {
+      const found = await ctx.runQuery(internal.taskEvents.getInternal, {
+        userId: args.userId,
+        eventId: waitingForEventId as any,
+      });
+      if (!found) {
+        await fail(ctx, args.userId, args.taskId, task, "Cannot resume: missing waiting event.");
+        return;
+      }
+
+      if (found.kind === "question") {
+        if (!found.answered || !found.answer) {
+          await ctx.runMutation(internal.tasks.patchAgentInternal, {
+            userId: args.userId,
+            id: args.taskId,
+            agentPhase: "Waiting for input",
+          });
+          return;
+        }
+        resumeClarification = `## Clarification\nQ: ${found.title}\nA: ${found.answer}`;
+      } else if (found.kind === "approval-request") {
+        if (found.approved === undefined) {
+          await ctx.runMutation(internal.tasks.patchAgentInternal, {
+            userId: args.userId,
+            id: args.taskId,
+            agentPhase: "Waiting for approval",
+          });
+          return;
+        }
+        const action = found.approvalAction ?? "(unknown)";
+        const params = found.approvalParams ?? "";
+        resumeClarification = `## Approval Decision\nAction: ${action}\nApproved: ${found.approved ? "yes" : "no"}\nParams: ${params || "(none)"}`;
+
+        void captureEvent({
+          distinctId: args.userId,
+          event: "agent_approval_responded",
+          properties: {
+            taskId: String(args.taskId),
+            action,
+            approved: Boolean(found.approved),
+          },
+        });
+      } else {
+        await fail(ctx, args.userId, args.taskId, task, "Cannot resume: waiting event kind not supported.");
+        return;
+      }
+
+      waitingForEventId = undefined;
+      waitingForKind = undefined;
+
+      // Persist cleared waiting state so repeated resumes don't re-check.
+      await ctx.runMutation(internal.tasks.patchAgentInternal, {
+        userId: args.userId,
+        id: args.taskId,
+        agentState: JSON.stringify({ v: 1, stepIndex, planSteps } satisfies AgentState),
+      });
+    }
+  }
+
+  if (!opts.resume) {
+    // PLAN
     await ctx.runMutation(internal.tasks.patchAgentInternal, {
       userId: args.userId,
       id: args.taskId,
-      agentStatus: "running",
       agentProgress: 12,
       agentPhase: "Planning",
-      agentError: undefined,
-      agentCompletedAt: undefined,
-    });
-    await ctx.runMutation(internal.taskEvents.addInternal, {
-      userId: args.userId,
-      taskId: args.taskId,
-      kind: "progress",
-      title: "Planning",
-      detail: "Breaking the work into steps.",
-      progress: 12,
     });
 
-    if (!settings) {
-      await fail(ctx, args.userId, args.taskId, task, "Please configure AI settings first.");
-      return;
-    }
-
-    const apiKey =
-      settings.aiProvider === "openrouter"
-        ? settings.openrouterApiKey
-        : settings.googleApiKey;
-    if (!apiKey) {
-      await fail(ctx, args.userId, args.taskId, task, "No API key configured (Settings).");
-      return;
-    }
-
-    const model = settings.aiModel || "google/gemini-2.5-flash";
-    const soulExcerpt = (soulFile?.content ?? "").slice(0, 1200);
-
-    const system = `You are an AI agent inside a product called MNotes.
-You must be honest about what you did: you can plan, analyze, and draft outputs, but you cannot claim you executed external actions.
-
-Return ONLY valid JSON with this shape:
-{
-  "planSteps": string[],
-  "summary": string,
-  "resultMarkdown": string
-}
-
-Rules:
-- planSteps: 3-7 short, user-facing steps (no internal reasoning).
-- summary: 1 sentence.
-- resultMarkdown: the useful output (markdown), <= 700 words.
-- No extra keys. No prose outside JSON.`;
-
-    const user = `## Task
-Title: ${task.title}
-Note: ${task.note ?? "(none)"}
-
-## User Profile Excerpt (memory-first)
-${soulExcerpt || "(no profile found)"}
-
-## Output intent
-Produce something the user can use immediately (draft, checklist, outline, analysis, or plan).`;
-
-    await ctx.runMutation(internal.tasks.patchAgentInternal, {
-      userId: args.userId,
-      id: args.taskId,
-      agentProgress: 45,
-      agentPhase: "Drafting",
-    });
-    await ctx.runMutation(internal.taskEvents.addInternal, {
-      userId: args.userId,
-      taskId: args.taskId,
-      kind: "progress",
-      title: "Drafting",
-      detail: "Writing an output you can review and approve.",
-      progress: 45,
-    });
+    const planPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\nYou MUST first call read_soul_file, list_tasks, and search_insights (q=task title) if relevant.\n\nReturn ONLY valid JSON: {\n  \"planSteps\": string[]\n}\nRules: 3-7 short user-facing steps.`;
 
     const t0 = Date.now();
-    let raw: string;
-    try {
-      raw =
-        settings.aiProvider === "openrouter"
-          ? await callOpenRouter(system, user, model, apiKey)
-          : await callGoogle(system, user, model, apiKey);
-    } catch (err) {
-      console.error(`[TASK_AGENT] FAILED taskId=${args.taskId} userId=${args.userId}`, err);
-      await fail(ctx, args.userId, args.taskId, task, "Agent generation failed.");
-      return;
-    }
+    const planText = provider === "anthropic"
+      ? (await runClaudeToolLoop({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: planPrompt,
+        maxTokens: 900,
+        temperature: 0.2,
+        toolCallBudget: 10,
+      })).text
+      : (await runFallbackCall({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        provider,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: planPrompt,
+        temperature: 0.2,
+        maxTokens: 900,
+      })).text;
 
     captureAiGeneration({
       distinctId: args.userId,
       model,
-      provider: settings.aiProvider,
+      provider,
       feature: "task-agent",
       latencySeconds: (Date.now() - t0) / 1000,
-      input: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      output: raw,
+      input: [{ role: "system", content: baseSystem }, { role: "user", content: planPrompt }],
+      output: planText,
     });
 
-    const parsed = parseAgentPayload(raw);
-    const plan = parsed.planSteps.slice(0, 7).filter(Boolean);
-    const result = (parsed.resultMarkdown || "").trim();
-    const summary = (parsed.summary || "").trim();
-
-    if (!result || result.length < 40) {
-      await fail(ctx, args.userId, args.taskId, task, "Agent output was too short.");
-      return;
-    }
+    const parsedPlan = parsePlan(planText);
+    planSteps = parsedPlan.length ? parsedPlan : ["Gather context", "Draft output", "Review and deliver"];
 
     await ctx.runMutation(internal.tasks.patchAgentInternal, {
       userId: args.userId,
       id: args.taskId,
-      agentStatus: "succeeded",
-      agentProgress: 100,
-      agentPhase: "Ready",
-      agentPlan: plan.length ? plan : undefined,
-      agentSummary: summary || "Output ready to review.",
-      agentResult: result,
-      agentCompletedAt: Date.now(),
-      agentError: undefined,
+      agentPlan: planSteps,
+      agentProgress: 20,
+      agentPhase: "Plan ready",
     });
 
     await ctx.runMutation(internal.taskEvents.addInternal, {
       userId: args.userId,
       taskId: args.taskId,
-      kind: "result",
-      title: "Output ready",
-      detail: summary || "Review the output and decide what to do next.",
-      progress: 100,
+      kind: "status",
+      title: "Plan ready",
+      detail: `Planned ${planSteps.length} steps.`,
+      progress: 20,
+    });
+  }
+
+  // EXECUTE
+  const total = Math.max(1, planSteps.length);
+  for (let i = stepIndex; i < planSteps.length; i++) {
+    const step = planSteps[i];
+    const pct = 20 + Math.round(((i + 1) / total) * 70);
+
+    await ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentProgress: pct,
+      agentPhase: `Step ${i + 1}/${total}: ${step}`,
+      agentState: JSON.stringify({ v: 1, stepIndex: i, planSteps } satisfies AgentState),
     });
 
-    // Avoid spamming notifications for bulk-created insight tasks.
-    if (task.sourceType !== "ai-insight") {
-      await ctx.runMutation(internal.notifications.createInternal, {
+    await ctx.runMutation(internal.taskEvents.addInternal, {
+      userId: args.userId,
+      taskId: args.taskId,
+      kind: "progress",
+      title: `Step ${i + 1}: ${step}`,
+      detail: "Executing this step.",
+      progress: pct,
+    });
+
+    // Slight pacing to make progress visible.
+    await sleep(800);
+
+    const existingOutput = (await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }))?.agentResult ?? "";
+    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${existingOutput.slice(0, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
+
+    const tStep0 = Date.now();
+    const stepRun = provider === "anthropic"
+      ? await runClaudeToolLoop({
+        ctx,
         userId: args.userId,
-        type: "agent-task",
-        title: "Agent finished a task",
-        body: summary || `Finished: ${task.title}`,
-        actionUrl: `/dashboard/data?tab=tasks&taskId=${String(args.taskId)}`,
+        taskId: args.taskId,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: stepPrompt,
+        maxTokens: 1400,
+        temperature: 0.25,
+        toolCallBudget: 10,
+      })
+      : await runFallbackCall({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        provider,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: stepPrompt,
+        temperature: 0.25,
+        maxTokens: 1400,
       });
+
+    void captureAiGeneration({
+      distinctId: args.userId,
+      model,
+      provider,
+      feature: "task-agent",
+      latencySeconds: (Date.now() - tStep0) / 1000,
+      input: [{ role: "system", content: baseSystem }, { role: "user", content: stepPrompt.slice(0, 4000) }],
+      output: stepRun.text.slice(0, 8000),
+    });
+
+    if (stepRun.paused && stepRun.waitingForEventId) {
+      const phase = stepRun.pauseReason === "approval" ? "Waiting for approval" : "Waiting for input";
+      await ctx.runMutation(internal.tasks.patchAgentInternal, {
+        userId: args.userId,
+        id: args.taskId,
+        agentPhase: phase,
+        agentState: JSON.stringify({
+          v: 1,
+          stepIndex: i,
+          planSteps,
+          waitingForEventId: stepRun.waitingForEventId,
+          waitingForKind: stepRun.pauseReason === "approval" ? "approval" : "question",
+        } satisfies AgentState),
+      });
+
+      await ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "status",
+        title: phase,
+        detail: stepRun.pauseReason === "approval"
+          ? "Approve or deny to continue."
+          : "Answer the question to resume.",
+        progress: pct,
+      });
+
+      return;
     }
-  },
-});
+
+    const stepPayload = parseStepPayload(stepRun.text);
+    const stepOut = (stepPayload.stepOutputMarkdown || "").trim();
+    const stepSummary = (stepPayload.stepSummary || "").trim();
+
+    if (stepOut.length < 10) {
+      await fail(ctx, args.userId, args.taskId, task, "Step output was empty.");
+      return;
+    }
+
+    const appended = [
+      existingOutput.trim() ? existingOutput.trim() : null,
+      `### Step ${i + 1}: ${step}`,
+      stepOut,
+    ].filter(Boolean).join("\n\n");
+
+    await ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentResult: appended,
+      agentSummary: stepSummary || undefined,
+      agentState: JSON.stringify({ v: 1, stepIndex: i + 1, planSteps } satisfies AgentState),
+    });
+
+    await ctx.runMutation(internal.taskEvents.addInternal, {
+      userId: args.userId,
+      taskId: args.taskId,
+      kind: "note",
+      title: `Step ${i + 1} done`,
+      detail: stepSummary || "Completed this step.",
+      progress: pct,
+    });
+  }
+
+  // FINALIZE
+  await ctx.runMutation(internal.tasks.patchAgentInternal, {
+    userId: args.userId,
+    id: args.taskId,
+    agentProgress: 95,
+    agentPhase: "Finalizing",
+  });
+  await ctx.runMutation(internal.taskEvents.addInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+    kind: "progress",
+    title: "Finalizing",
+    detail: "Tidying output and writing a final summary.",
+    progress: 95,
+  });
+
+  const current = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
+  const draft = (current?.agentResult ?? "").trim();
+
+  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${draft.slice(0, 12000) || "(none)"}\n\nReturn ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
+
+  const tFinal0 = Date.now();
+  const finalText = provider === "anthropic"
+    ? (await runClaudeToolLoop({
+      ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      apiKey,
+      model,
+      system: baseSystem,
+      userPrompt: finalPrompt,
+      maxTokens: 1600,
+      temperature: 0.2,
+      toolCallBudget: 4,
+    })).text
+    : (await runFallbackCall({
+      ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      provider,
+      apiKey,
+      model,
+      system: baseSystem,
+      userPrompt: finalPrompt,
+      temperature: 0.2,
+      maxTokens: 1600,
+    })).text;
+
+  void captureAiGeneration({
+    distinctId: args.userId,
+    model,
+    provider,
+    feature: "task-agent",
+    latencySeconds: (Date.now() - tFinal0) / 1000,
+    input: [{ role: "system", content: baseSystem }, { role: "user", content: finalPrompt.slice(0, 4000) }],
+    output: finalText.slice(0, 8000),
+  });
+
+  const finalPayload = parseFinalPayload(finalText, draft);
+
+  if (!finalPayload.resultMarkdown || finalPayload.resultMarkdown.trim().length < 40) {
+    await fail(ctx, args.userId, args.taskId, task, "Final output was too short.");
+    return;
+  }
+
+  await ctx.runMutation(internal.tasks.patchAgentInternal, {
+    userId: args.userId,
+    id: args.taskId,
+    agentStatus: "succeeded",
+    agentProgress: 100,
+    agentPhase: "Ready",
+    agentSummary: finalPayload.summary || "Output ready to review.",
+    agentResult: finalPayload.resultMarkdown.trim(),
+    agentCompletedAt: Date.now(),
+    agentError: undefined,
+    agentState: undefined,
+  });
+
+  await ctx.runMutation(internal.taskEvents.addInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+    kind: "result",
+    title: "Output ready",
+    detail: finalPayload.summary || "Review the output and decide what to do next.",
+    progress: 100,
+  });
+
+  if (task.sourceType !== "ai-insight") {
+    await ctx.runMutation(internal.notifications.createInternal, {
+      userId: args.userId,
+      type: "agent-task",
+      title: "Agent finished a task",
+      body: finalPayload.summary || `Finished: ${task.title}`,
+      actionUrl: `/dashboard/data?tab=tasks&taskId=${String(args.taskId)}`,
+    });
+  }
+
+  void captureEvent({
+    distinctId: args.userId,
+    event: "agent_task_succeeded",
+    properties: {
+      taskId: String(args.taskId),
+      planSteps: planSteps.length,
+      provider,
+      model,
+    },
+  });
+}
+
+async function runFallbackCall(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  system: string;
+  userPrompt: string;
+  temperature: number;
+  maxTokens: number;
+}): Promise<{ text: string; paused?: false }> {
+  // Even without tool-use, do basic, visible data access as explicit tool events.
+  const toolDefs = [
+    { name: "read_soul_file", input: {} },
+    { name: "list_tasks", input: { limit: 12, includeDone: false } },
+  ];
+
+  const toolOutputs: string[] = [];
+  for (const tool of toolDefs) {
+    await args.ctx.runMutation(internal.taskEvents.addInternal, {
+      userId: args.userId,
+      taskId: args.taskId,
+      kind: "tool",
+      title: `Tool: ${tool.name}`,
+      toolName: tool.name,
+      toolInput: JSON.stringify(tool.input),
+      detail: "Executing.",
+    });
+
+    const res = await executeTool({
+      ctx: args.ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      name: tool.name,
+      input: tool.input,
+    });
+
+    toolOutputs.push(JSON.stringify(res.ok ? res.result : { error: res.error }));
+
+    await args.ctx.runMutation(internal.taskEvents.addInternal, {
+      userId: args.userId,
+      taskId: args.taskId,
+      kind: "tool",
+      title: `Tool result: ${tool.name}`,
+      toolName: tool.name,
+      toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
+      detail: res.ok ? (res.summary ?? "ok") : res.error,
+    });
+  }
+
+  const augmented = `${args.userPrompt}\n\n## Tool Results (read-only)\n${toolOutputs.join("\n\n")}`;
+
+  const res = await callChat({
+    provider: args.provider,
+    apiKey: args.apiKey,
+    model: args.model,
+    systemPrompt: args.system,
+    messages: [{ role: "user", content: augmented }],
+    temperature: args.temperature,
+    maxTokens: args.maxTokens,
+    title: "MNotes Agent Tasks",
+  });
+
+  return { text: res.content };
+}
+
+async function runClaudeToolLoop(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  apiKey: string;
+  model: string;
+  system: string;
+  userPrompt: string;
+  temperature: number;
+  maxTokens: number;
+  toolCallBudget: number;
+}): Promise<{ text: string; paused?: boolean; waitingForEventId?: string; pauseReason?: "ask_user" | "approval" }> {
+  const client = new Anthropic({ apiKey: args.apiKey });
+  const tools = getBuiltInToolDefs() as any;
+
+  const messages: any[] = [{ role: "user", content: args.userPrompt }];
+  let toolCalls = 0;
+
+  for (let iter = 0; iter < 12; iter++) {
+    const msg = await client.messages.create({
+      model: args.model,
+      system: args.system,
+      max_tokens: args.maxTokens,
+      temperature: args.temperature,
+      tools,
+      messages,
+    });
+
+    const toolUses = msg.content.filter((p: any) => p.type === "tool_use") as any[];
+    const text = msg.content
+      .filter((p: any) => p.type === "text")
+      .map((p: any) => p.text)
+      .join("");
+
+    if (toolUses.length === 0) {
+      return { text };
+    }
+
+    messages.push({ role: "assistant", content: msg.content });
+
+    for (const tu of toolUses) {
+      toolCalls++;
+      if (toolCalls > args.toolCallBudget) {
+        return { text: text || "{\"error\":\"Tool call limit exceeded\"}" };
+      }
+
+      const toolName = String(tu.name);
+      const toolInput = tu.input ?? {};
+
+      await args.ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "tool",
+        title: `Tool: ${toolName}`,
+        toolName,
+        toolInput: JSON.stringify(toolInput).slice(0, 4000),
+        detail: "Executing.",
+      });
+
+      const res = await executeTool({
+        ctx: args.ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        name: toolName,
+        input: toolInput,
+      });
+
+      await args.ctx.runMutation(internal.taskEvents.addInternal, {
+        userId: args.userId,
+        taskId: args.taskId,
+        kind: "tool",
+        title: `Tool result: ${toolName}`,
+        toolName,
+        toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
+        detail: res.ok ? (res.summary ?? "ok") : res.error,
+      });
+
+      const toolResultPayload = res.ok ? res.result : { error: res.error };
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: JSON.stringify(toolResultPayload),
+          },
+        ],
+      });
+
+      if (res.ok && (res as any).pause) {
+        return {
+          text,
+          paused: true,
+          waitingForEventId: (res as any).eventId,
+          pauseReason: (res as any).pauseReason,
+        };
+      }
+    }
+  }
+
+  return { text: "{\"error\":\"Exceeded iteration limit\"}" };
+}
+
+function buildAgentSystemPrompt(): string {
+  return `You are Jarvis, an AI executive assistant inside MNotes.
+
+You have access to tools that can read the user's stored data, create draft files, ask clarifying questions, and request approvals.
+
+Rules:
+- Always use tools to read the user's data instead of guessing.
+- Be honest: never fabricate data.
+- Prefer action over analysis.
+- If the task is ambiguous, call ask_user with a concise question and 2-6 options.
+- If you need to perform an irreversible or external action, call request_approval first.
+- For deliverables (docs/checklists/tables), prefer create_file instead of dumping huge text.
+- Return ONLY valid JSON when the user prompt demands JSON.
+- Produce outputs the user can use immediately (tables, checklists, structured docs when helpful).`;
+}
+
+function normalizeModelForProvider(provider: AiProvider, model: string | undefined): string {
+  if (provider === "anthropic") {
+    const candidate = (model || "").trim();
+    if (candidate.startsWith("claude-")) return candidate;
+    return "claude-sonnet-4-5-20250929";
+  }
+  return model || "google/gemini-2.5-flash";
+}
 
 async function fail(
   ctx: any,
@@ -234,6 +733,15 @@ async function fail(
   task: { title: string; sourceType?: string },
   message: string
 ) {
+  void captureEvent({
+    distinctId: userId,
+    event: "agent_task_failed",
+    properties: {
+      taskId: String(taskId),
+      title: task.title,
+      reason: message,
+    },
+  });
   await ctx.runMutation(internal.tasks.patchAgentInternal, {
     userId,
     id: taskId,
@@ -260,84 +768,6 @@ async function fail(
   });
 }
 
-function parseAgentPayload(raw: string): AgentPayload {
-  const fallback: AgentPayload = {
-    planSteps: [],
-    summary: "Output ready to review.",
-    resultMarkdown: raw.trim(),
-  };
-
-  const trimmed = raw.trim();
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return fallback;
-  const candidate = trimmed.slice(firstBrace, lastBrace + 1);
-
-  try {
-    const obj = JSON.parse(candidate) as Partial<AgentPayload>;
-    return {
-      planSteps: Array.isArray(obj.planSteps) ? obj.planSteps.map(String) : [],
-      summary: typeof obj.summary === "string" ? obj.summary : fallback.summary,
-      resultMarkdown:
-        typeof obj.resultMarkdown === "string" ? obj.resultMarkdown : fallback.resultMarkdown,
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-async function callOpenRouter(
-  system: string,
-  user: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://mnotes.app",
-      "X-Title": "MNotes Agent Tasks",
-    },
-    body: JSON.stringify({
-      model: model || "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.3,
-      max_tokens: 1400,
-    }),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${errorText}`);
-  }
-
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return data.choices?.[0]?.message?.content ?? "";
-}
-
-async function callGoogle(
-  system: string,
-  user: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const generativeModel = genAI.getGenerativeModel({
-    model: model || "gemini-3-flash-preview",
-    systemInstruction: system,
-  });
-
-  const result = await generativeModel.generateContent({
-    contents: [{ role: "user", parts: [{ text: user }] }],
-    generationConfig: { temperature: 0.3, maxOutputTokens: 1400 },
-  });
-
-  return result.response.text();
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

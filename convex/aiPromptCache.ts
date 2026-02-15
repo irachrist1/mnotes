@@ -29,7 +29,7 @@ export const setInternal = internalMutation({
     userId: v.string(),
     scope: v.union(v.literal("chat"), v.literal("insight")),
     cacheKey: v.string(),
-    provider: v.union(v.literal("openrouter"), v.literal("google")),
+    provider: v.union(v.literal("openrouter"), v.literal("google"), v.literal("anthropic")),
     model: v.string(),
     responseText: v.string(),
     ttlSeconds: v.number(),

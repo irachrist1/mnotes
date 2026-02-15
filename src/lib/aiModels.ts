@@ -25,5 +25,10 @@ export const GOOGLE_MODELS: ModelOption[] = [
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Deep reasoning)" },
 ];
 
+export const ANTHROPIC_MODELS: ModelOption[] = [
+  { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5 (Default, fast)" },
+  { value: "claude-opus-4-6", label: "Claude Opus 4.6 (Power)" },
+];
+
 export const DEFAULT_PROVIDER = "openrouter" as const;
 export const DEFAULT_MODEL = "google/gemini-2.5-flash";

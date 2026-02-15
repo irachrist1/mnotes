@@ -74,9 +74,23 @@ export default function AgentTaskPreview() {
   );
 
   const [frameIndex, setFrameIndex] = useState(0);
-  const frame = frames[frameIndex]!;
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile to pause animation (height changes cause scroll jumps)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // On mobile, show the final "ready" frame statically
+  const frame = isMobile ? frames[frames.length - 1]! : frames[frameIndex]!;
 
   useEffect(() => {
+    if (isMobile) return; // No animation on mobile
+
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -94,7 +108,7 @@ export default function AgentTaskPreview() {
       cancelled = true;
       if (timeout) clearTimeout(timeout);
     };
-  }, [frameIndex, frames.length]);
+  }, [frameIndex, frames.length, isMobile]);
 
   return (
     <div className="relative">

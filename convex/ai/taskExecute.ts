@@ -4,8 +4,8 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { captureAiGeneration } from "../lib/posthog";
+import { callChat, resolveApiKeyFromSettings, type AiProvider } from "./llm";
 
 type DraftPayload = {
   kind?: "email" | "outline" | "checklist";
@@ -32,11 +32,14 @@ export const execute = action({
 
     if (!settings) return { success: false, error: "Please configure AI settings first" };
 
-    const apiKey =
-      settings.aiProvider === "openrouter"
-        ? settings.openrouterApiKey
-        : settings.googleApiKey;
-    if (!apiKey) return { success: false, error: "No API key configured" };
+    const provider = settings.aiProvider as AiProvider;
+    const { apiKey, missingReason } = resolveApiKeyFromSettings({
+      aiProvider: provider,
+      openrouterApiKey: settings.openrouterApiKey,
+      googleApiKey: settings.googleApiKey,
+      anthropicApiKey: (settings as any).anthropicApiKey,
+    });
+    if (!apiKey) return { success: false, error: missingReason ?? "No API key configured" };
 
     const payload: DraftPayload =
       task.executionPayload && typeof task.executionPayload === "object"
@@ -44,7 +47,7 @@ export const execute = action({
         : {};
 
     const kind = payload.kind ?? "outline";
-    const model = settings.aiModel || "google/gemini-2.5-flash";
+    const model = normalizeModelForProvider(provider, settings.aiModel);
 
     await ctx.runMutation(internal.tasks.patchExecutionInternal, {
       userId,
@@ -83,16 +86,22 @@ ${soulSummary}
     const t0 = Date.now();
     let draft: string;
     try {
-      if (settings.aiProvider === "openrouter") {
-        draft = await callOpenRouter(systemPrompt, userPrompt, model, apiKey);
-      } else {
-        draft = await callGoogle(systemPrompt, userPrompt, model, apiKey);
-      }
+      const res = await callChat({
+        provider,
+        apiKey,
+        model,
+        systemPrompt: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        temperature: 0.4,
+        maxTokens: 1200,
+        title: "MNotes Task Executor",
+      });
+      draft = res.content;
 
       captureAiGeneration({
         distinctId: userId,
         model,
-        provider: settings.aiProvider,
+        provider,
         feature: "task-execute",
         latencySeconds: (Date.now() - t0) / 1000,
         input: [
@@ -100,6 +109,9 @@ ${soulSummary}
           { role: "user", content: userPrompt },
         ],
         output: draft,
+        inputTokens: res.usage?.prompt_tokens,
+        outputTokens: res.usage?.completion_tokens,
+        totalCostUsd: res.usage?.total_cost,
       });
     } catch (err) {
       console.error(`[TASK_EXECUTE] FAILED taskId=${args.taskId} userId=${userId}`, err);
@@ -146,59 +158,11 @@ ${soulSummary}
   },
 });
 
-async function callOpenRouter(
-  system: string,
-  user: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://mnotes.app",
-      "X-Title": "MNotes Task Executor",
-    },
-    body: JSON.stringify({
-      model: model || "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.4,
-      max_tokens: 1200,
-    }),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${errorText}`);
+function normalizeModelForProvider(provider: AiProvider, model: string | undefined): string {
+  if (provider === "anthropic") {
+    const candidate = (model || "").trim();
+    if (candidate.startsWith("claude-")) return candidate;
+    return "claude-sonnet-4-5-20250929";
   }
-
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return data.choices?.[0]?.message?.content ?? "";
+  return model || "google/gemini-2.5-flash";
 }
-
-async function callGoogle(
-  system: string,
-  user: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const generativeModel = genAI.getGenerativeModel({
-    model: model || "gemini-3-flash-preview",
-    systemInstruction: system,
-  });
-
-  const result = await generativeModel.generateContent({
-    contents: [{ role: "user", parts: [{ text: user }] }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1200 },
-  });
-
-  return result.response.text();
-}
-

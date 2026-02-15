@@ -283,6 +283,24 @@ export const getInternal = internalQuery({
     },
 });
 
+export const listForUserInternal = internalQuery({
+    args: {
+        userId: v.string(),
+        limit: v.optional(v.number()),
+        includeDone: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const limit = Math.max(1, Math.min(Math.floor(args.limit ?? 50), 200));
+        const includeDone = args.includeDone ?? true;
+        const all = await ctx.db
+            .query("tasks")
+            .withIndex("by_user_created", (q) => q.eq("userId", args.userId))
+            .order("desc")
+            .take(limit);
+        return includeDone ? all : all.filter((t) => !t.done);
+    },
+});
+
 export const patchExecutionInternal = internalMutation({
     args: {
         userId: v.string(),
@@ -328,6 +346,7 @@ export const patchAgentInternal = internalMutation({
         agentStartedAt: v.optional(v.number()),
         agentCompletedAt: v.optional(v.number()),
         agentError: v.optional(v.string()),
+        agentState: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const task = await ctx.db.get(args.id);

@@ -16,6 +16,7 @@ import {
   Square,
   Trash2,
   ListTodo,
+  Wrench,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -25,6 +26,7 @@ import { SlideOver } from "@/components/ui/SlideOver";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { MarkdownMessage } from "@/components/ui/MarkdownMessage";
+import { AgentFileViewer } from "@/components/dashboard/AgentFileViewer";
 import { track } from "@/lib/analytics";
 
 type Priority = "low" | "medium" | "high";
@@ -39,7 +41,7 @@ const item = {
   enter: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] as any },
   },
 };
 
@@ -85,6 +87,8 @@ export function TasksContent() {
   const updateTask = useMutation(api.tasks.update);
   const toggleDone = useMutation(api.tasks.toggleDone);
   const removeTask = useMutation(api.tasks.remove);
+  const answerQuestion = useMutation(api.taskEvents.answerQuestion);
+  const respondApproval = useMutation(api.taskEvents.respondApproval);
   const startAgent = useAction(api.ai.taskAgent.start);
 
   const searchParams = useSearchParams();
@@ -100,6 +104,10 @@ export function TasksContent() {
 
   const [selectedId, setSelectedId] = useState<Id<"tasks"> | null>(null);
   const [agentRestarting, setAgentRestarting] = useState(false);
+  const [answeringEventId, setAnsweringEventId] = useState<string | null>(null);
+  const [respondingApprovalEventId, setRespondingApprovalEventId] = useState<string | null>(null);
+  const [outputView, setOutputView] = useState<"rich" | "raw">("rich");
+  const [openFileId, setOpenFileId] = useState<Id<"agentFiles"> | null>(null);
   const closingPanelRef = useRef(false);
 
   const isLoading = tasks === undefined;
@@ -119,6 +127,11 @@ export function TasksContent() {
   const events = useQuery(
     api.taskEvents.listByTask,
     selectedId ? { taskId: selectedId } : "skip"
+  );
+
+  const agentFiles = useQuery(
+    api.agentFiles.listByTask,
+    selectedId ? { taskId: selectedId, limit: 30 } : "skip"
   );
 
   const setTaskIdParam = (taskId: string | null) => {
@@ -142,6 +155,10 @@ export function TasksContent() {
     if (String(found._id) === String(selectedId)) return;
     setSelectedId(found._id);
   }, [searchParams, tasks, selectedId]);
+
+  useEffect(() => {
+    setOpenFileId(null);
+  }, [selectedId]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -529,22 +546,180 @@ export function TasksContent() {
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
-                  {events.slice(-12).map((e) => (
-                    <div key={e._id} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 mt-1.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm text-stone-800 dark:text-stone-200">{e.title}</p>
-                          <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
-                            {relativeTime(e.createdAt)}
-                          </span>
+                  {events.slice(-14).map((e: any) => {
+                    const kind = String(e.kind || "note");
+                    if (kind === "question") {
+                      const answered = Boolean(e.answered);
+                      const options: string[] | null = Array.isArray(e.options) ? e.options : null;
+                      return (
+                        <div key={e._id} className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Question</p>
+                            <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
+                              {relativeTime(e.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-stone-800 dark:text-stone-200 mt-1">{e.title}</p>
+                          {answered ? (
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
+                              Answered: {String(e.answer || "")}
+                            </p>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              {options && options.length >= 2 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {options.map((opt) => (
+                                    <button
+                                      key={opt}
+                                      disabled={answeringEventId === String(e._id)}
+                                      onClick={async () => {
+                                        setAnsweringEventId(String(e._id));
+                                        try {
+                                          await answerQuestion({ eventId: e._id, answer: opt });
+                                          toast.success("Answer sent. Agent is resuming.");
+                                        } catch {
+                                          toast.error("Failed to send answer");
+                                        } finally {
+                                          setAnsweringEventId(null);
+                                        }
+                                      }}
+                                      className="px-2.5 py-1 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-stone-500 dark:text-stone-400">
+                                  Open the task in chat and reply there (options missing).
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {e.detail && (
-                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{e.detail}</p>
-                        )}
+                      );
+                    }
+
+                    if (kind === "approval-request") {
+                      const approved = e.approved as boolean | undefined;
+                      const action = String(e.approvalAction || "");
+                      const params = typeof e.approvalParams === "string" ? e.approvalParams : "";
+                      return (
+                        <div key={e._id} className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Approval</p>
+                            <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
+                              {relativeTime(e.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-stone-800 dark:text-stone-200 mt-1">
+                            {action ? `Allow: ${action}` : String(e.title || "Approval requested")}
+                          </p>
+                          {e.detail && (
+                            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">{e.detail}</p>
+                          )}
+                          {params && (
+                            <pre className="mt-2 text-[11px] text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-words font-mono rounded-md bg-black/5 dark:bg-white/[0.06] p-2">
+                              {params}
+                            </pre>
+                          )}
+                          {approved === undefined ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <button
+                                disabled={respondingApprovalEventId === String(e._id)}
+                                onClick={async () => {
+                                  setRespondingApprovalEventId(String(e._id));
+                                  try {
+                                    await respondApproval({ eventId: e._id, approved: true });
+                                    toast.success("Approved. Agent is resuming.");
+                                  } catch {
+                                    toast.error("Failed to approve");
+                                  } finally {
+                                    setRespondingApprovalEventId(null);
+                                  }
+                                }}
+                                className="px-2.5 py-1 rounded-md text-xs font-medium border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/[0.08] disabled:opacity-60"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                disabled={respondingApprovalEventId === String(e._id)}
+                                onClick={async () => {
+                                  setRespondingApprovalEventId(String(e._id));
+                                  try {
+                                    await respondApproval({ eventId: e._id, approved: false });
+                                    toast.success("Denied. Agent is resuming.");
+                                  } catch {
+                                    toast.error("Failed to deny");
+                                  } finally {
+                                    setRespondingApprovalEventId(null);
+                                  }
+                                }}
+                                className="px-2.5 py-1 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          ) : (
+                            <p className={`text-xs mt-2 ${approved ? "text-emerald-700 dark:text-emerald-400" : "text-stone-600 dark:text-stone-400"}`}>
+                              {approved ? "Approved" : "Denied"}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (kind === "tool") {
+                      const toolName = String(e.toolName || "").trim();
+                      const toolInput = typeof e.toolInput === "string" ? e.toolInput : "";
+                      const toolOutput = typeof e.toolOutput === "string" ? e.toolOutput : "";
+                      return (
+                        <div key={e._id} className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Wrench className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
+                                {toolName ? `Tool: ${toolName}` : "Tool"}
+                              </p>
+                            </div>
+                            <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
+                              {relativeTime(e.createdAt)}
+                            </span>
+                          </div>
+                          {e.title && (
+                            <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">{String(e.title)}</p>
+                          )}
+                          {toolInput && (
+                            <pre className="mt-2 text-[11px] text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-words font-mono rounded-md bg-black/5 dark:bg-white/[0.06] p-2">
+                              {toolInput}
+                            </pre>
+                          )}
+                          {toolOutput && (
+                            <pre className="mt-2 text-[11px] text-stone-700 dark:text-stone-200 whitespace-pre-wrap break-words font-mono rounded-md bg-black/5 dark:bg-white/[0.06] p-2">
+                              {toolOutput}
+                            </pre>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={e._id} className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 mt-1.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm text-stone-800 dark:text-stone-200">{e.title}</p>
+                            <span className="text-[10px] text-stone-400 tabular-nums shrink-0">
+                              {relativeTime(e.createdAt)}
+                            </span>
+                          </div>
+                          {e.detail && (
+                            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{e.detail}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -552,17 +727,43 @@ export function TasksContent() {
             <section className="card p-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Output</p>
-                {selectedTask.agentResult && (
-                  <button
-                    onClick={() => {
-                      void navigator.clipboard.writeText(selectedTask.agentResult!);
-                      toast.success("Copied to clipboard");
-                    }}
-                    className="text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors duration-150"
-                  >
-                    Copy
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedTask.agentResult && (
+                    <div className="inline-flex items-center rounded-md border border-stone-200 dark:border-stone-800 overflow-hidden">
+                      <button
+                        onClick={() => setOutputView("rich")}
+                        className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                          outputView === "rich"
+                            ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
+                            : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        Rich
+                      </button>
+                      <button
+                        onClick={() => setOutputView("raw")}
+                        className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                          outputView === "raw"
+                            ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
+                            : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        Raw
+                      </button>
+                    </div>
+                  )}
+                  {selectedTask.agentResult && (
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard.writeText(selectedTask.agentResult!);
+                        toast.success("Copied to clipboard");
+                      }}
+                      className="text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors duration-150"
+                    >
+                      Copy
+                    </button>
+                  )}
+                </div>
               </div>
               {!selectedTask.agentResult ? (
                 <div className="mt-3 space-y-2">
@@ -571,8 +772,64 @@ export function TasksContent() {
                   <Skeleton className="h-3 w-2/3" />
                 </div>
               ) : (
-                <div className="mt-3 text-sm text-stone-700 dark:text-stone-200">
-                  <MarkdownMessage content={selectedTask.agentResult} />
+                outputView === "raw" ? (
+                  <pre className="mt-3 text-xs text-stone-700 dark:text-stone-200 whitespace-pre-wrap break-words font-mono rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                    {selectedTask.agentResult}
+                  </pre>
+                ) : (
+                  <div className="mt-3 text-sm text-stone-700 dark:text-stone-200">
+                    <MarkdownMessage content={selectedTask.agentResult} />
+                  </div>
+                )
+              )}
+            </section>
+
+            <section className="card p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Files</p>
+                {Array.isArray(agentFiles) && agentFiles.length > 0 && (
+                  <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {agentFiles.length} file{agentFiles.length === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+              {agentFiles === undefined ? (
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              ) : agentFiles.length === 0 ? (
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-3">
+                  No agent-created files yet.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {agentFiles.slice(0, 6).map((f: any) => (
+                    <button
+                      key={f._id}
+                      onClick={() => setOpenFileId(f._id)}
+                      className="w-full text-left rounded-md border border-stone-200 dark:border-stone-800 p-3 hover:bg-stone-50 dark:hover:bg-white/[0.04] transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
+                          {f.title}
+                        </span>
+                        <span className="text-[10px] text-stone-400 shrink-0">
+                          {relativeTime(f.updatedAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                        {String(f.fileType || "document")}
+                      </p>
+                    </button>
+                  ))}
+
+                  {openFileId && (
+                    <AgentFileViewer
+                      fileId={openFileId}
+                      onClose={() => setOpenFileId(null)}
+                    />
+                  )}
                 </div>
               )}
             </section>
@@ -654,4 +911,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-

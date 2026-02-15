@@ -11,24 +11,40 @@ import { toast } from "sonner";
 import {
   OPENROUTER_MODELS,
   GOOGLE_MODELS,
+  ANTHROPIC_MODELS,
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
 } from "@/lib/aiModels";
 import { track } from "@/lib/analytics";
 
+const BUILTIN_AGENT_TOOLS: { name: string; description: string }[] = [
+  { name: "read_soul_file", description: "Reads your soul file (profile / long-term memory)." },
+  { name: "list_tasks", description: "Lists your tasks." },
+  { name: "list_income_streams", description: "Lists your income streams." },
+  { name: "list_ideas", description: "Lists your idea bank." },
+  { name: "list_mentorship_sessions", description: "Lists your mentorship sessions." },
+  { name: "search_insights", description: "Searches saved insights." },
+  { name: "get_task_result", description: "Reads output from a previous agent task." },
+  { name: "ask_user", description: "Asks a clarifying question and pauses the agent." },
+  { name: "create_file", description: "Creates a draft document/checklist/table and saves it as an agent file." },
+  { name: "request_approval", description: "Requests approval for external or irreversible actions (pause/resume)." },
+];
+
 export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
   const upsertSettings = useMutation(api.userSettings.upsert);
 
-  const [provider, setProvider] = useState<"openrouter" | "google">(DEFAULT_PROVIDER);
+  const [provider, setProvider] = useState<"openrouter" | "google" | "anthropic">(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
+  const [anthropicKey, setAnthropicKey] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
   const [hasGoogleKey, setHasGoogleKey] = useState(false);
+  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
 
   // Load settings when available (API keys are masked, don't populate inputs)
   useEffect(() => {
@@ -37,9 +53,20 @@ export default function SettingsPage() {
       setModel(settings.aiModel);
       setHasOpenrouterKey(!!settings.openrouterApiKey);
       setHasGoogleKey(!!settings.googleApiKey);
+      setHasAnthropicKey(!!(settings as any).anthropicApiKey);
       // Don't load masked key values into the input fields
     }
   }, [settings]);
+
+  // Keep model sane when switching providers.
+  useEffect(() => {
+    if (provider === "anthropic" && !model.startsWith("claude-")) {
+      setModel(ANTHROPIC_MODELS[0].value);
+    }
+    if (provider !== "anthropic" && model.startsWith("claude-")) {
+      setModel(DEFAULT_MODEL);
+    }
+  }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     setSaving(true);
@@ -51,6 +78,7 @@ export default function SettingsPage() {
         aiModel: model,
         openrouterApiKey: openrouterKey || undefined,
         googleApiKey: googleKey || undefined,
+        anthropicApiKey: anthropicKey || undefined,
       });
       track("settings_saved", { provider, model });
       toast.success("Settings saved successfully");
@@ -63,6 +91,10 @@ export default function SettingsPage() {
         setHasGoogleKey(true);
         setGoogleKey("");
       }
+      if (anthropicKey) {
+        setHasAnthropicKey(true);
+        setAnthropicKey("");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to save settings");
@@ -71,7 +103,11 @@ export default function SettingsPage() {
     }
   };
 
-  const modelOptions = provider === "openrouter" ? OPENROUTER_MODELS : GOOGLE_MODELS;
+  const modelOptions = provider === "openrouter"
+    ? OPENROUTER_MODELS
+    : provider === "google"
+      ? GOOGLE_MODELS
+      : ANTHROPIC_MODELS;
 
   return (
     <>
@@ -142,6 +178,25 @@ export default function SettingsPage() {
                 </div>
                 <div className="text-xs text-stone-500 dark:text-stone-400">
                   Direct access to Gemini models
+                </div>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="provider"
+                value="anthropic"
+                checked={provider === "anthropic"}
+                onChange={(e) => setProvider(e.target.value as "anthropic")}
+                className="rounded-full border-stone-300 dark:border-stone-600 text-stone-900 focus:ring-stone-900"
+              />
+              <div>
+                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                  Anthropic
+                </div>
+                <div className="text-xs text-stone-500 dark:text-stone-400">
+                  Direct access to Claude models (best for agent tasks)
                 </div>
               </div>
             </label>
@@ -247,6 +302,79 @@ export default function SettingsPage() {
                 >
                   aistudio.google.com/app/apikey
                 </a>
+              </p>
+            </div>
+
+            {/* Anthropic API Key */}
+            <div>
+              <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                Anthropic API Key
+              </label>
+              <input
+                type="password"
+                value={anthropicKey}
+                onChange={(e) => setAnthropicKey(e.target.value)}
+                placeholder={hasAnthropicKey ? "Key configured. Enter new key to replace." : "sk-ant-..."}
+                className="input-field w-full"
+              />
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                Get your key at{" "}
+                <a
+                  href="https://console.anthropic.com/settings/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-stone-900 dark:text-stone-100 hover:underline"
+                >
+                  console.anthropic.com/settings/keys
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Agent Tools */}
+        <div className="card p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                Agent Capabilities
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                Tools are the agent's \"hands\". They let it read your saved data and ask questions instead of guessing.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Tool-use mode</p>
+              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                Full model-driven tool calling is enabled when Provider is <span className="font-medium">Anthropic</span>. OpenRouter and Google currently run in a fallback mode (the agent still reads some data, but the model does not autonomously call tools yet).
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Built-in tools (always available)</p>
+              <div className="mt-2 grid grid-cols-1 gap-2">
+                {BUILTIN_AGENT_TOOLS.map((t) => (
+                  <div key={t.name} className="rounded-md border border-stone-200 dark:border-stone-800 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-mono text-stone-900 dark:text-stone-100">{t.name}</span>
+                      <span className="text-[10px] text-stone-400">built-in</span>
+                    </div>
+                    <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">{t.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-3 bg-white/50 dark:bg-black/10">
+              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Connections (coming next)</p>
+              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                Email, calendar, GitHub, web search, and other external tools will appear here once the connector system ships (with connect/disconnect and approvals).
               </p>
             </div>
           </div>

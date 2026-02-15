@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as agentFiles from "../agentFiles.js";
 import type * as aiInsights from "../aiInsights.js";
 import type * as aiPromptCache from "../aiPromptCache.js";
+import type * as ai_agentTools from "../ai/agentTools.js";
 import type * as ai_analyze from "../ai/analyze.js";
 import type * as ai_chatPrompt from "../ai/chatPrompt.js";
 import type * as ai_chatSend from "../ai/chatSend.js";
@@ -18,11 +20,13 @@ import type * as ai_dailyNotifications from "../ai/dailyNotifications.js";
 import type * as ai_embed from "../ai/embed.js";
 import type * as ai_generate from "../ai/generate.js";
 import type * as ai_insightFingerprint from "../ai/insightFingerprint.js";
+import type * as ai_llm from "../ai/llm.js";
 import type * as ai_onboardPrompt from "../ai/onboardPrompt.js";
 import type * as ai_onboardSend from "../ai/onboardSend.js";
 import type * as ai_parseAIResponse from "../ai/parseAIResponse.js";
 import type * as ai_soulFileEvolve from "../ai/soulFileEvolve.js";
 import type * as ai_taskAgent from "../ai/taskAgent.js";
+import type * as ai_taskAgentParsing from "../ai/taskAgentParsing.js";
 import type * as ai_taskExecute from "../ai/taskExecute.js";
 import type * as ai_weeklyDigest from "../ai/weeklyDigest.js";
 import type * as auth from "../auth.js";
@@ -55,8 +59,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentFiles: typeof agentFiles;
   aiInsights: typeof aiInsights;
   aiPromptCache: typeof aiPromptCache;
+  "ai/agentTools": typeof ai_agentTools;
   "ai/analyze": typeof ai_analyze;
   "ai/chatPrompt": typeof ai_chatPrompt;
   "ai/chatSend": typeof ai_chatSend;
@@ -65,11 +71,13 @@ declare const fullApi: ApiFromModules<{
   "ai/embed": typeof ai_embed;
   "ai/generate": typeof ai_generate;
   "ai/insightFingerprint": typeof ai_insightFingerprint;
+  "ai/llm": typeof ai_llm;
   "ai/onboardPrompt": typeof ai_onboardPrompt;
   "ai/onboardSend": typeof ai_onboardSend;
   "ai/parseAIResponse": typeof ai_parseAIResponse;
   "ai/soulFileEvolve": typeof ai_soulFileEvolve;
   "ai/taskAgent": typeof ai_taskAgent;
+  "ai/taskAgentParsing": typeof ai_taskAgentParsing;
   "ai/taskExecute": typeof ai_taskExecute;
   "ai/weeklyDigest": typeof ai_weeklyDigest;
   auth: typeof auth;

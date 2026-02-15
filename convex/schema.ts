@@ -110,10 +110,15 @@ export default defineSchema({
 
   userSettings: defineTable({
     userId: v.string(),
-    aiProvider: v.union(v.literal("openrouter"), v.literal("google")),
+    aiProvider: v.union(
+      v.literal("openrouter"),
+      v.literal("google"),
+      v.literal("anthropic")
+    ),
     aiModel: v.string(),
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
+    anthropicApiKey: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
@@ -140,7 +145,11 @@ export default defineSchema({
     userId: v.string(),
     scope: v.union(v.literal("chat"), v.literal("insight")),
     cacheKey: v.string(),
-    provider: v.union(v.literal("openrouter"), v.literal("google")),
+    provider: v.union(
+      v.literal("openrouter"),
+      v.literal("google"),
+      v.literal("anthropic")
+    ),
     model: v.string(),
     responseText: v.string(),
     createdAt: v.number(),
@@ -302,8 +311,25 @@ export default defineSchema({
     agentStartedAt: v.optional(v.number()),
     agentCompletedAt: v.optional(v.number()),
     agentError: v.optional(v.string()),
+
+    // Serialized continuation state for pause/resume (ask_user tool).
+    agentState: v.optional(v.string()),
   }).index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
+
+  // Draft documents produced by the agent (P2.6).
+  agentFiles: defineTable({
+    userId: v.string(),
+    taskId: v.optional(v.id("tasks")),
+    title: v.string(),
+    content: v.string(), // markdown
+    fileType: v.string(), // "document" | "checklist" | "table" | "plan" | ...
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_updated", ["userId", "updatedAt"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_task_updated", ["taskId", "updatedAt"]),
 
   taskEvents: defineTable({
     userId: v.string(),
@@ -311,6 +337,9 @@ export default defineSchema({
     kind: v.union(
       v.literal("status"),
       v.literal("progress"),
+      v.literal("tool"),
+      v.literal("question"),
+      v.literal("approval-request"),
       v.literal("note"),
       v.literal("result"),
       v.literal("error")
@@ -318,6 +347,20 @@ export default defineSchema({
     title: v.string(),
     detail: v.optional(v.string()),
     progress: v.optional(v.number()), // 0-100
+
+    // Optional extensions for richer agent UI (safe to ignore in older clients).
+    toolName: v.optional(v.string()),
+    toolInput: v.optional(v.string()),
+    toolOutput: v.optional(v.string()),
+
+    options: v.optional(v.array(v.string())),
+    answered: v.optional(v.boolean()),
+    answer: v.optional(v.string()),
+
+    approvalAction: v.optional(v.string()),
+    approvalParams: v.optional(v.string()),
+    approved: v.optional(v.boolean()),
+
     createdAt: v.number(),
   })
     .index("by_user_task_created", ["userId", "taskId", "createdAt"])

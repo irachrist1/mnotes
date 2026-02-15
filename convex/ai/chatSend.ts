@@ -5,9 +5,9 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
 import { buildSystemPrompt, buildDomainSummary, parseIntentFromResponse } from "./chatPrompt";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createHash } from "node:crypto";
 import { captureAiGeneration } from "../lib/posthog";
+import { callChat, resolveApiKeyFromSettings, type AiProvider } from "./llm";
 
 const CHAT_PROMPT_CACHE_TTL_SECONDS = 120;
 
@@ -41,13 +41,17 @@ export const send = action({
       throw new Error("Please configure your AI settings first (Settings page)");
     }
 
-    const apiKey = settings.aiProvider === "openrouter"
-      ? settings.openrouterApiKey
-      : settings.googleApiKey;
+    const provider = settings.aiProvider as AiProvider;
+    const { apiKey, missingReason } = resolveApiKeyFromSettings({
+      aiProvider: provider,
+      openrouterApiKey: settings.openrouterApiKey,
+      googleApiKey: settings.googleApiKey,
+      anthropicApiKey: (settings as any).anthropicApiKey,
+    });
 
     if (!apiKey) {
       console.error(`[CHAT] NO API KEY provider=${settings.aiProvider} userId=${userId}`);
-      throw new Error(`Please add your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key in Settings`);
+      throw new Error(missingReason ?? "Missing API key (Settings)");
     }
 
     // Save user message immediately
@@ -126,20 +130,24 @@ export const generateReplyInternal = internalAction({
       return;
     }
 
-    const apiKey = settings.aiProvider === "openrouter"
-      ? settings.openrouterApiKey
-      : settings.googleApiKey;
+    const provider = settings.aiProvider as AiProvider;
+    const { apiKey, missingReason } = resolveApiKeyFromSettings({
+      aiProvider: provider,
+      openrouterApiKey: settings.openrouterApiKey,
+      googleApiKey: settings.googleApiKey,
+      anthropicApiKey: (settings as any).anthropicApiKey,
+    });
 
     if (!apiKey) {
       await ctx.runMutation(internal.chat.patchAssistantMessageInternal, {
         userId: args.userId,
         messageId: args.assistantMessageId,
-        content: `I need your ${settings.aiProvider === "openrouter" ? "OpenRouter" : "Google AI"} API key before I can respond. Open Settings to add it.`,
+        content: missingReason ?? "I need your API key in Settings before I can respond.",
       });
       return;
     }
 
-    const model = settings.aiModel || "google/gemini-2.5-flash";
+    const model = normalizeModelForProvider(provider, settings.aiModel);
 
     // Build context
     const domainSummary = buildDomainSummary({
@@ -205,51 +213,36 @@ export const generateReplyInternal = internalAction({
         aiResponse = cachedResponse.responseText;
         cached = true;
       } else {
-        if (settings.aiProvider === "openrouter") {
-          const result = await callOpenRouterChat(
-            systemPrompt,
-            conversationMessages,
-            model,
-            apiKey
-          );
-          aiResponse = result.content;
+        const result = await callChat({
+          provider,
+          apiKey,
+          model,
+          systemPrompt,
+          messages: conversationMessages,
+          temperature: 0.7,
+          maxTokens: 4096,
+          title: "MNotes AI",
+        });
+        aiResponse = result.content;
 
-          captureAiGeneration({
-            distinctId: args.userId,
-            model,
-            provider: "openrouter",
-            feature: "chat",
-            latencySeconds: (Date.now() - t0) / 1000,
-            input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
-            output: result.content,
-            inputTokens: result.usage?.prompt_tokens,
-            outputTokens: result.usage?.completion_tokens,
-            totalCostUsd: result.usage?.total_cost,
-          });
-        } else {
-          aiResponse = await callGoogleAIChat(
-            systemPrompt,
-            conversationMessages,
-            model,
-            apiKey
-          );
-
-          captureAiGeneration({
-            distinctId: args.userId,
-            model,
-            provider: "google",
-            feature: "chat",
-            latencySeconds: (Date.now() - t0) / 1000,
-            input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
-            output: aiResponse,
-          });
-        }
+        captureAiGeneration({
+          distinctId: args.userId,
+          model,
+          provider,
+          feature: "chat",
+          latencySeconds: (Date.now() - t0) / 1000,
+          input: [{ role: "system", content: systemPrompt }, ...conversationMessages],
+          output: aiResponse,
+          inputTokens: result.usage?.prompt_tokens,
+          outputTokens: result.usage?.completion_tokens,
+          totalCostUsd: result.usage?.total_cost,
+        });
 
         await ctx.runMutation(internal.aiPromptCache.setInternal, {
           userId: args.userId,
           scope: "chat",
           cacheKey: promptCacheKey,
-          provider: settings.aiProvider,
+          provider,
           model,
           responseText: aiResponse,
           ttlSeconds: CHAT_PROMPT_CACHE_TTL_SECONDS,
@@ -265,7 +258,7 @@ export const generateReplyInternal = internalAction({
       return;
     }
 
-    console.log(`[CHAT] response userId=${args.userId} len=${aiResponse.length} ms=${Date.now() - t0} cached=${cached} model=${model}`);
+    console.log(`[CHAT] response userId=${args.userId} len=${aiResponse.length} ms=${Date.now() - t0} cached=${cached} model=${model} provider=${provider}`);
 
     const { reply, intent } = parseIntentFromResponse(aiResponse);
 
@@ -292,84 +285,13 @@ export const generateReplyInternal = internalAction({
   },
 });
 
-interface OpenRouterResult {
-  content: string;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_cost?: number;
-  };
-}
-
-async function callOpenRouterChat(
-  systemPrompt: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-  model: string,
-  apiKey: string
-): Promise<OpenRouterResult> {
-  const apiMessages = [
-    { role: "system" as const, content: systemPrompt },
-    ...messages,
-  ];
-
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://mnotes.app",
-      "X-Title": "MNotes AI",
-    },
-    body: JSON.stringify({
-      model: model || "google/gemini-3-flash-preview",
-      messages: apiMessages,
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+function normalizeModelForProvider(provider: AiProvider, model: string | undefined): string {
+  if (provider === "anthropic") {
+    const candidate = (model || "").trim();
+    if (candidate.startsWith("claude-")) return candidate;
+    return "claude-sonnet-4-5-20250929";
   }
-
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_cost?: number };
-  };
-  return {
-    content: data.choices?.[0]?.message?.content || "",
-    usage: data.usage,
-  };
-}
-
-async function callGoogleAIChat(
-  systemPrompt: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const generativeModel = genAI.getGenerativeModel({
-    model: model || "gemini-3-flash-preview",
-    systemInstruction: systemPrompt,
-  });
-
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-    parts: [{ text: m.content }],
-  }));
-
-  const result = await generativeModel.generateContent({
-    contents,
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 4096,
-    },
-  });
-
-  const response = await result.response;
-  return response.text();
+  return model || "google/gemini-2.5-flash";
 }
 
 function buildRelevantMemoryBlock(items: Array<{

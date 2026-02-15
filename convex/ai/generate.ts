@@ -2,15 +2,15 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { captureAiGeneration } from "../lib/posthog";
 import { getUserId } from "../lib/auth";
+import { callChat, type AiProvider } from "./llm";
 
 export const generate = action({
   args: {
     prompt: v.string(),
     model: v.string(),
-    provider: v.union(v.literal("openrouter"), v.literal("google")),
+    provider: v.union(v.literal("openrouter"), v.literal("google"), v.literal("anthropic")),
     apiKey: v.string(),
   },
   handler: async (ctx, args) => {
@@ -28,12 +28,18 @@ export const generate = action({
     const userId = await getUserId(ctx);
     const t0 = Date.now();
     try {
-      let result: string;
-      if (args.provider === "openrouter") {
-        result = await callOpenRouter(args.prompt, args.model, args.apiKey);
-      } else {
-        result = await callGoogleAI(args.prompt, args.model, args.apiKey);
-      }
+      const provider = args.provider as AiProvider;
+      const res = await callChat({
+        provider,
+        apiKey: args.apiKey,
+        model: normalizeModelForProvider(provider, args.model),
+        systemPrompt: "",
+        messages: [{ role: "user", content: args.prompt }],
+        temperature: 0.7,
+        maxTokens: 4096,
+        title: "MNotes AI",
+      });
+      const result = res.content;
       captureAiGeneration({
         distinctId: userId,
         model: args.model,
@@ -42,6 +48,9 @@ export const generate = action({
         latencySeconds: (Date.now() - t0) / 1000,
         input: [{ role: "user", content: args.prompt }],
         output: result,
+        inputTokens: res.usage?.prompt_tokens,
+        outputTokens: res.usage?.completion_tokens,
+        totalCostUsd: res.usage?.total_cost,
       });
       return result;
     } catch (error) {
@@ -53,61 +62,11 @@ export const generate = action({
   },
 });
 
-async function callOpenRouter(
-  prompt: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://mnotes.app",
-      "X-Title": "MNotes AI",
-    },
-    body: JSON.stringify({
-      model: model || "google/gemini-3-flash-preview",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+function normalizeModelForProvider(provider: AiProvider, model: string): string {
+  if (provider === "anthropic") {
+    const candidate = (model || "").trim();
+    if (candidate.startsWith("claude-")) return candidate;
+    return "claude-sonnet-4-5-20250929";
   }
-
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return data.choices?.[0]?.message?.content || "";
-}
-
-async function callGoogleAI(
-  prompt: string,
-  model: string,
-  apiKey: string
-): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const generativeModel = genAI.getGenerativeModel({
-    model: model || "gemini-3-flash-preview",
-  });
-
-  const result = await generativeModel.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 4096,
-    },
-  });
-
-  const response = await result.response;
-  return response.text();
+  return model || "google/gemini-3-flash-preview";
 }

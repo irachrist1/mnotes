@@ -15,7 +15,7 @@ interface AiGenerationEvent {
   distinctId: string;
   /** The model used, e.g. "google/gemini-3-flash-preview" */
   model: string;
-  /** Provider: "openrouter" or "google" */
+  /** Provider: "openrouter" | "google" | "anthropic" */
   provider: string;
   /** The feature that triggered this call */
   feature:
@@ -90,5 +90,34 @@ export async function captureAiGeneration(event: AiGenerationEvent): Promise<voi
     });
   } catch (err) {
     console.error("[POSTHOG] capture failed:", err);
+  }
+}
+
+type CaptureEventArgs = {
+  distinctId: string;
+  event: string;
+  properties?: Record<string, unknown>;
+};
+
+/**
+ * Capture a generic PostHog event from Convex actions (fire-and-forget).
+ * Use this for agent lifecycle and error tracking.
+ */
+export async function captureEvent(args: CaptureEventArgs): Promise<void> {
+  if (!POSTHOG_KEY) return;
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: POSTHOG_KEY,
+        event: args.event,
+        distinct_id: args.distinctId,
+        properties: args.properties ?? {},
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (err) {
+    console.error("[POSTHOG] captureEvent failed:", err);
   }
 }

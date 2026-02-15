@@ -52,6 +52,18 @@ describe("API export name validation", () => {
     });
   });
 
+  describe("convex/agentFiles.ts exports", () => {
+    it("exports list, listByTask, get, create, update, remove", async () => {
+      const mod = await import("@convex/agentFiles");
+      expect(mod.list).toBeDefined();
+      expect(mod.listByTask).toBeDefined();
+      expect(mod.get).toBeDefined();
+      expect(mod.create).toBeDefined();
+      expect(mod.update).toBeDefined();
+      expect(mod.remove).toBeDefined();
+    });
+  });
+
   describe("convex/aiInsights.ts exports", () => {
     it("exports listGenerated, list, create, saveGenerated, updateStatus, remove", async () => {
       const mod = await import("@convex/aiInsights");
