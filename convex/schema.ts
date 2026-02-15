@@ -121,7 +121,7 @@ export default defineSchema({
     anthropicApiKey: v.optional(v.string()),
 
     // Web tools (P4): search + browser read
-    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"))),
+    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"), v.literal("perplexity"))),
     searchApiKey: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),

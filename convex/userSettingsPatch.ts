@@ -1,4 +1,4 @@
-export type SearchProvider = "jina" | "tavily";
+export type SearchProvider = "jina" | "tavily" | "perplexity";
 export type AiProvider = "openrouter" | "google" | "anthropic";
 
 export type UserSettingsInsertInput = {

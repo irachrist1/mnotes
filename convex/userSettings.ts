@@ -50,7 +50,7 @@ export const upsert = mutation({
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
     anthropicApiKey: v.optional(v.string()),
-    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"))),
+    searchProvider: v.optional(v.union(v.literal("jina"), v.literal("tavily"), v.literal("perplexity"))),
     searchApiKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -111,4 +111,3 @@ export const getForUser = internalQuery({
       .first();
   },
 });
-

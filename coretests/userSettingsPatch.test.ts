@@ -28,14 +28,14 @@ test("buildUserSettingsPatch includes optional fields when provided", () => {
     aiModel: "claude-sonnet-4-5-20250929",
     updatedAt: 456,
     anthropicApiKey: "sk-ant-xxx",
-    searchProvider: "tavily",
+    searchProvider: "perplexity",
   });
 
   assert.equal(patch.aiProvider, "anthropic");
   assert.equal(patch.aiModel, "claude-sonnet-4-5-20250929");
   assert.equal(patch.updatedAt, 456);
   assert.equal(patch.anthropicApiKey, "sk-ant-xxx");
-  assert.equal(patch.searchProvider, "tavily");
+  assert.equal(patch.searchProvider, "perplexity");
   assert.equal("openrouterApiKey" in patch, false);
 });
 
@@ -54,4 +54,3 @@ test("buildUserSettingsInsert includes userId + required fields and preserves op
     updatedAt: 999,
   });
 });
-

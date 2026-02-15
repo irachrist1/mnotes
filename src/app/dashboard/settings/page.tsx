@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
-  const [searchProvider, setSearchProvider] = useState<"jina" | "tavily">("jina");
+  const [searchProvider, setSearchProvider] = useState<"jina" | "tavily" | "perplexity">("jina");
   const [searchApiKey, setSearchApiKey] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -59,7 +59,7 @@ export default function SettingsPage() {
       setHasOpenrouterKey(!!settings.openrouterApiKey);
       setHasGoogleKey(!!settings.googleApiKey);
       setHasAnthropicKey(!!(settings as any).anthropicApiKey);
-      setSearchProvider(((settings as any).searchProvider as "jina" | "tavily" | undefined) ?? "jina");
+      setSearchProvider(((settings as any).searchProvider as "jina" | "tavily" | "perplexity" | undefined) ?? "jina");
       setHasSearchKey(!!(settings as any).searchApiKey);
       // Don't load masked key values into the input fields
     }
@@ -87,7 +87,7 @@ export default function SettingsPage() {
         googleApiKey: googleKey || undefined,
         anthropicApiKey: anthropicKey || undefined,
         searchProvider,
-        searchApiKey: searchProvider === "tavily" ? (searchApiKey || undefined) : undefined,
+        searchApiKey: (searchProvider === "tavily" || searchProvider === "perplexity") ? (searchApiKey || undefined) : undefined,
       });
       track("settings_saved", { provider, model });
       toast.success("Settings saved successfully");
@@ -104,7 +104,7 @@ export default function SettingsPage() {
         setHasAnthropicKey(true);
         setAnthropicKey("");
       }
-      if (searchApiKey && searchProvider === "tavily") {
+      if (searchApiKey && (searchProvider === "tavily" || searchProvider === "perplexity")) {
         setHasSearchKey(true);
         setSearchApiKey("");
       }
@@ -368,38 +368,39 @@ export default function SettingsPage() {
               </label>
               <Select
                 value={searchProvider}
-                onChange={(val) => setSearchProvider(val as "jina" | "tavily")}
+                onChange={(val) => setSearchProvider(val as "jina" | "tavily" | "perplexity")}
                 options={[
                   { value: "jina", label: "Jina (no key, returns digest)" },
                   { value: "tavily", label: "Tavily (API key required)" },
+                  { value: "perplexity", label: "Perplexity (API key required)" },
                 ]}
               />
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                Jina works without a key, but results are less structured. Tavily returns structured results but needs a key.
+                Jina works without a key, but results are less structured. Tavily and Perplexity return structured results but need a key.
               </p>
             </div>
 
-            {searchProvider === "tavily" && (
+            {(searchProvider === "tavily" || searchProvider === "perplexity") && (
               <div>
                 <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
-                  Tavily API Key
+                  {searchProvider === "tavily" ? "Tavily API Key" : "Perplexity API Key"}
                 </label>
                 <input
                   type="password"
                   value={searchApiKey}
                   onChange={(e) => setSearchApiKey(e.target.value)}
-                  placeholder={hasSearchKey ? "Key configured. Enter new key to replace." : "tvly-..."}
+                  placeholder={hasSearchKey ? "Key configured. Enter new key to replace." : (searchProvider === "tavily" ? "tvly-..." : "pplx-...")}
                   className="input-field w-full"
                 />
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                   Get a key at{" "}
                   <a
-                    href="https://app.tavily.com/"
+                    href={searchProvider === "tavily" ? "https://app.tavily.com/" : "https://www.perplexity.ai/settings/api"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-stone-900 dark:text-stone-100 hover:underline"
                   >
-                    app.tavily.com
+                    {searchProvider === "tavily" ? "app.tavily.com" : "perplexity.ai/settings/api"}
                   </a>
                 </p>
               </div>

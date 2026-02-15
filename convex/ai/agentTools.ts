@@ -508,7 +508,8 @@ export async function executeTool(args: {
       if (approval) return approval;
 
       const settings = await ctx.runQuery(internal.userSettings.getForUser, { userId });
-      const provider = (settings as any)?.searchProvider === "tavily" ? "tavily" : "jina";
+      const providerRaw = String((settings as any)?.searchProvider ?? "jina");
+      const provider = providerRaw === "tavily" || providerRaw === "perplexity" ? providerRaw : "jina";
       const apiKey = typeof (settings as any)?.searchApiKey === "string" ? (settings as any).searchApiKey : "";
 
       if (provider === "tavily") {
@@ -547,6 +548,43 @@ export async function executeTool(args: {
         });
 
         return { ok: true, result: { provider: "tavily", q, results: simplified }, summary: `Found ${simplified.length} results.` };
+      }
+
+      if (provider === "perplexity") {
+        if (!apiKey) return { ok: false, error: "Perplexity API key not configured in Settings." };
+
+        // Uses Perplexity Search API to return structured results.
+        const res = await fetch("https://api.perplexity.ai/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            query: q,
+            max_results: maxResults,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          return { ok: false, error: `Perplexity error (${res.status}): ${truncate(text, 800)}` };
+        }
+        const data = (await res.json()) as any;
+        const results = Array.isArray(data?.results) ? data.results : [];
+        const simplified = results.slice(0, maxResults).map((r: any) => ({
+          title: String(r?.title ?? ""),
+          url: String(r?.url ?? ""),
+          snippet: truncate(String(r?.snippet ?? ""), 1200),
+          date: typeof r?.date === "string" ? r.date : undefined,
+        }));
+
+        void captureEvent({
+          distinctId: userId,
+          event: "agent_web_search",
+          properties: { provider: "perplexity", q, results: simplified.length },
+        });
+
+        return { ok: true, result: { provider: "perplexity", q, results: simplified }, summary: `Found ${simplified.length} results.` };
       }
 
       // Jina search returns a readable, LLM-friendly digest (unstructured).

@@ -173,6 +173,12 @@ Some tools (web tools today; connector tools later) must be approved before use.
   - `deniedTools`: `{ [toolName]: true }`
 - Subsequent tool calls in the same task reuse that decision without re-prompting.
 
+Web search providers:
+
+- Default: Jina (`https://s.jina.ai/...`) returns an LLM-friendly digest (no API key).
+- Optional: Tavily (structured results; requires API key).
+- Optional: Perplexity Search API (structured results; requires API key).
+
 ## Prompts Used (Task Agent)
 
 These prompts are embedded in `convex/ai/taskAgent.ts`. They are simple string templates.

@@ -296,3 +296,12 @@ These are the guiding principles for the agent task experience, to be implemente
   - Hardened agent pause/resume for planning/finalize:
     - Planning/finalizing can now pause for approval/questions and resume cleanly (`convex/ai/taskAgent.ts`)
   - Added a dedicated Files tab in the Data zone listing all `agentFiles` with open/delete (`src/components/dashboard/AgentFilesContent.tsx`, `src/app/dashboard/data/page.tsx`)
+
+### P4.1: Perplexity Search Provider Option
+- **Status:** Shipped
+- **Goal:** Add Perplexity Search API as a first-class `web_search` provider (structured results) in addition to Jina/Tavily.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Expanded `userSettings.searchProvider` union to include `"perplexity"` (`convex/schema.ts`, `convex/userSettings.ts`).
+  - Added Perplexity option to Settings UI (shares the `searchApiKey` field) (`src/app/dashboard/settings/page.tsx`).
+  - Implemented Perplexity Search API executor in `web_search` tool (`convex/ai/agentTools.ts`).
