@@ -408,7 +408,7 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added `proactiveSuggestions` table (`convex/schema.ts`).
   - Added suggestion CRUD + approve-to-task pipeline (`convex/proactiveSuggestions.ts`).
-  - Added proactive generator cron (rule-based: suggests running Jarvis on top undone tasks) (`convex/ai/proactiveAgent.ts`, `convex/crons.ts`).
+  - Added proactive generator cron (AI-driven when API key present; rule-based fallback) (`convex/ai/proactiveAgent.ts`, `convex/crons.ts`).
   - Dashboard Home now renders suggestions as nudge cards with Approve/Dismiss (`src/app/dashboard/page.tsx`).
 
 ### P10.3: Memory Changelog (Soul File Revisions + Restore UI)

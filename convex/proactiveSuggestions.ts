@@ -83,10 +83,19 @@ export const createForTaskInternal = internalMutation({
     taskTitle: v.string(),
     taskNote: v.optional(v.string()),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    contentHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     validateShortText(args.title, "Title");
     validateShortText(args.taskTitle, "Task title");
+
+    if (args.contentHash) {
+      const existingHash = await ctx.db
+        .query("proactiveSuggestions")
+        .withIndex("by_user_hash", (q) => q.eq("userId", args.userId).eq("contentHash", args.contentHash))
+        .first();
+      if (existingHash && !existingHash.dismissedAt && !existingHash.approvedAt) return existingHash._id;
+    }
 
     const existing = await ctx.db
       .query("proactiveSuggestions")
@@ -99,6 +108,53 @@ export const createForTaskInternal = internalMutation({
       userId: args.userId,
       title: args.title,
       body: args.body,
+      contentHash: args.contentHash,
+      taskTitle: args.taskTitle,
+      taskNote: args.taskNote,
+      priority: args.priority,
+      sourceTaskId: args.sourceTaskId,
+      createdAt: now,
+    });
+  },
+});
+
+export const createInternal = internalMutation({
+  args: {
+    userId: v.string(),
+    title: v.string(),
+    body: v.string(),
+    taskTitle: v.string(),
+    taskNote: v.optional(v.string()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    sourceTaskId: v.optional(v.id("tasks")),
+    contentHash: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    validateShortText(args.title, "Title");
+    validateShortText(args.taskTitle, "Task title");
+
+    if (args.contentHash) {
+      const existingHash = await ctx.db
+        .query("proactiveSuggestions")
+        .withIndex("by_user_hash", (q) => q.eq("userId", args.userId).eq("contentHash", args.contentHash))
+        .first();
+      if (existingHash && !existingHash.dismissedAt && !existingHash.approvedAt) return existingHash._id;
+    }
+
+    if (args.sourceTaskId) {
+      const existing = await ctx.db
+        .query("proactiveSuggestions")
+        .withIndex("by_user_sourceTask", (q) => q.eq("userId", args.userId).eq("sourceTaskId", args.sourceTaskId))
+        .first();
+      if (existing && !existing.dismissedAt && !existing.approvedAt) return existing._id;
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("proactiveSuggestions", {
+      userId: args.userId,
+      title: args.title,
+      body: args.body,
+      contentHash: args.contentHash,
       taskTitle: args.taskTitle,
       taskNote: args.taskNote,
       priority: args.priority,

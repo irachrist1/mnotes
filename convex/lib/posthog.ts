@@ -24,6 +24,7 @@ interface AiGenerationEvent {
     | "analyze"
     | "weekly-digest"
     | "soul-evolve"
+    | "proactive-suggestions"
     | "embed"
     | "generate"
     | "task-execute"
