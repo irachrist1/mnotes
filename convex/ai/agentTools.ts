@@ -407,9 +407,27 @@ export async function executeTool(args: {
       };
     }
 
+    void captureEvent({
+      distinctId: userId,
+      event: "agent_tool_failed",
+      properties: {
+        taskId: String(taskId),
+        toolName: name,
+        error: "Unknown tool",
+      },
+    });
     return { ok: false, error: `Unknown tool: ${name}` };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Tool execution failed";
+    void captureEvent({
+      distinctId: userId,
+      event: "agent_tool_failed",
+      properties: {
+        taskId: String(taskId),
+        toolName: name,
+        error: message,
+      },
+    });
     return { ok: false, error: message };
   }
 }

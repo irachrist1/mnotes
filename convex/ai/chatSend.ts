@@ -291,7 +291,7 @@ function normalizeModelForProvider(provider: AiProvider, model: string | undefin
     if (candidate.startsWith("claude-")) return candidate;
     return "claude-sonnet-4-5-20250929";
   }
-  return model || "google/gemini-2.5-flash";
+  return model || "google/gemini-3-flash-preview";
 }
 
 function buildRelevantMemoryBlock(items: Array<{

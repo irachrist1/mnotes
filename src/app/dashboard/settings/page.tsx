@@ -232,7 +232,7 @@ export default function SettingsPage() {
               type="text"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g., google/gemini-2.5-flash"
+              placeholder="e.g., google/gemini-3-flash-preview"
               className="input-field w-full"
             />
           </div>

@@ -31,4 +31,4 @@ export const ANTHROPIC_MODELS: ModelOption[] = [
 ];
 
 export const DEFAULT_PROVIDER = "openrouter" as const;
-export const DEFAULT_MODEL = "google/gemini-2.5-flash";
+export const DEFAULT_MODEL = "google/gemini-3-flash-preview";

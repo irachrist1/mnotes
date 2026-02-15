@@ -269,3 +269,12 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added OpenRouter function-calling tool loop in `convex/ai/taskAgent.ts` (`tools` + `tool_calls` + `role="tool"` results)
   - Updated provider routing so `aiProvider="openrouter"` uses the tool loop (Google remains fallback)
   - Updated docs and Settings UI copy to reflect OpenRouter tool-use support
+
+### Maintenance: Default Gemini Model + Tool Error Analytics + Test Config Tweaks
+- **Status:** Shipped
+- **Goal:** Keep defaults current (Gemini 3 Flash), improve observability, and reduce friction running tests locally.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Updated default model selections to prefer `gemini-3-flash-preview` / `google/gemini-3-flash-preview` across the app (`src/lib/aiModels.ts`, `convex/ai/taskAgent.ts`, `convex/ai/chatSend.ts`, `convex/ai/taskExecute.ts`)
+  - Added PostHog `agent_tool_failed` event capture on tool execution exceptions/unknown tools (`convex/ai/agentTools.ts`)
+  - Updated `vitest.config.ts` to prefer threads pool and preserve symlinks (helps in some Windows environments where spawning OS commands is restricted)

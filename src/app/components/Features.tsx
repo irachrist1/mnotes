@@ -81,7 +81,7 @@ const features = [
           </div>
           <div>
             <p className="text-xs text-stone-700 dark:text-stone-300">Your consulting work has the best revenue-to-time ratio at $92/hr. Product revenue is growing slower but requires less active time.</p>
-            <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1.5">92% confidence / gemini-2.5-flash</p>
+            <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1.5">92% confidence / gemini-3-flash-preview</p>
           </div>
         </div>
       </div>
@@ -124,7 +124,7 @@ const features = [
         </div>
         <div className="flex items-center justify-between bg-stone-50 dark:bg-stone-800/50 rounded-lg px-3 py-2 border border-stone-100 dark:border-white/[0.04]">
           <span className="text-[10px] text-stone-500">Model</span>
-          <span className="text-xs text-stone-700 dark:text-stone-300">gemini-2.5-flash</span>
+          <span className="text-xs text-stone-700 dark:text-stone-300">gemini-3-flash-preview</span>
         </div>
       </div>
     ),
