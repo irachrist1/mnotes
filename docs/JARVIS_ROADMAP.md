@@ -1,7 +1,14 @@
-# Jarvis Roadmap — Full Handoff Document
+# Jarvis Roadmap — Central Coordination Document
 
 **Created: February 15, 2026**
-**Purpose: Complete spec for a new agent to pick up and ship everything that remains.**
+**Purpose: Single source of truth for all agents working on this codebase. Every agent reads this first.**
+
+> **If you are a Claude Code agent assigned to work on this project:**
+> 1. Read this entire document before writing any code
+> 2. Read `CLAUDE.md` for codebase conventions
+> 3. Read `docs/SHIPPING_LOG.md` for what's already shipped
+> 4. Follow the Multi-Agent Coordination Protocol at the bottom of this document
+> 5. Ask the owner what work unit you're assigned before starting
 
 ---
 
@@ -488,6 +495,98 @@ npm run dev            # Frontend dev server
 8. **P9 (Memory Evolution)** — partially exists, enhance
 9. **P10 (Rich Outputs)** — better deliverables, not urgent
 10. **P11 (Polish)** — ongoing
+
+---
+
+## Multi-Agent Coordination Protocol
+
+Multiple Claude Code agents will work on this codebase simultaneously. This section defines how they coordinate to avoid conflicts.
+
+### Branch Strategy
+
+**All agents push to a single shared branch: `jarvis-agents`** (branched from `ui/three-zones-redesign`).
+
+- No per-agent branches. One branch keeps the git graph clean and enables bulk testing.
+- Agents commit frequently (after each sub-task) with clear, prefixed commit messages.
+- The owner reviews and merges `jarvis-agents` → `master` when ready.
+
+### Work Unit Assignment
+
+Each workstream (P2-P11) is a **self-contained work unit**. Agents are assigned one work unit at a time. Work units are designed so that **no two agents touch the same files simultaneously**.
+
+| Work Unit | Primary Files | Can Run In Parallel With |
+|-----------|--------------|--------------------------|
+| **P2.1-P2.2: Claude + Tool Framework** | `convex/ai/taskAgent.ts`, `convex/ai/agentTools.ts` (new), `convex/schema.ts` (add anthropicApiKey + agentFiles table), `src/lib/aiModels.ts` | P3, P8 |
+| **P2.3-P2.5: Built-in Tools + Prompting** | `convex/ai/agentTools.ts`, `convex/ai/taskAgent.ts` (integrate tool loop) | P3, P8 (after P2.1-P2.2 merges) |
+| **P2.6: File Creation System** | `convex/agentFiles.ts` (new), `src/components/dashboard/AgentFileViewer.tsx` (new) | P3, P5, P8 |
+| **P2.7: Action Approval System** | `convex/schema.ts` (taskEvents kinds), `src/components/dashboard/TasksContent.tsx` | P4, P8 |
+| **P3: Deep Research UI** | `src/components/dashboard/TasksContent.tsx` (agent activity panel only) | P2.6, P4, P8 |
+| **P4: Web Search** | `convex/ai/agentTools.ts` (add search tool), `src/app/dashboard/settings/page.tsx` (search key field) | P2.6, P3, P8 |
+| **P5: Mid-Work Questions** | `convex/schema.ts` (question kind), `convex/taskEvents.ts`, `src/components/dashboard/TasksContent.tsx` (question UI) | P2.6, P4 |
+| **P6: Connectors** | `convex/connectors/` (new dir), `src/app/dashboard/settings/page.tsx` (connections section) | P3, P8 |
+| **P7: Rich Outputs** | `src/components/dashboard/TaskOutputRenderers.tsx` (new) | Any |
+| **P8: Status Indicator** | `src/components/layout/Sidebar.tsx`, `src/components/layout/DashboardShell.tsx` | P2, P3, P4 |
+| **P9-P11** | Various — assign after P2-P8 complete | — |
+
+### Agent Protocol (EVERY agent must follow this)
+
+#### Before Starting Work:
+1. **Read this document** (`docs/JARVIS_ROADMAP.md`) to understand the full plan
+2. **Read `docs/SHIPPING_LOG.md`** to see what's already been shipped
+3. **Read `CLAUDE.md`** for codebase conventions and rules
+4. **State your assigned work unit** and what you plan to build — wait for owner approval
+5. **Ask clarifying questions** about scope, approach, or edge cases before writing code
+6. **Pull latest from `jarvis-agents`** before starting: `git pull origin jarvis-agents`
+
+#### While Working:
+1. **Commit after each sub-task** (e.g., after P2.1, after P2.2, not one giant commit at the end)
+2. **Commit message format**: `feat(P2.1): description` or `fix(P3): description`
+3. **Run `npm run build`** after every commit — it must pass (exit 0)
+4. **Push to `jarvis-agents`** after each commit: `git push origin jarvis-agents`
+5. **Update this document** when you complete a work unit — mark it as shipped in the priority table
+6. **Update `docs/SHIPPING_LOG.md`** with what you shipped, when, and what changed
+7. **Do NOT touch files outside your work unit** without checking with the owner first
+8. **If you encounter a merge conflict**: pull, resolve, build, push. Never force-push.
+
+#### After Completing Work:
+1. Mark the work unit as ✅ Shipped in this document
+2. Add a changelog entry to `docs/SHIPPING_LOG.md`
+3. Push final commit
+4. Report what was built, what files were changed, and any issues found
+
+### File Ownership Rules (Conflict Prevention)
+
+These files are **shared** and require extra care:
+- `convex/schema.ts` — only ADD fields/tables, never remove or rename existing ones
+- `package.json` — only add dependencies, don't change existing scripts
+- `src/app/dashboard/settings/page.tsx` — coordinate if multiple agents need settings UI changes
+
+These files are **owned by specific work units** — only the assigned agent should modify them:
+- `convex/ai/taskAgent.ts` → P2.1-P2.5 agent
+- `convex/ai/agentTools.ts` → P2.2-P2.3 agent (created), P4 agent (adds search tool)
+- `src/components/dashboard/TasksContent.tsx` → P3 agent (activity UI), P5 agent (question UI)
+- `convex/connectors/*` → P6 agent only
+
+### Dependency Order
+
+Some work units depend on others. Respect this order:
+
+```
+P2.1-P2.2 (Claude + Tool Framework)
+    ↓
+P2.3-P2.5 (Built-in Tools + Prompting)  ←  depends on tool framework existing
+    ↓
+P2.6 (File Creation)  ←  uses tool framework to register create_file tool
+P2.7 (Action Approval)  ←  adds approval checks to tool execution
+P4 (Web Search)  ←  registers search as an agent tool
+P5 (Mid-Work Questions)  ←  registers ask_user as an agent tool
+    ↓
+P6 (Connectors)  ←  registers connector actions as agent tools
+    ↓
+P9 (Proactive Loop)  ←  needs tools + connectors to be useful
+```
+
+Work units without arrows (P3, P7, P8, P10, P11) can run in parallel with anything.
 
 ---
 
