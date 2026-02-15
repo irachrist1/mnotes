@@ -11,7 +11,16 @@ function run() {
     "taskAgentParsing.js"
   ));
 
+  const outputFormats = require(path.join(
+    process.cwd(),
+    "dist-coretests",
+    "src",
+    "lib",
+    "outputFormats.js"
+  ));
+
   const { parseAgentState, parseFinalPayload, parsePlan, parseStepPayload } = parsing;
+  const { parseTaskOutput, serializeChecklist } = outputFormats;
 
   // parsePlan
   assert.deepEqual(parsePlan(`x\n{ "planSteps": ["A", " B ", "", "C"] }\ny`), ["A", "B", "C"]);
@@ -49,6 +58,17 @@ function run() {
     approvedTools: { web_search: true },
     deniedTools: { send_email: true },
   });
+
+  // output formats
+  const parsed1 = parseTaskOutput("- [ ] a\n- [x] b\n");
+  assert.equal(parsed1.type, "checklist");
+  assert.deepEqual(parsed1.items, [{ text: "a", checked: false }, { text: "b", checked: true }]);
+  const md1 = serializeChecklist({ items: parsed1.items });
+  assert.ok(md1.includes("- [ ] a"));
+  assert.ok(md1.includes("- [x] b"));
+
+  const parsed2 = parseTaskOutput("hello\n- [ ] only one\n");
+  assert.equal(parsed2.type, "markdown");
 
   console.log("[coretests] ok");
 }

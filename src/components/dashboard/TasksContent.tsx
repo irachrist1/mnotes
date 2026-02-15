@@ -25,8 +25,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { MarkdownMessage } from "@/components/ui/MarkdownMessage";
 import { AgentFileViewer } from "@/components/dashboard/AgentFileViewer";
+import { TaskOutputRenderers } from "@/components/dashboard/TaskOutputRenderers";
 import { track } from "@/lib/analytics";
 
 type Priority = "low" | "medium" | "high";
@@ -789,7 +789,7 @@ export function TasksContent() {
                   </pre>
                 ) : (
                   <div className="mt-3 text-sm text-stone-700 dark:text-stone-200">
-                    <MarkdownMessage content={selectedTask.agentResult} />
+                    <TaskOutputRenderers markdown={selectedTask.agentResult} />
                   </div>
                 )
               )}
