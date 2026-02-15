@@ -397,6 +397,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added proactive generator cron (rule-based: suggests running Jarvis on top undone tasks) (`convex/ai/proactiveAgent.ts`, `convex/crons.ts`).
   - Dashboard Home now renders suggestions as nudge cards with Approve/Dismiss (`src/app/dashboard/page.tsx`).
 
+### P10.3: Memory Changelog (Soul File Revisions + Restore UI)
+- **Status:** ✅ Shipped (initial)
+- **Goal:** Make soul file edits auditable and reversible.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `soulFileRevisions` table to store prior versions (`convex/schema.ts`).
+  - Soul file evolves now capture the previous version before patching (`convex/soulFile.ts`, `convex/soulFileRevisions.ts`).
+  - Settings now includes a “Memory (Soul File)” editor and version restore UI (`src/app/dashboard/settings/page.tsx`).
+
 ### P3.1: Activity Feed Improvements (More Events + Tool Durations)
 - **Status:** Shipped (incremental)
 - **Goal:** Make the agent's work more legible by allowing full activity expansion and surfacing tool durations.

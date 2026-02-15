@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -40,7 +40,11 @@ const BUILTIN_AGENT_TOOLS: { name: string; description: string }[] = [
 
 export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
+  const soulFile = useQuery(api.soulFile.get, {});
+  const soulRevisions = useQuery(api.soulFileRevisions.list, { limit: 8 });
   const upsertSettings = useMutation(api.userSettings.upsert);
+  const evolveSoul = useMutation(api.soulFile.evolve);
+  const restoreSoulRevision = useMutation(api.soulFileRevisions.restore);
   const connectors = useQuery(api.connectors.tokens.list, {});
   const clearConnectorToken = useMutation(api.connectors.tokens.clearToken);
   const startGoogleOauth = useAction(api.connectors.googleOauth.start);
@@ -57,6 +61,12 @@ export default function SettingsPage() {
   const [hasGithubToken, setHasGithubToken] = useState(false);
   const [connectingGithub, setConnectingGithub] = useState<null | "read" | "write">(null);
   const [connectingGoogle, setConnectingGoogle] = useState<null | "gmail" | "google-calendar">(null);
+
+  const [soulDraft, setSoulDraft] = useState("");
+  const [soulDirty, setSoulDirty] = useState(false);
+  const [savingSoul, setSavingSoul] = useState(false);
+  const [restoringSoulRevId, setRestoringSoulRevId] = useState<string | null>(null);
+  const soulHydratedRef = useRef(false);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
@@ -77,6 +87,15 @@ export default function SettingsPage() {
       // Don't load masked key values into the input fields
     }
   }, [settings]);
+
+  // Hydrate the soul file draft once.
+  useEffect(() => {
+    if (soulHydratedRef.current) return;
+    if (!soulFile) return;
+    soulHydratedRef.current = true;
+    setSoulDraft(soulFile.content ?? "");
+    setSoulDirty(false);
+  }, [soulFile]);
 
   useEffect(() => {
     if (!connectors) return;
@@ -592,6 +611,121 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Memory */}
+        <div className="card p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-stone-500" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                Memory (Soul File)
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                This is Jarvis's long-term memory about you. You can edit it, and restore older versions.
+              </p>
+            </div>
+          </div>
+
+          {!soulFile ? (
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              No soul file yet. Complete onboarding first.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  Version {soulFile.version} · last updated {new Date(soulFile.updatedAt).toLocaleString()}
+                </p>
+                <button
+                  onClick={async () => {
+                    if (savingSoul) return;
+                    setSavingSoul(true);
+                    try {
+                      await evolveSoul({ content: soulDraft });
+                      setSoulDirty(false);
+                      toast.success("Memory saved");
+                      track("memory_saved");
+                    } catch (err) {
+                      console.error(err);
+                      toast.error("Failed to save memory");
+                    } finally {
+                      setSavingSoul(false);
+                    }
+                  }}
+                  disabled={savingSoul || !soulDirty}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium btn-primary disabled:opacity-60"
+                >
+                  {savingSoul ? "Saving…" : soulDirty ? "Save" : "Saved"}
+                </button>
+              </div>
+
+              <textarea
+                value={soulDraft}
+                onChange={(e) => {
+                  setSoulDraft(e.target.value);
+                  setSoulDirty(true);
+                }}
+                className="input-field w-full h-56 font-mono text-xs"
+              />
+
+              <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4 bg-white/50 dark:bg-black/10">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                    Version history
+                  </p>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {Array.isArray(soulRevisions) ? `${soulRevisions.length} saved` : "Loading…"}
+                  </p>
+                </div>
+
+                {!Array.isArray(soulRevisions) ? (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">Loading…</p>
+                ) : soulRevisions.length === 0 ? (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+                    No previous versions yet.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {soulRevisions.map((r: any) => (
+                      <div key={r._id} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-stone-700 dark:text-stone-200">
+                            v{r.version} · {r.source === "ai-evolve" ? "AI evolve" : "Manual"} · {new Date(r.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (restoringSoulRevId) return;
+                            if (!confirm(`Restore soul file to version v${r.version}? This will create a new version.`)) return;
+                            setRestoringSoulRevId(String(r._id));
+                            try {
+                              await restoreSoulRevision({ revisionId: r._id });
+                              setSoulDirty(false);
+                              soulHydratedRef.current = false; // rehydrate textarea on next query update
+                              toast.success("Restored");
+                              track("memory_restored", { version: r.version });
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("Failed to restore");
+                            } finally {
+                              setRestoringSoulRevId(null);
+                            }
+                          }}
+                          disabled={!!restoringSoulRevId}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Connections */}

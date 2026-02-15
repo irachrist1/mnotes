@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getUserId } from "./lib/auth";
+import { internal } from "./_generated/api";
 
 const DEFAULT_SOUL_TEMPLATE = `# Soul File
 
@@ -152,6 +153,15 @@ export const evolve = mutation({
       });
     }
 
+    // Capture revision before patching.
+    await ctx.runMutation(internal.soulFileRevisions.captureRevisionInternal, {
+      userId,
+      soulFileId: existing._id,
+      version: existing.version,
+      content: existing.content,
+      source: "manual",
+    });
+
     await ctx.db.patch(existing._id, {
       content: args.content,
       version: existing.version + 1,
@@ -202,6 +212,14 @@ export const evolveInternal = internalMutation({
         updatedAt: Date.now(),
       });
     }
+
+    await ctx.runMutation(internal.soulFileRevisions.captureRevisionInternal, {
+      userId: args.userId,
+      soulFileId: existing._id,
+      version: existing.version,
+      content: existing.content,
+      source: "ai-evolve",
+    });
 
     await ctx.db.patch(existing._id, {
       content: args.content,

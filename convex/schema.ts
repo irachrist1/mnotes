@@ -126,6 +126,18 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  // Soul file version history (P10.3).
+  soulFileRevisions: defineTable({
+    userId: v.string(),
+    soulFileId: v.id("soulFiles"),
+    version: v.number(),
+    content: v.string(),
+    source: v.union(v.literal("manual"), v.literal("ai-evolve")),
+    createdAt: v.number(),
+  })
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_soul_version", ["soulFileId", "version"]),
+
   aiInsights: defineTable({
     userId: v.string(),
     type: v.string(), // "revenue" | "idea" | "mentorship" | "general"

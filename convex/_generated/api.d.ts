@@ -53,6 +53,7 @@ import type * as notifications from "../notifications.js";
 import type * as proactiveSuggestions from "../proactiveSuggestions.js";
 import type * as savedInsights from "../savedInsights.js";
 import type * as soulFile from "../soulFile.js";
+import type * as soulFileRevisions from "../soulFileRevisions.js";
 import type * as taskEvents from "../taskEvents.js";
 import type * as tasks from "../tasks.js";
 import type * as userSettings from "../userSettings.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   proactiveSuggestions: typeof proactiveSuggestions;
   savedInsights: typeof savedInsights;
   soulFile: typeof soulFile;
+  soulFileRevisions: typeof soulFileRevisions;
   taskEvents: typeof taskEvents;
   tasks: typeof tasks;
   userSettings: typeof userSettings;
