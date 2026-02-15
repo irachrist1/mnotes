@@ -108,6 +108,7 @@ export function TasksContent() {
   const [respondingApprovalEventId, setRespondingApprovalEventId] = useState<string | null>(null);
   const [outputView, setOutputView] = useState<"rich" | "raw">("rich");
   const [openFileId, setOpenFileId] = useState<Id<"agentFiles"> | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
   const closingPanelRef = useRef(false);
 
   const isLoading = tasks === undefined;
@@ -533,7 +534,17 @@ export function TasksContent() {
             )}
 
             <section className="card p-4">
-              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Live activity</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Live activity</p>
+                {Array.isArray(events) && events.length > 16 && (
+                  <button
+                    onClick={() => setShowAllEvents((v) => !v)}
+                    className="text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors duration-150"
+                  >
+                    {showAllEvents ? "Show less" : `Show all (${events.length})`}
+                  </button>
+                )}
+              </div>
               {events === undefined ? (
                 <div className="space-y-2 mt-3">
                   <Skeleton className="h-4 w-full" />
@@ -546,7 +557,7 @@ export function TasksContent() {
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
-                  {events.slice(-14).map((e: any) => {
+                  {(showAllEvents ? events : events.slice(-16)).map((e: any) => {
                     const kind = String(e.kind || "note");
                     if (kind === "question") {
                       const answered = Boolean(e.answered);

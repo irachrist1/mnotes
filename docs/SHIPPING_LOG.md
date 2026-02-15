@@ -326,3 +326,11 @@ These are the guiding principles for the agent task experience, to be implemente
     - `github_list_my_pull_requests` (read-only)
     - `github_create_issue` (requires approval per task)
     (`convex/ai/agentTools.ts`)
+
+### P3.1: Activity Feed Improvements (More Events + Tool Durations)
+- **Status:** Shipped (incremental)
+- **Goal:** Make the agent's work more legible by allowing full activity expansion and surfacing tool durations.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added Show all/Show less toggle for task events (`src/components/dashboard/TasksContent.tsx`).
+  - Tool result events now include duration in `detail` (e.g. `(... 123ms)`) (`convex/ai/taskAgent.ts`).

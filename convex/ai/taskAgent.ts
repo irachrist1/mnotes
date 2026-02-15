@@ -685,6 +685,7 @@ async function runFallbackCall(args: {
       detail: "Executing.",
     });
 
+    const toolStart = Date.now();
     const res = await executeTool({
       ctx: args.ctx,
       userId: args.userId,
@@ -692,6 +693,7 @@ async function runFallbackCall(args: {
       name: tool.name,
       input: tool.input,
     });
+    const durationMs = Date.now() - toolStart;
 
     toolOutputs.push(JSON.stringify(res.ok ? res.result : { error: res.error }));
 
@@ -702,7 +704,7 @@ async function runFallbackCall(args: {
       title: `Tool result: ${tool.name}`,
       toolName: tool.name,
       toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
-      detail: res.ok ? (res.summary ?? "ok") : res.error,
+      detail: `${res.ok ? (res.summary ?? "ok") : res.error} (${durationMs}ms)`,
     });
   }
 
@@ -781,6 +783,7 @@ async function runClaudeToolLoop(args: {
         detail: "Executing.",
       });
 
+      const startedAt = Date.now();
       const res = await executeTool({
         ctx: args.ctx,
         userId: args.userId,
@@ -788,6 +791,7 @@ async function runClaudeToolLoop(args: {
         name: toolName,
         input: toolInput,
       });
+      const durationMs = Date.now() - startedAt;
 
       await args.ctx.runMutation(internal.taskEvents.addInternal, {
         userId: args.userId,
@@ -796,7 +800,7 @@ async function runClaudeToolLoop(args: {
         title: `Tool result: ${toolName}`,
         toolName,
         toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
-        detail: res.ok ? (res.summary ?? "ok") : res.error,
+        detail: `${res.ok ? (res.summary ?? "ok") : res.error} (${durationMs}ms)`,
       });
 
       const toolResultPayload = res.ok ? res.result : { error: res.error };
@@ -916,6 +920,7 @@ async function runOpenRouterToolLoop(args: {
         detail: "Executing.",
       });
 
+      const startedAt = Date.now();
       const res = await executeTool({
         ctx: args.ctx,
         userId: args.userId,
@@ -923,6 +928,7 @@ async function runOpenRouterToolLoop(args: {
         name: toolName,
         input: toolInput,
       });
+      const durationMs = Date.now() - startedAt;
 
       await args.ctx.runMutation(internal.taskEvents.addInternal, {
         userId: args.userId,
@@ -931,7 +937,7 @@ async function runOpenRouterToolLoop(args: {
         title: `Tool result: ${toolName || "(unknown)"}`,
         toolName,
         toolOutput: res.ok ? (res.summary ?? "ok") : res.error,
-        detail: res.ok ? (res.summary ?? "ok") : res.error,
+        detail: `${res.ok ? (res.summary ?? "ok") : res.error} (${durationMs}ms)`,
       });
 
       const toolResultPayload = res.ok ? res.result : { error: res.error };
