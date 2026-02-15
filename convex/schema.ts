@@ -394,6 +394,7 @@ export default defineSchema({
     refreshToken: v.optional(v.string()),
     scopes: v.optional(v.array(v.string())),
     expiresAt: v.optional(v.number()),
+    lastUsedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -422,6 +423,7 @@ export default defineSchema({
     userId: v.string(),
     title: v.string(),
     body: v.string(),
+    contentHash: v.optional(v.string()),
     // Suggested task payload (created when approved).
     taskTitle: v.string(),
     taskNote: v.optional(v.string()),
@@ -436,5 +438,24 @@ export default defineSchema({
     approvedTaskId: v.optional(v.id("tasks")),
   })
     .index("by_user_created", ["userId", "createdAt"])
-    .index("by_user_sourceTask", ["userId", "sourceTaskId"]),
+    .index("by_user_sourceTask", ["userId", "sourceTaskId"])
+    .index("by_user_hash", ["userId", "contentHash"]),
+
+  // Memory entries (P10 taxonomy): structured memory beyond the soul file blob.
+  memoryEntries: defineTable({
+    userId: v.string(),
+    kind: v.union(v.literal("semantic"), v.literal("procedural"), v.literal("episodic")),
+    title: v.string(),
+    content: v.string(),
+    source: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
+    archived: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_updated", ["userId", "updatedAt"])
+    .index("by_user_kind_updated", ["userId", "kind", "updatedAt"])
+    .searchIndex("search_text", {
+      searchField: "content",
+      filterFields: ["userId", "archived", "kind"],
+    }),
 });

@@ -47,6 +47,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_posthog from "../lib/posthog.js";
 import type * as lib_validate from "../lib/validate.js";
 import type * as mentorshipSessions from "../mentorshipSessions.js";
+import type * as memoryEntries from "../memoryEntries.js";
 import type * as migrations_backfillAiInsightHashesAndExpiry from "../migrations/backfillAiInsightHashesAndExpiry.js";
 import type * as migrations_migrateIdeasToCamelCase from "../migrations/migrateIdeasToCamelCase.js";
 import type * as notifications from "../notifications.js";
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   "lib/posthog": typeof lib_posthog;
   "lib/validate": typeof lib_validate;
   mentorshipSessions: typeof mentorshipSessions;
+  memoryEntries: typeof memoryEntries;
   "migrations/backfillAiInsightHashesAndExpiry": typeof migrations_backfillAiInsightHashesAndExpiry;
   "migrations/migrateIdeasToCamelCase": typeof migrations_migrateIdeasToCamelCase;
   notifications: typeof notifications;

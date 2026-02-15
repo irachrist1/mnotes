@@ -9,7 +9,7 @@ const PROVIDERS: ConnectorProvider[] = ["github", "google-calendar", "gmail"];
 
 export const list = query({
   args: {},
-  handler: async (ctx): Promise<Array<{ provider: ConnectorProvider; connected: boolean; updatedAt: number | null; scopes: string[] | null; expiresAt: number | null }>> => {
+  handler: async (ctx): Promise<Array<{ provider: ConnectorProvider; connected: boolean; updatedAt: number | null; scopes: string[] | null; expiresAt: number | null; lastUsedAt: number | null }>> => {
     const userId = await getUserId(ctx);
     const tokens = await ctx.db
       .query("connectorTokens")
@@ -25,6 +25,7 @@ export const list = query({
         updatedAt: found?.updatedAt ?? null,
         scopes: found?.scopes ?? null,
         expiresAt: found?.expiresAt ?? null,
+        lastUsedAt: (found as any)?.lastUsedAt ?? null,
       };
     });
   },
@@ -135,5 +136,20 @@ export const setInternal = internalMutation({
       return existing._id;
     }
     return await ctx.db.insert("connectorTokens", { ...data, createdAt: now });
+  },
+});
+
+export const touchInternal = internalMutation({
+  args: {
+    userId: v.string(),
+    provider: v.union(v.literal("github"), v.literal("google-calendar"), v.literal("gmail")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("connectorTokens")
+      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("provider", args.provider))
+      .first();
+    if (!existing) return;
+    await ctx.db.patch(existing._id, { lastUsedAt: Date.now() });
   },
 });

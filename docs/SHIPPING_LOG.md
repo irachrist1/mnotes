@@ -394,6 +394,13 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added “Save as file” on task output; stores the output in `agentFiles` linked to the task (`src/components/dashboard/TasksContent.tsx`).
 
+### P3.2: Progressive Output (Pseudo-Streaming)
+- **Status:** ✅ Shipped (initial)
+- **Goal:** Output should visibly progress while Jarvis works, not appear all at once.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Step output and final output are now patched into `tasks.agentResult` in small chunks for a streaming feel (`convex/ai/taskAgent.ts`).
+
 ### P9.0: Proactive Suggestions (Approve → Agent Task)
 - **Status:** ✅ Shipped (minimal initial)
 - **Goal:** Jarvis proposes work to run, user approves, and a real agent task is queued.
@@ -412,6 +419,16 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added `soulFileRevisions` table to store prior versions (`convex/schema.ts`).
   - Soul file evolves now capture the previous version before patching (`convex/soulFile.ts`, `convex/soulFileRevisions.ts`).
   - Settings now includes a “Memory (Soul File)” editor and version restore UI (`src/app/dashboard/settings/page.tsx`).
+
+### P10.4: Structured Memory Entries (Semantic/Procedural/Episodic)
+- **Status:** ✅ Shipped (initial)
+- **Goal:** Add structured memory beyond the soul file blob (queryable + tool-usable).
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added `memoryEntries` table with search index (`convex/schema.ts`).
+  - Added CRUD + search endpoints (`convex/memoryEntries.ts`).
+  - Added agent tools: `list_memory_entries`, `search_memory_entries`, `create_memory_entry` (`convex/ai/agentTools.ts`).
+  - Added Settings UI to view/archive/add memory entries (`src/app/dashboard/settings/page.tsx`).
 
 ### P3.1: Activity Feed Improvements (More Events + Tool Durations)
 - **Status:** Shipped (incremental)

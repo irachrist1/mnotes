@@ -42,6 +42,9 @@ export default function SettingsPage() {
   const settings = useQuery(api.userSettings.get, {});
   const soulFile = useQuery(api.soulFile.get, {});
   const soulRevisions = useQuery(api.soulFileRevisions.list, { limit: 8 });
+  const memoryEntries = useQuery(api.memoryEntries.list, { limit: 10 });
+  const createMemoryEntry = useMutation(api.memoryEntries.create);
+  const updateMemoryEntry = useMutation(api.memoryEntries.update);
   const upsertSettings = useMutation(api.userSettings.upsert);
   const evolveSoul = useMutation(api.soulFile.evolve);
   const restoreSoulRevision = useMutation(api.soulFileRevisions.restore);
@@ -67,6 +70,11 @@ export default function SettingsPage() {
   const [savingSoul, setSavingSoul] = useState(false);
   const [restoringSoulRevId, setRestoringSoulRevId] = useState<string | null>(null);
   const soulHydratedRef = useRef(false);
+
+  const [newMemoryKind, setNewMemoryKind] = useState<"semantic" | "procedural" | "episodic">("semantic");
+  const [newMemoryTitle, setNewMemoryTitle] = useState("");
+  const [newMemoryContent, setNewMemoryContent] = useState("");
+  const [savingMemory, setSavingMemory] = useState(false);
 
   // Track whether keys are already configured server-side
   const [hasOpenrouterKey, setHasOpenrouterKey] = useState(false);
@@ -103,16 +111,16 @@ export default function SettingsPage() {
     setHasGithubToken(Boolean(gh?.connected));
   }, [connectors]);
 
-  const githubConn = connectors?.find((c) => c.provider === "github");
-  const githubScopes = Array.isArray((githubConn as any)?.scopes) ? (githubConn as any).scopes as string[] : [];
+  const githubConn = connectors?.find((c: any) => c.provider === "github") as any;
+  const githubScopes = Array.isArray(githubConn?.scopes) ? githubConn.scopes as string[] : [];
   const hasGithubWrite = githubScopes.includes("repo") || githubScopes.includes("public_repo");
 
-  const gmailConn = connectors?.find((c) => c.provider === "gmail");
-  const calConn = connectors?.find((c) => c.provider === "google-calendar");
+  const gmailConn = connectors?.find((c: any) => c.provider === "gmail") as any;
+  const calConn = connectors?.find((c: any) => c.provider === "google-calendar") as any;
   const hasGmail = Boolean(gmailConn?.connected);
   const hasCalendar = Boolean(calConn?.connected);
-  const gmailScopes = Array.isArray((gmailConn as any)?.scopes) ? (gmailConn as any).scopes as string[] : [];
-  const calScopes = Array.isArray((calConn as any)?.scopes) ? (calConn as any).scopes as string[] : [];
+  const gmailScopes = Array.isArray(gmailConn?.scopes) ? gmailConn.scopes as string[] : [];
+  const calScopes = Array.isArray(calConn?.scopes) ? calConn.scopes as string[] : [];
 
   const hasGmailWrite = gmailScopes.includes("https://www.googleapis.com/auth/gmail.compose")
     || gmailScopes.includes("https://www.googleapis.com/auth/gmail.modify")
@@ -724,6 +732,108 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
+
+              <div className="rounded-lg border border-stone-200 dark:border-stone-800 p-4 bg-white/50 dark:bg-black/10">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                    Memory entries (structured)
+                  </p>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {Array.isArray(memoryEntries) ? `${memoryEntries.length} shown` : "Loading…"}
+                  </p>
+                </div>
+
+                {!Array.isArray(memoryEntries) ? (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">Loading…</p>
+                ) : memoryEntries.length === 0 ? (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+                    No memory entries yet.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {memoryEntries.map((m: any) => (
+                      <div key={m._id} className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200 truncate">
+                            [{m.kind}] {m.title}
+                          </p>
+                          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-2">
+                            {String(m.content ?? "").slice(0, 180)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => void updateMemoryEntry({ id: m._id, archived: !m.archived })}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+                        >
+                          {m.archived ? "Unarchive" : "Archive"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 border-t border-stone-200 dark:border-stone-800 pt-4 space-y-2">
+                  <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
+                    Add memory entry
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Select
+                      value={newMemoryKind}
+                      onChange={(val) => setNewMemoryKind(val as any)}
+                      options={[
+                        { value: "semantic", label: "Semantic" },
+                        { value: "procedural", label: "Procedural" },
+                        { value: "episodic", label: "Episodic" },
+                      ]}
+                    />
+                    <input
+                      type="text"
+                      value={newMemoryTitle}
+                      onChange={(e) => setNewMemoryTitle(e.target.value)}
+                      placeholder="Title"
+                      className="input-field w-full sm:col-span-2"
+                    />
+                  </div>
+                  <textarea
+                    value={newMemoryContent}
+                    onChange={(e) => setNewMemoryContent(e.target.value)}
+                    placeholder="What should Jarvis remember?"
+                    className="input-field w-full h-24 text-xs"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={async () => {
+                        if (savingMemory) return;
+                        if (!newMemoryTitle.trim() || !newMemoryContent.trim()) {
+                          toast.error("Title and content required");
+                          return;
+                        }
+                        setSavingMemory(true);
+                        try {
+                          await createMemoryEntry({
+                            kind: newMemoryKind,
+                            title: newMemoryTitle.trim(),
+                            content: newMemoryContent,
+                          });
+                          setNewMemoryTitle("");
+                          setNewMemoryContent("");
+                          toast.success("Memory entry added");
+                          track("memory_entry_added", { kind: newMemoryKind });
+                        } catch (err) {
+                          console.error(err);
+                          toast.error("Failed to add memory entry");
+                        } finally {
+                          setSavingMemory(false);
+                        }
+                      }}
+                      disabled={savingMemory}
+                      className="px-2.5 py-1 rounded-md text-[11px] font-medium btn-primary disabled:opacity-60"
+                    >
+                      {savingMemory ? "Adding…" : "Add"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -787,6 +897,9 @@ export default function SettingsPage() {
 
               {hasGithubToken && (
                 <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {githubConn?.lastUsedAt ? `Last used: ${new Date(githubConn.lastUsedAt).toLocaleString()}` : "Last used: —"}
+                  </p>
                   <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
                     Tools unlocked
                   </p>
@@ -863,6 +976,9 @@ export default function SettingsPage() {
 
               {hasGmail && (
                 <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {gmailConn?.lastUsedAt ? `Last used: ${new Date(gmailConn.lastUsedAt).toLocaleString()}` : "Last used: —"}
+                  </p>
                   <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
                     Tools unlocked
                   </p>
@@ -942,6 +1058,9 @@ export default function SettingsPage() {
 
               {hasCalendar && (
                 <div className="mt-3 rounded-md bg-black/5 dark:bg-white/[0.06] p-3">
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {calConn?.lastUsedAt ? `Last used: ${new Date(calConn.lastUsedAt).toLocaleString()}` : "Last used: —"}
+                  </p>
                   <p className="text-[11px] font-semibold text-stone-800 dark:text-stone-200">
                     Tools unlocked
                   </p>

@@ -372,6 +372,48 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
+    {
+      name: "list_memory_entries",
+      description: "List your structured memory entries (semantic/procedural/episodic).",
+      input_schema: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max entries (default 20)." },
+          kind: { type: "string", description: "Optional filter: semantic | procedural | episodic." },
+          includeArchived: { type: "boolean", description: "Include archived entries (default false)." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "search_memory_entries",
+      description: "Search your structured memory entries by text query.",
+      input_schema: {
+        type: "object",
+        properties: {
+          q: { type: "string", description: "Search query." },
+          limit: { type: "number", description: "Max matches (default 6)." },
+          kind: { type: "string", description: "Optional filter: semantic | procedural | episodic." },
+          includeArchived: { type: "boolean", description: "Include archived entries (default false)." },
+        },
+        required: ["q"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "create_memory_entry",
+      description: "Create a structured memory entry (use for durable facts, preferences, and procedures).",
+      input_schema: {
+        type: "object",
+        properties: {
+          kind: { type: "string", description: "semantic | procedural | episodic." },
+          title: { type: "string", description: "Short title." },
+          content: { type: "string", description: "Memory content." },
+        },
+        required: ["kind", "title", "content"],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -1130,6 +1172,7 @@ export async function executeTool(args: {
     if (name === "github_list_my_pull_requests") {
       const token = await getConnectorToken(ctx, userId, "github");
       if (!token) return { ok: false, error: "GitHub is not connected. Add a token in Settings > Connections." };
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "github" });
 
       const limit = clampInt(input?.limit, 10, 1, 20);
       const extra = typeof input?.q === "string" ? input.q.trim() : "";
@@ -1194,6 +1237,7 @@ export async function executeTool(args: {
     if (name === "github_create_issue") {
       const token = await getConnectorToken(ctx, userId, "github");
       if (!token) return { ok: false, error: "GitHub is not connected. Add a token in Settings > Connections." };
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "github" });
 
       const repo = typeof input?.repo === "string" ? input.repo.trim() : "";
       const title = typeof input?.title === "string" ? input.title.trim() : "";
@@ -1250,6 +1294,7 @@ export async function executeTool(args: {
       const limit = clampInt(input?.limit, 10, 1, 20);
       const q = typeof input?.q === "string" ? input.q.trim() : "";
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_list_recent" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "gmail" });
 
       const params = new URLSearchParams();
       params.set("maxResults", String(limit));
@@ -1310,6 +1355,7 @@ export async function executeTool(args: {
       if (!bodyText.trim()) return { ok: false, error: "bodyText is required" };
 
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_create_draft" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "gmail" });
       const raw = buildEmailRaw({ to, subject, bodyText, bodyHtml });
 
       const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
@@ -1359,6 +1405,7 @@ export async function executeTool(args: {
       if (approval) return approval;
 
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_send_email" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "gmail" });
       const raw = buildEmailRaw({ to, subject, bodyText, bodyHtml });
 
       const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
@@ -1392,6 +1439,7 @@ export async function executeTool(args: {
       const limit = clampInt(input?.limit, 10, 1, 30);
       const daysAhead = clampInt(input?.daysAhead, 7, 1, 30);
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_list_upcoming" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "google-calendar" });
 
       const now = new Date();
       const timeMin = now.toISOString();
@@ -1463,6 +1511,7 @@ export async function executeTool(args: {
       if (approval) return approval;
 
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_create_event" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "google-calendar" });
       const start = buildCalendarTime(startRaw, timeZone);
       const end = buildCalendarTime(endRaw, timeZone);
 
@@ -1504,6 +1553,88 @@ export async function executeTool(args: {
         result: { eventId: String(data?.id ?? ""), htmlLink: htmlLink || null },
         summary: htmlLink ? "Created calendar event." : "Created calendar event (no link returned).",
       };
+    }
+
+    if (name === "list_memory_entries") {
+      const limit = clampInt(input?.limit, 20, 1, 80);
+      const includeArchived = Boolean(input?.includeArchived);
+      const kindRaw = typeof input?.kind === "string" ? input.kind.trim() : "";
+      const kind = kindRaw === "semantic" || kindRaw === "procedural" || kindRaw === "episodic" ? kindRaw : undefined;
+
+      const rows = await ctx.runQuery(internal.memoryEntries.listInternal, {
+        userId,
+        limit,
+        kind,
+        includeArchived,
+      });
+
+      const simplified = (rows as any[]).map((r) => ({
+        id: String(r._id),
+        kind: r.kind,
+        title: r.title,
+        source: r.source,
+        archived: Boolean(r.archived),
+        updatedAt: r.updatedAt,
+        createdAt: r.createdAt,
+        contentExcerpt: truncate(String(r.content ?? ""), 600),
+      }));
+
+      return { ok: true, result: simplified, summary: `Returned ${simplified.length} memory entries.` };
+    }
+
+    if (name === "search_memory_entries") {
+      const q = typeof input?.q === "string" ? input.q.trim() : "";
+      if (!q) return { ok: false, error: "q is required" };
+      const limit = clampInt(input?.limit, 6, 1, 20);
+      const includeArchived = Boolean(input?.includeArchived);
+      const kindRaw = typeof input?.kind === "string" ? input.kind.trim() : "";
+      const kind = kindRaw === "semantic" || kindRaw === "procedural" || kindRaw === "episodic" ? kindRaw : undefined;
+
+      const rows = await ctx.runQuery(internal.memoryEntries.searchInternal, {
+        userId,
+        q,
+        limit,
+        kind,
+        includeArchived,
+      });
+
+      const simplified = (rows as any[]).map((r) => ({
+        id: String(r._id),
+        kind: r.kind,
+        title: r.title,
+        source: r.source,
+        archived: Boolean(r.archived),
+        updatedAt: r.updatedAt,
+        contentExcerpt: truncate(String(r.content ?? ""), 800),
+      }));
+
+      return { ok: true, result: simplified, summary: `Found ${simplified.length} matches.` };
+    }
+
+    if (name === "create_memory_entry") {
+      const kindRaw = typeof input?.kind === "string" ? input.kind.trim() : "";
+      const kind = kindRaw === "semantic" || kindRaw === "procedural" || kindRaw === "episodic" ? kindRaw : "";
+      const title = typeof input?.title === "string" ? input.title.trim() : "";
+      const content = typeof input?.content === "string" ? input.content : "";
+      if (!kind) return { ok: false, error: "kind must be semantic|procedural|episodic" };
+      if (!title) return { ok: false, error: "title is required" };
+      if (!content.trim()) return { ok: false, error: "content is required" };
+
+      const id = await ctx.runMutation(internal.memoryEntries.createInternal, {
+        userId,
+        kind: kind as any,
+        title,
+        content,
+        source: "agent",
+      });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_memory_entry_created",
+        properties: { taskId: String(taskId), kind, memoryEntryId: String(id) },
+      });
+
+      return { ok: true, result: { id: String(id), kind, title }, summary: "Created memory entry." };
     }
 
     void captureEvent({

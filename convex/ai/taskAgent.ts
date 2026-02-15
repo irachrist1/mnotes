@@ -475,16 +475,20 @@ async function runFromTaskState(
       return;
     }
 
-    const appended = [
-      existingOutput.trim() ? existingOutput.trim() : null,
-      `### Step ${i + 1}: ${step}`,
-      stepOut,
-    ].filter(Boolean).join("\n\n");
+    // Progressive output: append the step header immediately, then "type" the step output in chunks.
+    const header = `### Step ${i + 1}: ${step}`;
+    await progressiveAppendToAgentResult({
+      ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      existingOutput,
+      headerMarkdown: header,
+      bodyMarkdown: stepOut,
+    });
 
     await ctx.runMutation(internal.tasks.patchAgentInternal, {
       userId: args.userId,
       id: args.taskId,
-      agentResult: appended,
       agentSummary: stepSummary || undefined,
       agentState: JSON.stringify({ v: 1, stepIndex: i + 1, planSteps, approvedTools, deniedTools } satisfies AgentState),
     });
@@ -611,6 +615,14 @@ async function runFromTaskState(
     return;
   }
 
+  // Progressive final output: replace agentResult with the final markdown in chunks for a more "streaming" feel.
+  await progressiveReplaceAgentResult({
+    ctx,
+    userId: args.userId,
+    taskId: args.taskId,
+    markdown: finalPayload.resultMarkdown.trim(),
+  });
+
   await ctx.runMutation(internal.tasks.patchAgentInternal, {
     userId: args.userId,
     id: args.taskId,
@@ -618,7 +630,6 @@ async function runFromTaskState(
     agentProgress: 100,
     agentPhase: "Ready",
     agentSummary: finalPayload.summary || "Output ready to review.",
-    agentResult: finalPayload.resultMarkdown.trim(),
     agentCompletedAt: Date.now(),
     agentError: undefined,
     agentState: undefined,
@@ -653,6 +664,77 @@ async function runFromTaskState(
       model,
     },
   });
+}
+
+async function progressiveAppendToAgentResult(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  existingOutput: string;
+  headerMarkdown: string;
+  bodyMarkdown: string;
+}) {
+  const base = [
+    args.existingOutput.trim() ? args.existingOutput.trim() : null,
+    args.headerMarkdown,
+    "",
+  ].filter(Boolean).join("\n\n");
+
+  const body = args.bodyMarkdown.trim();
+  const chunks = chunkText(body, 420, 28);
+
+  // Patch the header first so the UI shows progress immediately.
+  await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
+    userId: args.userId,
+    id: args.taskId,
+    agentResult: base,
+  });
+
+  let current = base;
+  for (const c of chunks) {
+    current = current.trimEnd() + "\n" + c;
+    await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentResult: current,
+    });
+    await sleep(70);
+  }
+}
+
+async function progressiveReplaceAgentResult(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  markdown: string;
+}) {
+  const body = (args.markdown || "").trim();
+  const chunks = chunkText(body, 520, 32);
+  let current = "";
+  for (const c of chunks) {
+    current = current ? `${current}${c}` : c;
+    await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentResult: current,
+    });
+    await sleep(60);
+  }
+}
+
+function chunkText(text: string, chunkSize: number, maxChunks: number): string[] {
+  const t = String(text ?? "");
+  if (!t) return [""];
+  const size = Math.max(120, Math.min(2000, Math.floor(chunkSize)));
+  const out: string[] = [];
+  for (let i = 0; i < t.length; i += size) {
+    out.push(t.slice(i, i + size));
+    if (out.length >= maxChunks) {
+      out[out.length - 1] = out[out.length - 1] + t.slice(i + size);
+      break;
+    }
+  }
+  return out;
 }
 
 async function runFallbackCall(args: {
