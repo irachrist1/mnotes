@@ -79,6 +79,21 @@ function run() {
   const parsed2 = parseTaskOutput("hello\n- [ ] only one\n");
   assert.equal(parsed2.type, "markdown");
 
+  const tableRaw = [
+    "Intro",
+    "",
+    "| Name | Value |",
+    "| --- | --- |",
+    "| A | 1 |",
+    "| B | 2 |",
+    "",
+    "Outro",
+  ].join("\n");
+  const parsed3 = parseTaskOutput(tableRaw);
+  assert.equal(parsed3.type, "table");
+  assert.deepEqual(parsed3.header, ["Name", "Value"]);
+  assert.equal(parsed3.rows.length, 2);
+
   // google scopes helpers
   assert.deepEqual(requiredScopesForTool("calendar_create_event"), [GOOGLE_SCOPES.calendarFull]);
   assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_list_recent")), true);

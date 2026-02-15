@@ -378,6 +378,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Swapped task output rich view to use the renderer (raw view remains unchanged) (`src/components/dashboard/TasksContent.tsx`).
   - Added coretest coverage for checklist parse/serialize (`scripts/run-coretests.js`, `tsconfig.coretests.json`).
 
+### P7.1: Rich Output Renderers (Markdown Tables)
+- **Status:** ✅ Shipped
+- **Goal:** Render markdown tables as real tables with quick export.
+- **Shipped:** 2026-02-15
+- **Changes:**
+  - Added markdown table detection and parsing (`src/lib/outputFormats.ts`).
+  - Added table renderer with “Copy markdown” and “Copy CSV” (`src/components/dashboard/TaskOutputRenderers.tsx`).
+  - Added coretest coverage for table parsing (`scripts/run-coretests.js`).
+
 ### P3.1: Activity Feed Improvements (More Events + Tool Durations)
 - **Status:** Shipped (incremental)
 - **Goal:** Make the agent's work more legible by allowing full activity expansion and surfacing tool durations.
