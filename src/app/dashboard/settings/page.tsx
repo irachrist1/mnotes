@@ -85,8 +85,18 @@ export default function SettingsPage() {
     setHasGithubToken(Boolean(gh?.connected));
   }, [connectors]);
 
-  const hasGmail = Boolean(connectors?.find((c) => c.provider === "gmail")?.connected);
-  const hasCalendar = Boolean(connectors?.find((c) => c.provider === "google-calendar")?.connected);
+  const gmailConn = connectors?.find((c) => c.provider === "gmail");
+  const calConn = connectors?.find((c) => c.provider === "google-calendar");
+  const hasGmail = Boolean(gmailConn?.connected);
+  const hasCalendar = Boolean(calConn?.connected);
+  const gmailScopes = Array.isArray((gmailConn as any)?.scopes) ? (gmailConn as any).scopes as string[] : [];
+  const calScopes = Array.isArray((calConn as any)?.scopes) ? (calConn as any).scopes as string[] : [];
+
+  const hasGmailWrite = gmailScopes.includes("https://www.googleapis.com/auth/gmail.compose")
+    || gmailScopes.includes("https://www.googleapis.com/auth/gmail.modify")
+    || gmailScopes.includes("https://mail.google.com/");
+
+  const hasCalendarWrite = calScopes.includes("https://www.googleapis.com/auth/calendar");
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -173,11 +183,11 @@ export default function SettingsPage() {
       ? GOOGLE_MODELS
       : ANTHROPIC_MODELS;
 
-  const connectGoogle = async (provider: "gmail" | "google-calendar") => {
+  const connectGoogle = async (provider: "gmail" | "google-calendar", access: "read" | "write") => {
     if (connectingGoogle) return;
     setConnectingGoogle(provider);
     try {
-      const { authUrl } = await startGoogleOauth({ provider, origin: window.location.origin });
+      const { authUrl } = await startGoogleOauth({ provider, origin: window.location.origin, access });
       const w = 520;
       const h = 680;
       const left = Math.max(0, Math.round((window.screen.width - w) / 2));
@@ -685,7 +695,7 @@ export default function SettingsPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => void connectGoogle("gmail")}
+                    onClick={() => void connectGoogle("gmail", "read")}
                     disabled={!!connectingGoogle}
                     className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
                   >
@@ -702,6 +712,10 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "gmail_list_recent", desc: "Lists recent email headers (read-only)." },
+                      ...(hasGmailWrite ? [
+                        { name: "gmail_create_draft", desc: "Creates a draft email (no send)." },
+                        { name: "gmail_send_email", desc: "Sends an email (requires approval)." },
+                      ] : []),
                     ].map((t) => (
                       <div key={t.name} className="flex items-start justify-between gap-3">
                         <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
@@ -713,6 +727,21 @@ export default function SettingsPage() {
                       </div>
                     ))}
                   </div>
+
+                  {!hasGmailWrite && (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Connected read-only. Enable write to draft/send.
+                      </p>
+                      <button
+                        onClick={() => void connectGoogle("gmail", "write")}
+                        disabled={!!connectingGoogle}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                      >
+                        Enable write
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -745,7 +774,7 @@ export default function SettingsPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => void connectGoogle("google-calendar")}
+                    onClick={() => void connectGoogle("google-calendar", "read")}
                     disabled={!!connectingGoogle}
                     className="px-3 py-1.5 rounded-md text-xs font-medium btn-primary disabled:opacity-60"
                   >
@@ -762,6 +791,9 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "calendar_list_upcoming", desc: "Lists upcoming events (read-only)." },
+                      ...(hasCalendarWrite ? [
+                        { name: "calendar_create_event", desc: "Creates an event (requires approval)." },
+                      ] : []),
                     ].map((t) => (
                       <div key={t.name} className="flex items-start justify-between gap-3">
                         <span className="text-[11px] font-mono text-stone-900 dark:text-stone-100">
@@ -773,6 +805,21 @@ export default function SettingsPage() {
                       </div>
                     ))}
                   </div>
+
+                  {!hasCalendarWrite && (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Connected read-only. Enable write to create events.
+                      </p>
+                      <button
+                        onClick={() => void connectGoogle("google-calendar", "write")}
+                        disabled={!!connectingGoogle}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-60"
+                      >
+                        Enable write
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -10,6 +10,10 @@ This doc explains the shipped Google OAuth connector flow: how the Settings UI c
 - Read-only agent tools:
   - `gmail_list_recent`
   - `calendar_list_upcoming`
+- Write agent tools (approval-gated):
+  - `gmail_create_draft`
+  - `gmail_send_email` (requires approval per task)
+  - `calendar_create_event` (requires approval per task)
 - Automatic Google access token refresh when `expiresAt` is reached (requires `refreshToken`)
 
 ## Key Files
@@ -95,6 +99,17 @@ Important:
 
 - `convex/connectors/tokens.ts` preserves `refreshToken` by default when upserting, because Google often omits `refresh_token` on subsequent exchanges.
 
+## Read vs Write Scopes (Progressive Disclosure)
+
+We intentionally connect with read-only scopes by default (safer).
+
+In Settings, if you want “write actions” (draft/send email, create events), click **Enable write**. That re-runs OAuth with broader scopes:
+
+- Gmail read: `https://www.googleapis.com/auth/gmail.readonly`
+- Gmail write: `https://www.googleapis.com/auth/gmail.compose` (plus readonly)
+- Calendar read: `https://www.googleapis.com/auth/calendar.readonly`
+- Calendar write: `https://www.googleapis.com/auth/calendar` (required by Calendar create-event docs)
+
 ## Analytics (PostHog)
 
 Events are captured server-side via `convex/lib/posthog.ts`.
@@ -110,4 +125,3 @@ Events are captured server-side via `convex/lib/posthog.ts`.
 
 - No write actions shipped yet (send email, create event). Those must be approval-gated (P2.7).
 - No “tool dashboard” beyond Settings Connections yet (future: show scopes, last sync, and per-tool toggles).
-

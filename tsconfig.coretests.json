@@ -12,6 +12,7 @@
   "include": [
     "convex/ai/taskAgentParsing.ts",
     "convex/userSettingsPatch.ts",
+    "convex/connectors/googleScopes.ts",
     "src/lib/outputFormats.ts",
     "coretests/**/*.ts"
   ],

@@ -3,6 +3,7 @@
 import { internal } from "../_generated/api";
 import { captureEvent } from "../lib/posthog";
 import { parseAgentState } from "./taskAgentParsing";
+import { hasAnyScope, requiredScopesForTool } from "../connectors/googleScopes";
 
 type ToolSchema = Record<string, unknown>;
 
@@ -311,6 +312,36 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
       },
     },
     {
+      name: "gmail_create_draft",
+      description: "Create a Gmail draft (no send). Requires Gmail connection with write scope.",
+      input_schema: {
+        type: "object",
+        properties: {
+          to: { type: "string", description: "Recipient email(s), comma-separated." },
+          subject: { type: "string", description: "Email subject." },
+          bodyText: { type: "string", description: "Plain text body." },
+          bodyHtml: { type: "string", description: "Optional HTML body (if provided, sent as text/html)." },
+        },
+        required: ["to", "subject", "bodyText"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "gmail_send_email",
+      description: "Send an email via Gmail (external side-effect; requires approval). Requires Gmail connection with send scope.",
+      input_schema: {
+        type: "object",
+        properties: {
+          to: { type: "string", description: "Recipient email(s), comma-separated." },
+          subject: { type: "string", description: "Email subject." },
+          bodyText: { type: "string", description: "Plain text body." },
+          bodyHtml: { type: "string", description: "Optional HTML body (if provided, sent as text/html)." },
+        },
+        required: ["to", "subject", "bodyText"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "calendar_list_upcoming",
       description: "List upcoming Google Calendar events. Requires Google Calendar connection.",
       input_schema: {
@@ -319,6 +350,25 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
           limit: { type: "number", description: "Max events (default 10)." },
           daysAhead: { type: "number", description: "How many days ahead to look (default 7)." },
         },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "calendar_create_event",
+      description: "Create a Google Calendar event (external side-effect; requires approval). Requires Calendar connection with write scope.",
+      input_schema: {
+        type: "object",
+        properties: {
+          summary: { type: "string", description: "Event title." },
+          description: { type: "string", description: "Optional description/body." },
+          start: { type: "string", description: "Start datetime ISO (or YYYY-MM-DD for all-day)." },
+          end: { type: "string", description: "End datetime ISO (or YYYY-MM-DD for all-day)." },
+          timeZone: { type: "string", description: "Optional IANA timezone (e.g. America/New_York)." },
+          location: { type: "string", description: "Optional location." },
+          attendees: { type: "array", items: { type: "string" }, description: "Optional attendee emails." },
+          sendUpdates: { type: "boolean", description: "If true, notify attendees (default false)." },
+        },
+        required: ["summary", "start", "end"],
         additionalProperties: false,
       },
     },
@@ -354,10 +404,19 @@ async function getGoogleAccessToken(args: {
   ctx: any;
   userId: string;
   provider: "gmail" | "google-calendar";
+  toolNameForScopes?: string;
 }): Promise<{ accessToken: string; refreshed: boolean }> {
   const tok = await getConnectorTokenDoc(args.ctx, args.userId, args.provider);
   if (!tok?.accessToken) {
     throw new Error(`${args.provider === "gmail" ? "Gmail" : "Google Calendar"} is not connected. Go to Settings > Connections.`);
+  }
+
+  if (args.toolNameForScopes) {
+    const acceptable = requiredScopesForTool(args.toolNameForScopes);
+    if (acceptable.length > 0 && !hasAnyScope(tok.scopes, acceptable)) {
+      const what = args.provider === "gmail" ? "Gmail" : "Google Calendar";
+      throw new Error(`${what} is connected without required permissions for ${args.toolNameForScopes}. Reconnect in Settings > Connections with write access.`);
+    }
   }
 
   const expiresAt = typeof tok.expiresAt === "number" ? tok.expiresAt : undefined;
@@ -1190,7 +1249,7 @@ export async function executeTool(args: {
     if (name === "gmail_list_recent") {
       const limit = clampInt(input?.limit, 10, 1, 20);
       const q = typeof input?.q === "string" ? input.q.trim() : "";
-      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail" });
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_list_recent" });
 
       const params = new URLSearchParams();
       params.set("maxResults", String(limit));
@@ -1241,10 +1300,98 @@ export async function executeTool(args: {
       };
     }
 
+    if (name === "gmail_create_draft") {
+      const to = typeof input?.to === "string" ? input.to.trim() : "";
+      const subject = typeof input?.subject === "string" ? input.subject.trim() : "";
+      const bodyText = typeof input?.bodyText === "string" ? input.bodyText : "";
+      const bodyHtml = typeof input?.bodyHtml === "string" ? input.bodyHtml : undefined;
+      if (!to) return { ok: false, error: "to is required" };
+      if (!subject) return { ok: false, error: "subject is required" };
+      if (!bodyText.trim()) return { ok: false, error: "bodyText is required" };
+
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_create_draft" });
+      const raw = buildEmailRaw({ to, subject, bodyText, bodyHtml });
+
+      const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: { raw } }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `Gmail draft create failed (${res.status}): ${truncate(text, 500)}` };
+      }
+      const data = (await res.json()) as any;
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_gmail_draft_created",
+        properties: { taskId: String(taskId), draftId: typeof data?.id === "string" ? data.id : undefined },
+      });
+
+      return {
+        ok: true,
+        result: { draftId: String(data?.id ?? ""), messageId: String(data?.message?.id ?? ""), to, subject },
+        summary: "Created Gmail draft.",
+      };
+    }
+
+    if (name === "gmail_send_email") {
+      const to = typeof input?.to === "string" ? input.to.trim() : "";
+      const subject = typeof input?.subject === "string" ? input.subject.trim() : "";
+      const bodyText = typeof input?.bodyText === "string" ? input.bodyText : "";
+      const bodyHtml = typeof input?.bodyHtml === "string" ? input.bodyHtml : undefined;
+      if (!to) return { ok: false, error: "to is required" };
+      if (!subject) return { ok: false, error: "subject is required" };
+      if (!bodyText.trim()) return { ok: false, error: "bodyText is required" };
+
+      const approval = await ensureApprovedOrPause({
+        ctx,
+        userId,
+        taskId,
+        toolName: "gmail_send_email",
+        detail: `Allow Jarvis to send an email to ${to}.`,
+        params: { to, subject, bodyText: truncate(bodyText, 1200), bodyHtml: bodyHtml ? truncate(bodyHtml, 1200) : undefined },
+      });
+      if (approval) return approval;
+
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_send_email" });
+      const raw = buildEmailRaw({ to, subject, bodyText, bodyHtml });
+
+      const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ raw }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `Gmail send failed (${res.status}): ${truncate(text, 500)}` };
+      }
+      const data = (await res.json()) as any;
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_gmail_email_sent",
+        properties: { taskId: String(taskId), messageId: typeof data?.id === "string" ? data.id : undefined },
+      });
+
+      return {
+        ok: true,
+        result: { messageId: String(data?.id ?? ""), threadId: String(data?.threadId ?? ""), to, subject },
+        summary: "Sent email via Gmail.",
+      };
+    }
+
     if (name === "calendar_list_upcoming") {
       const limit = clampInt(input?.limit, 10, 1, 30);
       const daysAhead = clampInt(input?.daysAhead, 7, 1, 30);
-      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar" });
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_list_upcoming" });
 
       const now = new Date();
       const timeMin = now.toISOString();
@@ -1289,6 +1436,76 @@ export async function executeTool(args: {
       };
     }
 
+    if (name === "calendar_create_event") {
+      const summary = typeof input?.summary === "string" ? input.summary.trim() : "";
+      const description = typeof input?.description === "string" ? input.description : undefined;
+      const startRaw = typeof input?.start === "string" ? input.start.trim() : "";
+      const endRaw = typeof input?.end === "string" ? input.end.trim() : "";
+      const timeZone = typeof input?.timeZone === "string" ? input.timeZone.trim() : undefined;
+      const location = typeof input?.location === "string" ? input.location.trim() : undefined;
+      const attendees = Array.isArray(input?.attendees)
+        ? input.attendees.map(String).map((s: string) => s.trim()).filter(Boolean).slice(0, 20)
+        : undefined;
+      const sendUpdates = Boolean(input?.sendUpdates);
+
+      if (!summary) return { ok: false, error: "summary is required" };
+      if (!startRaw) return { ok: false, error: "start is required" };
+      if (!endRaw) return { ok: false, error: "end is required" };
+
+      const approval = await ensureApprovedOrPause({
+        ctx,
+        userId,
+        taskId,
+        toolName: "calendar_create_event",
+        detail: `Allow Jarvis to create a calendar event: ${summary}.`,
+        params: { summary, start: startRaw, end: endRaw, timeZone, location, attendees, sendUpdates },
+      });
+      if (approval) return approval;
+
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_create_event" });
+      const start = buildCalendarTime(startRaw, timeZone);
+      const end = buildCalendarTime(endRaw, timeZone);
+
+      const params = new URLSearchParams();
+      params.set("sendUpdates", sendUpdates ? "all" : "none");
+
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          summary,
+          description,
+          location,
+          start,
+          end,
+          attendees: attendees ? attendees.map((email: string) => ({ email })) : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `Calendar create failed (${res.status}): ${truncate(text, 500)}` };
+      }
+
+      const data = (await res.json()) as any;
+      const htmlLink = typeof data?.htmlLink === "string" ? data.htmlLink : "";
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_calendar_event_created",
+        properties: { taskId: String(taskId), eventId: typeof data?.id === "string" ? data.id : undefined },
+      });
+
+      return {
+        ok: true,
+        result: { eventId: String(data?.id ?? ""), htmlLink: htmlLink || null },
+        summary: htmlLink ? "Created calendar event." : "Created calendar event (no link returned).",
+      };
+    }
+
     void captureEvent({
       distinctId: userId,
       event: "agent_tool_failed",
@@ -1312,4 +1529,37 @@ export async function executeTool(args: {
     });
     return { ok: false, error: message };
   }
+}
+
+function encodeBase64Url(input: string): string {
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+function buildEmailRaw(args: { to: string; subject: string; bodyText: string; bodyHtml?: string }): string {
+  // Minimal RFC 5322 message. Keep this simple and ASCII-friendly.
+  const headers = [
+    `To: ${args.to}`,
+    `Subject: ${args.subject}`,
+    `MIME-Version: 1.0`,
+    args.bodyHtml
+      ? `Content-Type: text/html; charset="UTF-8"`
+      : `Content-Type: text/plain; charset="UTF-8"`,
+    "",
+    args.bodyHtml ? args.bodyHtml : args.bodyText,
+  ].join("\r\n");
+
+  return encodeBase64Url(headers);
+}
+
+function buildCalendarTime(value: string, timeZone?: string): any {
+  // All-day events use { date }. Timed events use { dateTime }.
+  const isAllDay = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (isAllDay) return { date: value };
+  const out: any = { dateTime: value };
+  if (timeZone) out.timeZone = timeZone;
+  return out;
 }

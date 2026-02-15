@@ -8,10 +8,22 @@ import { captureEvent } from "../lib/posthog";
 import { randomBytes } from "node:crypto";
 
 type GoogleProvider = "gmail" | "google-calendar";
+type GoogleAccess = "read" | "write";
 
-function getScopes(provider: GoogleProvider): string[] {
+function getScopes(provider: GoogleProvider, access: GoogleAccess): string[] {
   if (provider === "gmail") {
+    if (access === "write") {
+      // Drafts + send require gmail.compose (or broader). Keep readonly too so list/search still works.
+      return [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.compose",
+      ];
+    }
     return ["https://www.googleapis.com/auth/gmail.readonly"];
+  }
+  if (access === "write") {
+    // Google Calendar docs require full calendar scope to create events.
+    return ["https://www.googleapis.com/auth/calendar"];
   }
   return ["https://www.googleapis.com/auth/calendar.readonly"];
 }
@@ -38,6 +50,7 @@ export const start = action({
   args: {
     provider: v.union(v.literal("gmail"), v.literal("google-calendar")),
     origin: v.string(), // app origin for postMessage targetOrigin
+    access: v.optional(v.union(v.literal("read"), v.literal("write"))),
   },
   handler: async (ctx, args): Promise<{ authUrl: string }> => {
     const userId = await getUserId(ctx);
@@ -59,7 +72,8 @@ export const start = action({
 
     const state = randomBytes(16).toString("hex");
     const provider = args.provider as GoogleProvider;
-    const scopes = getScopes(provider);
+    const access = (args.access ?? "read") as GoogleAccess;
+    const scopes = getScopes(provider, access);
     const redirectUri = `${convexSiteUrl.replace(/\/$/, "")}/connectors/google/callback`;
     const expiresAt = Date.now() + 10 * 60 * 1000;
 
@@ -75,7 +89,7 @@ export const start = action({
     void captureEvent({
       distinctId: userId,
       event: "connector_oauth_started",
-      properties: { provider, scopes },
+      properties: { provider, scopes, access },
     });
 
     return {

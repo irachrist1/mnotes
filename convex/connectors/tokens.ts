@@ -9,7 +9,7 @@ const PROVIDERS: ConnectorProvider[] = ["github", "google-calendar", "gmail"];
 
 export const list = query({
   args: {},
-  handler: async (ctx): Promise<Array<{ provider: ConnectorProvider; connected: boolean; updatedAt: number | null }>> => {
+  handler: async (ctx): Promise<Array<{ provider: ConnectorProvider; connected: boolean; updatedAt: number | null; scopes: string[] | null; expiresAt: number | null }>> => {
     const userId = await getUserId(ctx);
     const tokens = await ctx.db
       .query("connectorTokens")
@@ -19,7 +19,13 @@ export const list = query({
 
     return PROVIDERS.map((p) => {
       const found = tokens.find((t) => t.provider === p);
-      return { provider: p, connected: Boolean(found), updatedAt: found?.updatedAt ?? null };
+      return {
+        provider: p,
+        connected: Boolean(found),
+        updatedAt: found?.updatedAt ?? null,
+        scopes: found?.scopes ?? null,
+        expiresAt: found?.expiresAt ?? null,
+      };
     });
   },
 });

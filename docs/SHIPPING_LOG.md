@@ -328,7 +328,7 @@ These are the guiding principles for the agent task experience, to be implemente
     (`convex/ai/agentTools.ts`)
 
 ### P6.1: Google OAuth Connectors (Gmail + Calendar)
-- **Status:** Shipped (read-only tools + OAuth connect flow)
+- **Status:** Shipped (read + write tools + OAuth connect flow)
 - **Goal:** Add OAuth-based connectors for Gmail + Google Calendar, store tokens safely, and expose read-only tools to the agent.
 - **Shipped:** 2026-02-15
 - **Changes:**
@@ -344,8 +344,14 @@ These are the guiding principles for the agent task experience, to be implemente
     - `gmail_list_recent`
     - `calendar_list_upcoming`
     (`convex/ai/agentTools.ts`)
+  - Added agent tools (write + approval-gated):
+    - `gmail_create_draft`
+    - `gmail_send_email`
+    - `calendar_create_event`
+    (`convex/ai/agentTools.ts`)
+  - Added “Enable write” reconnect in Settings (progressive disclosure) (`src/app/dashboard/settings/page.tsx`, `convex/connectors/googleOauth.ts`).
   - Added token refresh-on-expiry for Google tools (uses `GOOGLE_OAUTH_CLIENT_ID/SECRET`) (`convex/ai/agentTools.ts`).
-  - Added PostHog events: `connector_oauth_started`, `connector_oauth_connected`, `connector_oauth_failed`, `agent_gmail_list_recent`, `agent_calendar_list_upcoming`, `agent_google_token_refreshed`.
+  - Added PostHog events: `connector_oauth_started`, `connector_oauth_connected`, `connector_oauth_failed`, `agent_gmail_list_recent`, `agent_calendar_list_upcoming`, `agent_google_token_refreshed`, `agent_gmail_draft_created`, `agent_gmail_email_sent`, `agent_calendar_event_created`.
 
 ### P7.0: Rich Output Renderers (Interactive Checklists)
 - **Status:** Shipped (initial renderer)

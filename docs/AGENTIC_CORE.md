@@ -168,7 +168,10 @@ Shipped tools:
 - `github_list_my_pull_requests` (requires GitHub connection)
 - `github_create_issue` (requires GitHub connection + approval)
 - `gmail_list_recent` (requires Gmail connection; read-only)
+- `gmail_create_draft` (requires Gmail connection + write scopes)
+- `gmail_send_email` (requires Gmail connection + approval + write scopes)
 - `calendar_list_upcoming` (requires Google Calendar connection; read-only)
+- `calendar_create_event` (requires Google Calendar connection + approval + write scopes)
 
 These tools execute on the backend using internal queries so they can be called from Convex actions without a client auth context.
 

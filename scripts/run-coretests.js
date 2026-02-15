@@ -19,8 +19,17 @@ function run() {
     "outputFormats.js"
   ));
 
+  const googleScopes = require(path.join(
+    process.cwd(),
+    "dist-coretests",
+    "convex",
+    "connectors",
+    "googleScopes.js"
+  ));
+
   const { parseAgentState, parseFinalPayload, parsePlan, parseStepPayload } = parsing;
   const { parseTaskOutput, serializeChecklist } = outputFormats;
+  const { hasAnyScope, requiredScopesForTool, GOOGLE_SCOPES } = googleScopes;
 
   // parsePlan
   assert.deepEqual(parsePlan(`x\n{ "planSteps": ["A", " B ", "", "C"] }\ny`), ["A", "B", "C"]);
@@ -69,6 +78,11 @@ function run() {
 
   const parsed2 = parseTaskOutput("hello\n- [ ] only one\n");
   assert.equal(parsed2.type, "markdown");
+
+  // google scopes helpers
+  assert.deepEqual(requiredScopesForTool("calendar_create_event"), [GOOGLE_SCOPES.calendarFull]);
+  assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_list_recent")), true);
+  assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_send_email")), false);
 
   console.log("[coretests] ok");
 }
