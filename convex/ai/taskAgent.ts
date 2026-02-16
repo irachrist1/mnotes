@@ -14,11 +14,14 @@ import {
   parseFinalPayload,
   parsePlan,
   parseStepPayload,
+  shouldYieldAgentRun,
   type AgentPayload,
   type AgentState,
 } from "./taskAgentParsing";
 
 // AgentPayload/AgentState live in taskAgentParsing.ts (kept pure for testing).
+const MAX_AGENT_RUN_ELAPSED_MS = 210_000;
+const MAX_AGENT_STEPS_PER_RUN = 2;
 
 export const start = action({
   args: { taskId: v.id("tasks") },
@@ -95,6 +98,9 @@ async function runFromTaskState(
   args: { userId: string; taskId: any },
   opts: { resume: boolean }
 ) {
+  const runStartedAt = Date.now();
+  let stepsCompletedThisRun = 0;
+
   const [task, settings, soulFile] = await Promise.all([
     ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }),
     ctx.runQuery(internal.userSettings.getForUser, { userId: args.userId }),
@@ -501,6 +507,49 @@ async function runFromTaskState(
       detail: stepSummary || "Completed this step.",
       progress: pct,
     });
+
+    stepsCompletedThisRun += 1;
+    const shouldYield = shouldYieldAgentRun({
+      elapsedMs: Date.now() - runStartedAt,
+      stepsCompleted: stepsCompletedThisRun,
+      maxElapsedMs: MAX_AGENT_RUN_ELAPSED_MS,
+      maxStepsPerRun: MAX_AGENT_STEPS_PER_RUN,
+    });
+    if (shouldYield && i + 1 < planSteps.length) {
+      await scheduleContinuation({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        stepIndex: i + 1,
+        planSteps,
+        approvedTools,
+        deniedTools,
+        progress: pct,
+        detail: "Continuing in a new run to stay within runtime limits.",
+      });
+      return;
+    }
+  }
+
+  const shouldYieldBeforeFinalize = shouldYieldAgentRun({
+    elapsedMs: Date.now() - runStartedAt,
+    stepsCompleted: stepsCompletedThisRun,
+    maxElapsedMs: MAX_AGENT_RUN_ELAPSED_MS,
+    maxStepsPerRun: MAX_AGENT_STEPS_PER_RUN,
+  });
+  if (shouldYieldBeforeFinalize && planSteps.length > 0) {
+    await scheduleContinuation({
+      ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      stepIndex: planSteps.length,
+      planSteps,
+      approvedTools,
+      deniedTools,
+      progress: 95,
+      detail: "Continuing in a new run before finalizing output.",
+    });
+    return;
   }
 
   // FINALIZE
@@ -1071,6 +1120,56 @@ function normalizeModelForProvider(provider: AiProvider, model: string | undefin
     return model || "gemini-3-flash-preview";
   }
   return model || "google/gemini-3-flash-preview";
+}
+
+async function scheduleContinuation(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  stepIndex: number;
+  planSteps: string[];
+  approvedTools: Record<string, true>;
+  deniedTools: Record<string, true>;
+  progress: number;
+  detail: string;
+}) {
+  await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
+    userId: args.userId,
+    id: args.taskId,
+    agentPhase: "Continuing",
+    agentProgress: args.progress,
+    agentState: JSON.stringify({
+      v: 1,
+      stepIndex: args.stepIndex,
+      planSteps: args.planSteps,
+      approvedTools: args.approvedTools,
+      deniedTools: args.deniedTools,
+    } satisfies AgentState),
+  });
+
+  await args.ctx.runMutation(internal.taskEvents.addInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+    kind: "status",
+    title: "Continuing",
+    detail: args.detail,
+    progress: args.progress,
+  });
+
+  await args.ctx.scheduler.runAfter(0, internal.ai.taskAgent.continueInternal, {
+    userId: args.userId,
+    taskId: args.taskId,
+  });
+
+  void captureEvent({
+    distinctId: args.userId,
+    event: "agent_task_continuation_scheduled",
+    properties: {
+      taskId: String(args.taskId),
+      nextStepIndex: args.stepIndex,
+      remainingSteps: Math.max(0, args.planSteps.length - args.stepIndex),
+    },
+  });
 }
 
 async function fail(

@@ -14,6 +14,19 @@ export type AgentState = {
   deniedTools?: Record<string, true>;
 };
 
+export function shouldYieldAgentRun(args: {
+  elapsedMs: number;
+  stepsCompleted: number;
+  maxElapsedMs: number;
+  maxStepsPerRun: number;
+}): boolean {
+  const elapsedMs = Math.max(0, Math.floor(args.elapsedMs));
+  const stepsCompleted = Math.max(0, Math.floor(args.stepsCompleted));
+  const maxElapsedMs = Math.max(1, Math.floor(args.maxElapsedMs));
+  const maxStepsPerRun = Math.max(1, Math.floor(args.maxStepsPerRun));
+  return elapsedMs >= maxElapsedMs || stepsCompleted >= maxStepsPerRun;
+}
+
 function parseJsonCandidate(raw: string): string | null {
   const trimmed = (raw || "").trim();
   const first = trimmed.indexOf("{");

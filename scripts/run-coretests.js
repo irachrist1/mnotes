@@ -27,7 +27,7 @@ function run() {
     "googleScopes.js"
   ));
 
-  const { parseAgentState, parseFinalPayload, parsePlan, parseStepPayload } = parsing;
+  const { parseAgentState, parseFinalPayload, parsePlan, parseStepPayload, shouldYieldAgentRun } = parsing;
   const { parseTaskOutput, serializeChecklist } = outputFormats;
   const { hasAnyScope, requiredScopesForTool, GOOGLE_SCOPES } = googleScopes;
 
@@ -67,6 +67,25 @@ function run() {
     approvedTools: { web_search: true },
     deniedTools: { send_email: true },
   });
+
+  assert.equal(shouldYieldAgentRun({
+    elapsedMs: 1000,
+    stepsCompleted: 1,
+    maxElapsedMs: 10000,
+    maxStepsPerRun: 2,
+  }), false);
+  assert.equal(shouldYieldAgentRun({
+    elapsedMs: 1000,
+    stepsCompleted: 2,
+    maxElapsedMs: 10000,
+    maxStepsPerRun: 2,
+  }), true);
+  assert.equal(shouldYieldAgentRun({
+    elapsedMs: 15000,
+    stepsCompleted: 0,
+    maxElapsedMs: 10000,
+    maxStepsPerRun: 2,
+  }), true);
 
   // output formats
   const parsed1 = parseTaskOutput("- [ ] a\n- [x] b\n");

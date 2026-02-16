@@ -143,6 +143,15 @@ If the model calls `request_approval`, the flow is similar:
 3. UI renders Approve/Deny buttons.
 4. `taskEvents.respondApproval` patches the event and schedules `continueInternal`.
 
+### Long-Run Continuation (Runtime Budget)
+
+To avoid Convex action timeout limits, the agent now yields and resumes automatically:
+
+- `convex/ai/taskAgent.ts` enforces per-run budgets (`MAX_AGENT_RUN_ELAPSED_MS`, `MAX_AGENT_STEPS_PER_RUN`).
+- After hitting a budget checkpoint, it stores continuation state in `tasks.agentState`, emits a `taskEvents` status event (`Continuing`), and schedules `internal.ai.taskAgent.continueInternal`.
+- Resume uses the same `planSteps`, `stepIndex`, and approval maps so the run continues safely without losing context.
+- PostHog captures `agent_task_continuation_scheduled` for observability.
+
 ## Tool System
 
 Tool definitions and implementations live in `convex/ai/agentTools.ts`.
@@ -282,10 +291,10 @@ The output panel supports:
 
 ## What Is NOT Done Yet (On Purpose)
 
-- Enforcing approvals on real connector tools (email/calendar/github) (roadmap P6)
-- Connector tools (P6)
-- Conversation context summarization/truncation (P2.8)
- - Google provider tool-use loop (Google still runs in fallback mode; no model-driven tool calling yet)
+- True token-level streaming (current behavior is pseudo-streaming chunk updates).
+- Full context summarization/compaction for older steps/tool results (P2.8 partial).
+- Google provider model-driven tool loop (Google currently runs in fallback mode).
+- Additional connector tool surface (agenda/free-slots/threading/repo-activity, etc.) and deeper timeline polish.
 
 ## Where Vercel AI SDK or Anthropic SDK Helps
 

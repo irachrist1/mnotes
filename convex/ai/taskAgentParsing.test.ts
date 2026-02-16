@@ -4,6 +4,7 @@ import {
   parseFinalPayload,
   parsePlan,
   parseStepPayload,
+  shouldYieldAgentRun,
 } from "./taskAgentParsing";
 
 describe("taskAgentParsing", () => {
@@ -54,5 +55,27 @@ describe("taskAgentParsing", () => {
       waitingForKind: "approval",
     });
   });
-});
 
+  it("shouldYieldAgentRun yields by step count or elapsed budget", () => {
+    expect(shouldYieldAgentRun({
+      elapsedMs: 1000,
+      stepsCompleted: 1,
+      maxElapsedMs: 10_000,
+      maxStepsPerRun: 2,
+    })).toBe(false);
+
+    expect(shouldYieldAgentRun({
+      elapsedMs: 1000,
+      stepsCompleted: 2,
+      maxElapsedMs: 10_000,
+      maxStepsPerRun: 2,
+    })).toBe(true);
+
+    expect(shouldYieldAgentRun({
+      elapsedMs: 11_000,
+      stepsCompleted: 0,
+      maxElapsedMs: 10_000,
+      maxStepsPerRun: 2,
+    })).toBe(true);
+  });
+});

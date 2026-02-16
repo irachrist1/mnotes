@@ -238,6 +238,17 @@ These are the guiding principles for the agent task experience, to be implemente
   - Updated `convex/ai/taskAgent.ts` resume logic to support both `question` and `approval-request` pause points
   - Updated `src/components/dashboard/TasksContent.tsx` to render approval cards with Approve/Deny buttons
 
+### P2.8.1: Long-Run Agent Continuation (Runtime Budget + Auto-Resume)
+- **Status:** Shipped (initial)
+- **Goal:** Prevent long tasks from timing out by yielding and resuming across internal actions.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added runtime checkpoint budgets in `convex/ai/taskAgent.ts` (`MAX_AGENT_RUN_ELAPSED_MS`, `MAX_AGENT_STEPS_PER_RUN`).
+  - Agent now persists continuation state and schedules `internal.ai.taskAgent.continueInternal` when a budget is reached.
+  - Added continuation status events (`Continuing`) so users can see why execution is split across runs.
+  - Added PostHog event `agent_task_continuation_scheduled` for runtime observability.
+  - Added tested utility `shouldYieldAgentRun()` in `convex/ai/taskAgentParsing.ts` with coverage updates (`convex/ai/taskAgentParsing.test.ts`, `scripts/run-coretests.js`).
+
 ---
 
 ## P3 — Deep Research Agent UI

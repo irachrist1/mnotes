@@ -40,7 +40,7 @@ Remaining roadmap work is mostly polish/expansion:
 - True streaming (token-level) vs pseudo-streaming
 - Deeper activity/timeline UX polish and source chips
 - Connector tool expansion (more Gmail/Calendar/GitHub actions)
-- Longer-run continuation (5-min Convex action chaining) and smarter context management
+- Smarter context management/compaction across longer runs
 - P11 landing/auth polish
 
 **Key files to understand before starting:**
