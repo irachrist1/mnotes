@@ -18,8 +18,20 @@ export type ToolExecResult =
   | { ok: true; result: unknown; summary?: string; pause: true; pauseReason: "ask_user" | "approval"; eventId: string }
   | { ok: false; error: string };
 
-export function getBuiltInToolDefs(): AgentToolDef[] {
-  return [
+/**
+ * Return tool definitions, filtering out connector tools for providers
+ * the user hasn't connected. This keeps the tool list under ~15 for better
+ * LLM performance while still giving the agent all relevant capabilities.
+ */
+export function getBuiltInToolDefs(opts?: {
+  connectedProviders?: Set<string>;
+}): AgentToolDef[] {
+  const connected = opts?.connectedProviders;
+  const hasGithub = !connected || connected.has("github");
+  const hasGmail = !connected || connected.has("gmail");
+  const hasCalendar = !connected || connected.has("google-calendar");
+
+  return ([
     {
       name: "read_soul_file",
       description: "Read the user's soul file (long-term memory/profile).",
@@ -270,7 +282,7 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
-    {
+    ...(hasGithub ? [{
       name: "github_list_my_pull_requests",
       description:
         "List my open GitHub pull requests (requires GitHub connection).",
@@ -326,8 +338,8 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         required: ["repo", "title"],
         additionalProperties: false,
       },
-    },
-    {
+    }] : []),
+    ...(hasGmail ? [{
       name: "gmail_list_recent",
       description: "List recent Gmail messages (headers/snippet). Requires Gmail connection.",
       input_schema: {
@@ -381,8 +393,8 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         required: ["to", "subject", "bodyText"],
         additionalProperties: false,
       },
-    },
-    {
+    }] : []),
+    ...(hasCalendar ? [{
       name: "calendar_list_upcoming",
       description: "List upcoming Google Calendar events. Requires Google Calendar connection.",
       input_schema: {
@@ -439,7 +451,7 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         required: ["summary", "start", "end"],
         additionalProperties: false,
       },
-    },
+    }] : []),
     {
       name: "list_memory_entries",
       description: "List your structured memory entries (semantic/procedural/episodic).",
@@ -482,7 +494,7 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         additionalProperties: false,
       },
     },
-  ];
+  ] as AgentToolDef[]);
 }
 
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {
@@ -1367,7 +1379,8 @@ export async function executeTool(args: {
       const limit = clampInt(input?.limit, 10, 1, 30);
       const stateRaw = typeof input?.state === "string" ? input.state.trim().toLowerCase() : "open";
       const state = stateRaw === "closed" || stateRaw === "all" ? stateRaw : "open";
-      const queryParts = ["is:issue", `state:${state}`, "sort:updated-desc"];
+      const queryParts = ["is:issue", "sort:updated-desc"];
+      if (state !== "all") queryParts.push(`is:${state}`);
       if (repo) queryParts.push(`repo:${repo}`);
       const query = queryParts.join(" ");
 

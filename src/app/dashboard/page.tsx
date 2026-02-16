@@ -195,6 +195,8 @@ export default function DashboardPage() {
 
   const [chatActive, setChatActive] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  // Optimistic dismissal: hide nudge cards immediately on action
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -249,7 +251,7 @@ export default function DashboardPage() {
         meta: "Weekly digest",
         href: `/dashboard/intelligence?insightId=${digest._id}`,
         tone: "blue",
-        onDismiss: () => void markInsightStatus({ id: digest._id as Id<"aiInsights">, status: "read" }),
+        onDismiss: () => { setDismissedKeys((s) => new Set(s).add(String(digest._id))); void markInsightStatus({ id: digest._id as Id<"aiInsights">, status: "read" }); },
         dismissLabel: "Mark digest as read",
       });
     }
@@ -266,7 +268,7 @@ export default function DashboardPage() {
         href: `/dashboard/data?tab=tasks&taskId=${task._id}`,
         tone: "red",
         actions: [
-          { label: "Mark done", onClick: () => void toggleTaskDone({ id: task._id }) },
+          { label: "Mark done", onClick: () => { setDismissedKeys((s) => new Set(s).add(`overdue-${task._id}`)); void toggleTaskDone({ id: task._id }); } },
         ],
       });
     }
@@ -281,12 +283,13 @@ export default function DashboardPage() {
         meta: "Suggestion",
         href: "/dashboard/data?tab=tasks",
         tone: "amber",
-        onDismiss: () => void dismissProactive({ id: s._id }),
+        onDismiss: () => { setDismissedKeys((s2) => new Set(s2).add(`proactive-${s._id}`)); void dismissProactive({ id: s._id }); },
         dismissLabel: "Dismiss suggestion",
         actions: [
           {
             label: "Approve",
             onClick: () => {
+              setDismissedKeys((s2) => new Set(s2).add(`proactive-${s._id}`));
               void approveProactive({ id: s._id });
             },
           },
@@ -311,7 +314,7 @@ export default function DashboardPage() {
         meta: relativeTime(n.createdAt),
         href: n.actionUrl || "/dashboard",
         tone,
-        onDismiss: () => void dismissNotification({ id: n._id as Id<"notifications"> }),
+        onDismiss: () => { setDismissedKeys((s) => new Set(s).add(String(n._id))); void dismissNotification({ id: n._id as Id<"notifications"> }); },
         dismissLabel: "Dismiss nudge",
       });
     }
@@ -427,7 +430,7 @@ export default function DashboardPage() {
               </div>
             </>
           ) : (
-            nudges.map((n) => (
+            nudges.filter((n) => !dismissedKeys.has(n.key)).map((n) => (
               <NudgeCard
                 key={n.key}
                 icon={n.icon}

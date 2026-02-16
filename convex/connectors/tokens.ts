@@ -139,6 +139,18 @@ export const setInternal = internalMutation({
   },
 });
 
+/** Internal: list which providers a user has connected (for tool filtering). */
+export const listConnectedInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args): Promise<string[]> => {
+    const tokens = await ctx.db
+      .query("connectorTokens")
+      .withIndex("by_user_updated", (q) => q.eq("userId", args.userId))
+      .collect();
+    return tokens.map((t) => t.provider);
+  },
+});
+
 export const touchInternal = internalMutation({
   args: {
     userId: v.string(),

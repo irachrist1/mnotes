@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   CheckSquare,
   Pencil,
   Plus,
@@ -17,6 +18,7 @@ import {
   Trash2,
   ListTodo,
   Wrench,
+  X,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -126,6 +128,8 @@ export function TasksContent() {
   const respondApproval = useMutation(api.taskEvents.respondApproval);
   const createAgentFile = useMutation(api.agentFiles.create);
   const startAgent = useAction(api.ai.taskAgent.start);
+  const cancelAgent = useMutation(api.tasks.cancelAgent);
+  const settings = useQuery(api.userSettings.get);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -347,8 +351,21 @@ export function TasksContent() {
 
   const progressValue = (t: NonNullable<typeof tasks>[number]) => clampPct(t.agentProgress);
 
+  const hasAiConfigured = useMemo(() => {
+    if (!settings) return false;
+    const p = settings.aiProvider;
+    if (p === "openrouter" && settings.openrouterApiKey) return true;
+    if (p === "google" && settings.googleApiKey) return true;
+    if (p === "anthropic" && settings.anthropicApiKey) return true;
+    return false;
+  }, [settings]);
+
   const rerunAgent = async () => {
     if (!selectedId || agentRestarting) return;
+    if (!hasAiConfigured) {
+      toast.error("Please configure an AI provider and API key in Settings first.");
+      return;
+    }
     setAgentRestarting(true);
     try {
       const res = await startAgent({ taskId: selectedId });
@@ -380,6 +397,16 @@ export function TasksContent() {
           </button>
         }
       />
+
+      {settings !== undefined && !hasAiConfigured && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/[0.06] p-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            No AI provider configured. Tasks will fail until you{" "}
+            <a href="/dashboard/settings" className="underline font-medium">set up an API key in Settings</a>.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
         {([
@@ -570,12 +597,19 @@ export function TasksContent() {
                   {agentBadge(selectedTask)}
                   {(agentStatus(selectedTask) === "queued" || agentStatus(selectedTask) === "running") ? (
                     <button
-                      onClick={() => void rerunAgent()}
-                      disabled={true}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-stone-400 dark:text-stone-500 cursor-not-allowed"
+                      onClick={async () => {
+                        try {
+                          await cancelAgent({ id: selectedTask._id });
+                          toast.success("Agent cancelled");
+                          track("task_agent_cancelled", { taskId: selectedTask._id });
+                        } catch {
+                          toast.error("Failed to cancel agent");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors duration-150"
                     >
-                      <RefreshCcw className="w-3 h-3 animate-spin" />
-                      Running...
+                      <X className="w-3 h-3" />
+                      Cancel
                     </button>
                   ) : (
                     <button

@@ -496,60 +496,85 @@ export function Sidebar() {
               <Link
                 href={agentStatus ? `/dashboard/data?tab=tasks&taskId=${agentStatus.taskId}` : "/dashboard/data?tab=tasks"}
                 className={[
-                  "block rounded-xl border border-stone-200 dark:border-white/[0.08] p-3 transition-colors",
+                  "block rounded-xl border transition-colors",
+                  desktopExpanded
+                    ? "border-stone-200 dark:border-white/[0.08] p-3"
+                    : "border-transparent p-0 flex items-center justify-center h-10 w-10 mx-auto",
                   "hover:bg-stone-100 dark:hover:bg-white/[0.06]",
                 ].join(" ")}
                 aria-label="Jarvis status"
-                title={agentStatus ? "Open running task" : "Open agent tasks"}
+                title={agentStatus
+                  ? (statusMode === "attention" ? "Jarvis needs attention" : `Jarvis: ${agentStatus.title}`)
+                  : "Jarvis — Idle"}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
-                    Jarvis
-                  </span>
-                  {statusMode === "working" ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                      Working
-                    </span>
-                  ) : statusMode === "attention" ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 dark:text-red-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                      Needs attention
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Idle
-                    </span>
-                  )}
-                </div>
-                {agentStatus ? (
-                  <div className="mt-2">
-                    <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate">
-                      {agentStatus.title}
-                    </p>
-                    <p className={`text-[10px] truncate mt-0.5 ${
-                      statusMode === "attention"
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-stone-500 dark:text-stone-500"
-                    }`}>
-                      {agentStatus.phase}
-                    </p>
-                    <div className="mt-2 h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-500 ${
-                          statusMode === "attention"
-                            ? "bg-red-600 dark:bg-red-400"
-                            : "bg-blue-600 dark:bg-blue-400"
-                        }`}
-                        style={{ width: `${Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%` }}
-                      />
+                {/* Collapsed: status dot only */}
+                {!desktopExpanded && (
+                  <span
+                    className={[
+                      "w-2 h-2 rounded-full shrink-0",
+                      statusMode === "working"
+                        ? "bg-blue-500 animate-pulse"
+                        : statusMode === "attention"
+                          ? "bg-red-500"
+                          : "bg-emerald-500",
+                    ].join(" ")}
+                    aria-hidden="true"
+                  />
+                )}
+
+                {/* Expanded: full card content */}
+                {desktopExpanded && (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
+                        Jarvis
+                      </span>
+                      {statusMode === "working" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          Working
+                        </span>
+                      ) : statusMode === "attention" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          Needs attention
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Idle
+                        </span>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-[11px] text-stone-500 dark:text-stone-500">
-                    All clear.
-                  </p>
+                    {agentStatus ? (
+                      <div className="mt-2">
+                        <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate">
+                          {agentStatus.title}
+                        </p>
+                        <p className={`text-[10px] truncate mt-0.5 ${
+                          statusMode === "attention"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-stone-500 dark:text-stone-500"
+                        }`}>
+                          {agentStatus.phase}
+                        </p>
+                        <div className="mt-2 h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-[width] duration-500 ${
+                              statusMode === "attention"
+                                ? "bg-red-600 dark:bg-red-400"
+                                : "bg-blue-600 dark:bg-blue-400"
+                            }`}
+                            style={{ width: `${Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-stone-500 dark:text-stone-500">
+                        All clear.
+                      </p>
+                    )}
+                  </>
                 )}
               </Link>
             </div>

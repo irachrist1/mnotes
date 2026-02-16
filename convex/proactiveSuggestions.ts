@@ -10,13 +10,15 @@ export const list = query({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     const limit = Math.max(1, Math.min(20, Math.floor(args.limit ?? 5)));
-    const all = await ctx.db
+    // Cap the scan to avoid reading the entire suggestion history.
+    // Most users will have few active (non-dismissed) suggestions.
+    const recent = await ctx.db
       .query("proactiveSuggestions")
       .withIndex("by_user_created", (q) => q.eq("userId", userId))
       .order("desc")
-      .collect();
+      .take(100);
 
-    return all
+    return recent
       .filter((s) => !s.dismissedAt && !s.approvedAt)
       .slice(0, limit);
   },

@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { getUserId } from "./lib/auth";
 import { validateShortText } from "./lib/validate";
 
-/** List all tasks for the current user, newest first. */
+/** List all tasks for the current user, newest first (capped at 200). */
 export const list = query({
     args: {},
     handler: async (ctx) => {
@@ -13,36 +13,38 @@ export const list = query({
             .query("tasks")
             .withIndex("by_user_created", (q) => q.eq("userId", userId))
             .order("desc")
-            .collect();
+            .take(200);
     },
 });
 
-/** List overdue undone tasks (dueDate < today). */
+/** List overdue undone tasks (dueDate < today). Scans recent 200 max. */
 export const listOverdue = query({
     args: {},
     handler: async (ctx) => {
         const userId = await getUserId(ctx);
         const today = new Date().toISOString().split("T")[0];
-        const all = await ctx.db
+        const recent = await ctx.db
             .query("tasks")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
-            .collect();
-        return all
+            .withIndex("by_user_created", (q) => q.eq("userId", userId))
+            .order("desc")
+            .take(200);
+        return recent
             .filter((t) => !t.done && t.dueDate && t.dueDate < today)
             .slice(0, 5);
     },
 });
 
-/** Count undone tasks for the current user (used for badges/nudges). */
+/** Count undone tasks for the current user (used for badges/nudges). Scans recent 200 max. */
 export const countUndone = query({
     args: {},
     handler: async (ctx) => {
         const userId = await getUserId(ctx);
-        const all = await ctx.db
+        const recent = await ctx.db
             .query("tasks")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
-            .collect();
-        return all.filter((t) => !t.done).length;
+            .withIndex("by_user_created", (q) => q.eq("userId", userId))
+            .order("desc")
+            .take(200);
+        return recent.filter((t) => !t.done).length;
     },
 });
 
@@ -129,6 +131,26 @@ export const update = mutation({
         if (existing.userId !== userId) throw new Error("Unauthorized");
         const { id, ...updates } = args;
         await ctx.db.patch(id, updates);
+    },
+});
+
+/** Cancel a running agent on a task. */
+export const cancelAgent = mutation({
+    args: { id: v.id("tasks") },
+    handler: async (ctx, args) => {
+        const userId = await getUserId(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Task not found");
+        if (existing.userId !== userId) throw new Error("Unauthorized");
+        if (existing.agentStatus !== "queued" && existing.agentStatus !== "running") {
+            return; // nothing to cancel
+        }
+        await ctx.db.patch(args.id, {
+            agentStatus: "failed",
+            agentError: "Cancelled by user.",
+            agentPhase: "Cancelled",
+            agentCompletedAt: Date.now(),
+        });
     },
 });
 
@@ -299,7 +321,7 @@ export const currentAgentStatus = query({
             .query("tasks")
             .withIndex("by_user_created", (q) => q.eq("userId", userId))
             .order("desc")
-            .take(80);
+            .take(30);
 
         const running = recent.find((t) => t.agentStatus === "running" || t.agentStatus === "queued");
         if (running) {

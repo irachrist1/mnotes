@@ -96,6 +96,7 @@ export function DashboardShell({
   const pathname = usePathname();
   const agentStatus = useQuery(api.tasks.currentAgentStatus);
   const [dismissedPillTaskId, setDismissedPillTaskId] = useState<string | null>(null);
+  const [dismissedPillMode, setDismissedPillMode] = useState<string | null>(null);
   const pillTouchStartX = useRef<number | null>(null);
 
   // Auto-open chat for freshly onboarded users (initialChatOpen resolves async)
@@ -115,12 +116,19 @@ export function DashboardShell({
   useEffect(() => {
     if (!agentStatus) {
       setDismissedPillTaskId(null);
+      setDismissedPillMode(null);
       return;
     }
     if (dismissedPillTaskId && dismissedPillTaskId !== agentStatus.taskId) {
       setDismissedPillTaskId(null);
+      setDismissedPillMode(null);
     }
-  }, [agentStatus, dismissedPillTaskId]);
+    // Re-show pill when mode escalates to "attention" (even for same task)
+    if (dismissedPillTaskId === agentStatus.taskId && dismissedPillMode !== "attention" && agentStatus.mode === "attention") {
+      setDismissedPillTaskId(null);
+      setDismissedPillMode(null);
+    }
+  }, [agentStatus, dismissedPillTaskId, dismissedPillMode]);
 
   // Listen for "mnotes:open-chat" custom events from QuickActionCards
   useEffect(() => {
@@ -226,7 +234,7 @@ export function DashboardShell({
               pillTouchStartX.current = null;
               if (start === null || end === null) return;
               if (Math.abs(end - start) > 72) {
-                setDismissedPillTaskId(agentStatus.taskId);
+                setDismissedPillTaskId(agentStatus.taskId); setDismissedPillMode(agentStatus.mode);
               }
             }}
           >
@@ -259,7 +267,7 @@ export function DashboardShell({
               </div>
             </Link>
             <button
-              onClick={() => setDismissedPillTaskId(agentStatus.taskId)}
+              onClick={() => { setDismissedPillTaskId(agentStatus.taskId); setDismissedPillMode(agentStatus.mode); }}
               className="shrink-0 px-2 py-1 rounded-md text-[10px] font-medium text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/[0.06]"
               aria-label="Dismiss status pill"
             >

@@ -1,11 +1,14 @@
-"use node";
-
 import { action, httpAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
 import { captureEvent } from "../lib/posthog";
-import { randomBytes } from "node:crypto";
+// Use Web Crypto API (works in both Convex V8 and Node runtimes)
+function randomHex(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 type GoogleProvider = "gmail" | "google-calendar";
 type GoogleAccess = "read" | "write";
@@ -70,7 +73,7 @@ export const start = action({
     }
     if (origin.length > 200) throw new Error("Origin too long");
 
-    const state = randomBytes(16).toString("hex");
+    const state = randomHex(16);
     const provider = args.provider as GoogleProvider;
     const access = (args.access ?? "read") as GoogleAccess;
     const scopes = getScopes(provider, access);

@@ -22,7 +22,7 @@ import {
 
 // AgentPayload/AgentState live in taskAgentParsing.ts (kept pure for testing).
 const MAX_AGENT_RUN_ELAPSED_MS = 210_000;
-const MAX_AGENT_STEPS_PER_RUN = 2;
+const MAX_AGENT_STEPS_PER_RUN = 4;
 
 export const start = action({
   args: { taskId: v.id("tasks") },
@@ -102,11 +102,13 @@ async function runFromTaskState(
   const runStartedAt = Date.now();
   let stepsCompletedThisRun = 0;
 
-  const [task, settings, soulFile] = await Promise.all([
+  const [task, settings, soulFile, connectedProviders] = await Promise.all([
     ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }),
     ctx.runQuery(internal.userSettings.getForUser, { userId: args.userId }),
     ctx.runQuery(internal.soulFile.getByUserId, { userId: args.userId }),
+    ctx.runQuery(internal.connectors.tokens.listConnectedInternal, { userId: args.userId }),
   ]);
+  const connectedSet = new Set<string>(connectedProviders);
 
   if (!task) return;
 
@@ -281,6 +283,7 @@ async function runFromTaskState(
         maxTokens: 900,
         temperature: 0.2,
         toolCallBudget: 10,
+        connectedProviders: connectedSet,
       })
       : provider === "openrouter"
         ? await runOpenRouterToolLoop({
@@ -295,6 +298,7 @@ async function runFromTaskState(
           temperature: 0.2,
           toolCallBudget: 10,
           title: "MNotes Agent Tasks",
+          connectedProviders: connectedSet,
         })
         : await runFallbackCall({
           ctx,
@@ -407,7 +411,14 @@ async function runFromTaskState(
     // Slight pacing to make progress visible.
     await sleep(800);
 
-    const existingOutput = (await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }))?.agentResult ?? "";
+    // Check for user cancellation before each step.
+    const freshTask = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
+    if (!freshTask || freshTask.agentStatus === "failed") {
+      // User cancelled or task deleted — bail out.
+      return;
+    }
+
+    const existingOutput = freshTask.agentResult ?? "";
     const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Recent Execution Signals\n${recentEventContext || "(none)"}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
 
     const tStep0 = Date.now();
@@ -423,6 +434,7 @@ async function runFromTaskState(
         maxTokens: 1400,
         temperature: 0.25,
         toolCallBudget: 10,
+        connectedProviders: connectedSet,
       })
       : provider === "openrouter"
         ? await runOpenRouterToolLoop({
@@ -437,6 +449,7 @@ async function runFromTaskState(
           maxTokens: 1400,
           toolCallBudget: 10,
           title: "MNotes Agent Tasks",
+          connectedProviders: connectedSet,
         })
         : await runFallbackCall({
           ctx,
@@ -498,7 +511,7 @@ async function runFromTaskState(
     const stepSummary = (stepPayload.stepSummary || "").trim();
     contextSummary = updateContextSummary(contextSummary, i + 1, step, stepSummary || "Completed");
 
-    if (stepOut.length < 10) {
+    if (stepOut.length === 0 && !stepSummary) {
       await fail(ctx, args.userId, args.taskId, task, "Step output was empty.");
       return;
     }
@@ -617,6 +630,7 @@ async function runFromTaskState(
       maxTokens: 1600,
       temperature: 0.2,
       toolCallBudget: 4,
+      connectedProviders: connectedSet,
     })
     : provider === "openrouter"
       ? await runOpenRouterToolLoop({
@@ -631,6 +645,7 @@ async function runFromTaskState(
         maxTokens: 1600,
         toolCallBudget: 6,
         title: "MNotes Agent Tasks",
+        connectedProviders: connectedSet,
       })
       : await runFallbackCall({
         ctx,
@@ -819,7 +834,7 @@ async function progressiveReplaceAgentResult(args: {
   markdown: string;
 }) {
   const body = (args.markdown || "").trim();
-  const chunks = chunkText(body, 520, 32);
+  const chunks = chunkText(body, 2000, 8);
   let current = "";
   for (const c of chunks) {
     current = current ? `${current}${c}` : c;
@@ -828,7 +843,7 @@ async function progressiveReplaceAgentResult(args: {
       id: args.taskId,
       agentResult: current,
     });
-    await sleep(60);
+    await sleep(150);
   }
 }
 
@@ -889,7 +904,7 @@ async function streamFinalMarkdownToTask(args: {
   const flush = async (force = false) => {
     const now = Date.now();
     const deltaLen = acc.length - lastFlushedLen;
-    if (!force && deltaLen < 120 && now - lastFlushAt < 140) return;
+    if (!force && deltaLen < 300 && now - lastFlushAt < 1200) return;
     await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
       userId: args.userId,
       id: args.taskId,
@@ -1057,9 +1072,10 @@ async function runClaudeToolLoop(args: {
   temperature: number;
   maxTokens: number;
   toolCallBudget: number;
+  connectedProviders?: Set<string>;
 }): Promise<{ text: string; paused?: boolean; waitingForEventId?: string; pauseReason?: "ask_user" | "approval" }> {
   const client = new Anthropic({ apiKey: args.apiKey });
-  const tools = getBuiltInToolDefs() as any;
+  const tools = getBuiltInToolDefs({ connectedProviders: args.connectedProviders }) as any;
 
   const messages: any[] = [{ role: "user", content: args.userPrompt }];
   let toolCalls = 0;
@@ -1163,8 +1179,9 @@ async function runOpenRouterToolLoop(args: {
   maxTokens: number;
   toolCallBudget: number;
   title: string;
+  connectedProviders?: Set<string>;
 }): Promise<{ text: string; paused?: boolean; waitingForEventId?: string; pauseReason?: "ask_user" | "approval" }> {
-  const toolDefs = getBuiltInToolDefs();
+  const toolDefs = getBuiltInToolDefs({ connectedProviders: args.connectedProviders });
   const tools = toolDefs.map((t) => ({
     type: "function",
     function: {
