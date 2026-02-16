@@ -170,6 +170,7 @@ export function TasksContent() {
     api.agentFiles.listByTask,
     selectedId ? { taskId: selectedId, limit: 30 } : "skip"
   );
+  const connectors = useQuery(api.connectors.tokens.list, {});
 
   const sourceChips = useMemo(() => {
     if (!Array.isArray(events)) return [] as string[];
@@ -194,6 +195,41 @@ export function TasksContent() {
     }
     return chips.slice(0, 12);
   }, [events]);
+
+  const missingConnectorSuggestions = useMemo(() => {
+    if (!selectedTask) return [] as Array<{ provider: string; title: string; detail: string }>;
+    const text = `${selectedTask.title}\n${selectedTask.note ?? ""}`.toLowerCase();
+    const rows = Array.isArray(connectors) ? connectors : [];
+    const hasGithub = rows.some((c: any) => c.provider === "github" && c.connected);
+    const hasGmail = rows.some((c: any) => c.provider === "gmail" && c.connected);
+    const hasCalendar = rows.some((c: any) => c.provider === "google-calendar" && c.connected);
+
+    const suggestions: Array<{ provider: string; title: string; detail: string }> = [];
+
+    if (!hasGithub && /\b(github|pull request|pr|issue|repo|repository)\b/.test(text)) {
+      suggestions.push({
+        provider: "github",
+        title: "Connect GitHub",
+        detail: "This task looks repo-related. Connect GitHub so Jarvis can read PRs and create issues.",
+      });
+    }
+    if (!hasGmail && /\b(email|gmail|inbox|reply|draft)\b/.test(text)) {
+      suggestions.push({
+        provider: "gmail",
+        title: "Connect Gmail",
+        detail: "This task looks email-related. Connect Gmail so Jarvis can read mail, draft, and send with approval.",
+      });
+    }
+    if (!hasCalendar && /\b(calendar|meeting|schedule|agenda|timeslot|availability)\b/.test(text)) {
+      suggestions.push({
+        provider: "google-calendar",
+        title: "Connect Google Calendar",
+        detail: "This task looks scheduling-related. Connect Calendar so Jarvis can check agenda and free slots.",
+      });
+    }
+
+    return suggestions;
+  }, [selectedTask, connectors]);
 
   const setTaskIdParam = (taskId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -614,6 +650,30 @@ export function TasksContent() {
                     >
                       {chip}
                     </span>
+                  ))}
+                </div>
+              )}
+              {missingConnectorSuggestions.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {missingConnectorSuggestions.map((s) => (
+                    <div key={s.provider} className="rounded-lg border border-blue-200/70 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/[0.06] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                            {s.title}
+                          </p>
+                          <p className="text-xs text-blue-700/90 dark:text-blue-300/90 mt-1">
+                            {s.detail}
+                          </p>
+                        </div>
+                        <a
+                          href="/dashboard/settings"
+                          className="shrink-0 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Connect
+                        </a>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

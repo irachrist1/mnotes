@@ -398,6 +398,14 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added scope mappings for new tools (`convex/connectors/googleScopes.ts`).
   - Updated Settings connector capability list UI (`src/app/dashboard/settings/page.tsx`).
 
+### P6.7: Connector Progressive Disclosure in Agent Tasks
+- **Status:** ✅ Shipped (initial)
+- **Goal:** When a task implies external tooling but the connector is missing, show a clear connect suggestion inline.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added connector intent detection in `src/components/dashboard/TasksContent.tsx` (GitHub/Gmail/Calendar keyword hints).
+  - Agent activity panel now shows inline connect cards with direct Settings link when relevant connectors are missing.
+
 ### P7.0: Rich Output Renderers (Interactive Checklists)
 - **Status:** Shipped (initial renderer)
 - **Goal:** Render agent output as more than markdown paragraphs when appropriate.
