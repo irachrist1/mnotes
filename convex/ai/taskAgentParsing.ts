@@ -8,6 +8,7 @@ export type AgentState = {
   v: 1;
   stepIndex: number;
   planSteps: string[];
+  contextSummary?: string;
   waitingForEventId?: string;
   waitingForKind?: "question" | "approval";
   approvedTools?: Record<string, true>;
@@ -125,6 +126,7 @@ export function parseAgentState(raw: unknown): AgentState | null {
       v: 1,
       stepIndex: Math.max(0, Math.floor(obj.stepIndex)),
       planSteps: obj.planSteps.map(String).filter(Boolean).slice(0, 10),
+      contextSummary: typeof obj.contextSummary === "string" ? obj.contextSummary.slice(0, 4000) : undefined,
       waitingForEventId: typeof obj.waitingForEventId === "string" ? obj.waitingForEventId : undefined,
       waitingForKind,
       approvedTools,

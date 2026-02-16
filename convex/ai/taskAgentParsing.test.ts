@@ -45,6 +45,7 @@ describe("taskAgentParsing", () => {
       v: 1,
       stepIndex: 2,
       planSteps: ["a", "b"],
+      contextSummary: "step1 done",
       waitingForEventId: "evt",
       waitingForKind: "approval",
     }));
@@ -52,6 +53,7 @@ describe("taskAgentParsing", () => {
       v: 1,
       stepIndex: 2,
       planSteps: ["a", "b"],
+      contextSummary: "step1 done",
       waitingForEventId: "evt",
       waitingForKind: "approval",
     });

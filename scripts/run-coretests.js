@@ -61,6 +61,7 @@ function run() {
     v: 1,
     stepIndex: 2,
     planSteps: ["a", "b"],
+    contextSummary: "done step 1",
     waitingForEventId: "evt",
     waitingForKind: "approval",
     approvedTools: { web_search: true },
@@ -69,6 +70,7 @@ function run() {
     v: 1,
     stepIndex: 2,
     planSteps: ["a", "b"],
+    contextSummary: "done step 1",
     waitingForEventId: "evt",
     waitingForKind: "approval",
     approvedTools: { web_search: true },
@@ -130,7 +132,9 @@ function run() {
 
   // google scopes helpers
   assert.deepEqual(requiredScopesForTool("calendar_create_event"), [GOOGLE_SCOPES.calendarFull]);
+  assert.equal(hasAnyScope([GOOGLE_SCOPES.calendarReadonly], requiredScopesForTool("calendar_find_free_slots")), true);
   assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_list_recent")), true);
+  assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_search_messages")), true);
   assert.equal(hasAnyScope([GOOGLE_SCOPES.gmailReadonly], requiredScopesForTool("gmail_send_email")), false);
 
   console.log("[coretests] ok");

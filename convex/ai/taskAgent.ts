@@ -158,6 +158,7 @@ async function runFromTaskState(
 
   let planSteps: string[] = Array.isArray(task.agentPlan) ? task.agentPlan : [];
   let stepIndex = 0;
+  let contextSummary = "";
   let waitingForEventId: string | undefined;
   let waitingForKind: AgentState["waitingForKind"] | undefined;
   let approvedTools: Record<string, true> = {};
@@ -172,6 +173,7 @@ async function runFromTaskState(
     }
     planSteps = state.planSteps;
     stepIndex = state.stepIndex;
+    contextSummary = state.contextSummary ?? "";
     waitingForEventId = state.waitingForEventId;
     waitingForKind = state.waitingForKind;
     approvedTools = state.approvedTools ?? {};
@@ -241,7 +243,14 @@ async function runFromTaskState(
       await ctx.runMutation(internal.tasks.patchAgentInternal, {
         userId: args.userId,
         id: args.taskId,
-        agentState: JSON.stringify({ v: 1, stepIndex, planSteps, approvedTools, deniedTools } satisfies AgentState),
+        agentState: JSON.stringify({
+          v: 1,
+          stepIndex,
+          planSteps,
+          contextSummary,
+          approvedTools,
+          deniedTools,
+        } satisfies AgentState),
       });
     }
   }
@@ -321,6 +330,7 @@ async function runFromTaskState(
           v: 1,
           stepIndex: 0,
           planSteps: [],
+          contextSummary,
           waitingForEventId: paused.waitingForEventId,
           waitingForKind: paused.pauseReason === "approval" ? "approval" : "question",
           approvedTools,
@@ -389,7 +399,7 @@ async function runFromTaskState(
     await sleep(800);
 
     const existingOutput = (await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }))?.agentResult ?? "";
-    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
+    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
 
     const tStep0 = Date.now();
     const stepRun = provider === "anthropic"
@@ -452,6 +462,7 @@ async function runFromTaskState(
           v: 1,
           stepIndex: i,
           planSteps,
+          contextSummary,
           waitingForEventId: stepRun.waitingForEventId,
           waitingForKind: stepRun.pauseReason === "approval" ? "approval" : "question",
           approvedTools,
@@ -476,6 +487,7 @@ async function runFromTaskState(
     const stepPayload = parseStepPayload(stepRun.text);
     const stepOut = (stepPayload.stepOutputMarkdown || "").trim();
     const stepSummary = (stepPayload.stepSummary || "").trim();
+    contextSummary = updateContextSummary(contextSummary, i + 1, step, stepSummary || "Completed");
 
     if (stepOut.length < 10) {
       await fail(ctx, args.userId, args.taskId, task, "Step output was empty.");
@@ -497,7 +509,14 @@ async function runFromTaskState(
       userId: args.userId,
       id: args.taskId,
       agentSummary: stepSummary || undefined,
-      agentState: JSON.stringify({ v: 1, stepIndex: i + 1, planSteps, approvedTools, deniedTools } satisfies AgentState),
+      agentState: JSON.stringify({
+        v: 1,
+        stepIndex: i + 1,
+        planSteps,
+        contextSummary,
+        approvedTools,
+        deniedTools,
+      } satisfies AgentState),
     });
 
     await ctx.runMutation(internal.taskEvents.addInternal, {
@@ -523,6 +542,7 @@ async function runFromTaskState(
         taskId: args.taskId,
         stepIndex: i + 1,
         planSteps,
+        contextSummary,
         approvedTools,
         deniedTools,
         progress: pct,
@@ -545,6 +565,7 @@ async function runFromTaskState(
       taskId: args.taskId,
       stepIndex: planSteps.length,
       planSteps,
+      contextSummary,
       approvedTools,
       deniedTools,
       progress: 95,
@@ -572,7 +593,7 @@ async function runFromTaskState(
   const current = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
   const draft = (current?.agentResult ?? "").trim();
 
-  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${compactTextForPrompt(draft, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
+  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Draft Output\n${compactTextForPrompt(draft, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
 
   const tFinal0 = Date.now();
   const finalRun = provider === "anthropic"
@@ -638,6 +659,7 @@ async function runFromTaskState(
         v: 1,
         stepIndex: planSteps.length,
         planSteps,
+        contextSummary,
         waitingForEventId: paused.waitingForEventId,
         waitingForKind: paused.pauseReason === "approval" ? "approval" : "question",
         approvedTools,
@@ -1129,6 +1151,7 @@ async function scheduleContinuation(args: {
   taskId: any;
   stepIndex: number;
   planSteps: string[];
+  contextSummary: string;
   approvedTools: Record<string, true>;
   deniedTools: Record<string, true>;
   progress: number;
@@ -1143,6 +1166,7 @@ async function scheduleContinuation(args: {
       v: 1,
       stepIndex: args.stepIndex,
       planSteps: args.planSteps,
+      contextSummary: args.contextSummary,
       approvedTools: args.approvedTools,
       deniedTools: args.deniedTools,
     } satisfies AgentState),
@@ -1171,6 +1195,18 @@ async function scheduleContinuation(args: {
       remainingSteps: Math.max(0, args.planSteps.length - args.stepIndex),
     },
   });
+}
+
+function updateContextSummary(
+  currentSummary: string,
+  stepNumber: number,
+  stepTitle: string,
+  stepSummary: string
+): string {
+  const base = String(currentSummary || "").trim();
+  const line = `- Step ${stepNumber} (${stepTitle}): ${stepSummary}`;
+  const combined = base ? `${base}\n${line}` : line;
+  return compactTextForPrompt(combined, 1800);
 }
 
 async function fail(

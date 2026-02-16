@@ -388,6 +388,16 @@ These are the guiding principles for the agent task experience, to be implemente
     - “Enable write” reconnect requests `repo` scope (`src/app/dashboard/settings/page.tsx`).
   - Added docs: `docs/CONNECTORS_GITHUB_OAUTH.md`
 
+### P6.3: Connector Tool Expansion (Gmail Search + Calendar Agenda/Free Slots)
+- **Status:** ✅ Shipped
+- **Goal:** Expand practical read-side connector capabilities for planning/scheduling tasks.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added `gmail_search_messages` tool (`convex/ai/agentTools.ts`).
+  - Added `calendar_get_agenda` and `calendar_find_free_slots` tools (`convex/ai/agentTools.ts`).
+  - Added scope mappings for new tools (`convex/connectors/googleScopes.ts`).
+  - Updated Settings connector capability list UI (`src/app/dashboard/settings/page.tsx`).
+
 ### P7.0: Rich Output Renderers (Interactive Checklists)
 - **Status:** Shipped (initial renderer)
 - **Goal:** Render agent output as more than markdown paragraphs when appropriate.
@@ -474,6 +484,14 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added source chips above the Live activity timeline in `src/components/dashboard/TasksContent.tsx`.
   - Chips are derived from tool events (e.g., soul file, tasks, web search, saved insights, and URL hostnames for `read_url`).
+
+### P8.2.1: Mobile Status Pill Dismiss UX
+- **Status:** Shipped (incremental)
+- **Goal:** Let users dismiss the mobile Jarvis status pill without losing task visibility.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added dismiss button and swipe-to-dismiss behavior for the mobile status pill (`src/components/layout/DashboardShell.tsx`).
+  - Pill auto-reappears when a different running task becomes active.
 
 ### P2.6.1: Agent Files Tools (List/Read/Update)
 - **Status:** Shipped

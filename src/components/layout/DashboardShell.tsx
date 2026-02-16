@@ -95,6 +95,8 @@ export function DashboardShell({
   const convexAvailable = useConvexAvailable();
   const pathname = usePathname();
   const agentStatus = useQuery(api.tasks.currentAgentStatus);
+  const [dismissedPillTaskId, setDismissedPillTaskId] = useState<string | null>(null);
+  const pillTouchStartX = useRef<number | null>(null);
 
   // Auto-open chat for freshly onboarded users (initialChatOpen resolves async)
   useEffect(() => {
@@ -109,6 +111,16 @@ export function DashboardShell({
     setChatOpen(false);
     window.dispatchEvent(new CustomEvent("mnotes:chat-closed"));
   }, [pathname]);
+
+  useEffect(() => {
+    if (!agentStatus) {
+      setDismissedPillTaskId(null);
+      return;
+    }
+    if (dismissedPillTaskId && dismissedPillTaskId !== agentStatus.taskId) {
+      setDismissedPillTaskId(null);
+    }
+  }, [agentStatus, dismissedPillTaskId]);
 
   // Listen for "mnotes:open-chat" custom events from QuickActionCards
   useEffect(() => {
@@ -201,28 +213,51 @@ export function DashboardShell({
       )}
 
       {/* Mobile Jarvis status pill */}
-      {convexAvailable && agentStatus && (
+      {convexAvailable && agentStatus && dismissedPillTaskId !== agentStatus.taskId && (
         <div className="fixed bottom-4 left-4 right-4 z-[45] sm:hidden">
-          <Link
-            href={`/dashboard/data?tab=tasks&taskId=${agentStatus.taskId}`}
-            className="card px-4 py-3 flex items-center justify-between gap-3 border border-stone-200 dark:border-white/[0.08]"
-            aria-label="Open running task"
+          <div
+            className="card px-3 py-3 flex items-center justify-between gap-2 border border-stone-200 dark:border-white/[0.08]"
+            onTouchStart={(e) => {
+              pillTouchStartX.current = e.touches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(e) => {
+              const start = pillTouchStartX.current;
+              const end = e.changedTouches[0]?.clientX ?? null;
+              pillTouchStartX.current = null;
+              if (start === null || end === null) return;
+              if (Math.abs(end - start) > 72) {
+                setDismissedPillTaskId(agentStatus.taskId);
+              }
+            }}
           >
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
-                Jarvis is working
-              </p>
-              <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
-                {agentStatus.title}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
-              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
-                {Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%
-              </span>
-            </div>
-          </Link>
+            <Link
+              href={`/dashboard/data?tab=tasks&taskId=${agentStatus.taskId}`}
+              className="min-w-0 flex-1 flex items-center justify-between gap-3"
+              aria-label="Open running task"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
+                  Jarvis is working
+                </p>
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
+                  {agentStatus.title}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
+                  {Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%
+                </span>
+              </div>
+            </Link>
+            <button
+              onClick={() => setDismissedPillTaskId(agentStatus.taskId)}
+              className="shrink-0 px-2 py-1 rounded-md text-[10px] font-medium text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+              aria-label="Dismiss status pill"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 

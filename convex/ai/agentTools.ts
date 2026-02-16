@@ -312,6 +312,19 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
       },
     },
     {
+      name: "gmail_search_messages",
+      description: "Search Gmail messages with a required query. Requires Gmail connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          q: { type: "string", description: "Required Gmail search query (e.g. from:alice subject:\"invoice\")." },
+          limit: { type: "number", description: "Max messages (default 10)." },
+        },
+        required: ["q"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "gmail_create_draft",
       description: "Create a Gmail draft (no send). Requires Gmail connection with write scope.",
       input_schema: {
@@ -349,6 +362,33 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
         properties: {
           limit: { type: "number", description: "Max events (default 10)." },
           daysAhead: { type: "number", description: "How many days ahead to look (default 7)." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "calendar_get_agenda",
+      description: "Get a day-by-day agenda from Google Calendar for the next N days.",
+      input_schema: {
+        type: "object",
+        properties: {
+          daysAhead: { type: "number", description: "How many days ahead to include (default 3)." },
+          limit: { type: "number", description: "Max events to include overall (default 25)." },
+          timeZone: { type: "string", description: "Optional IANA timezone (e.g. America/New_York)." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "calendar_find_free_slots",
+      description: "Find free time slots in Google Calendar using freeBusy data.",
+      input_schema: {
+        type: "object",
+        properties: {
+          daysAhead: { type: "number", description: "How many days ahead to search (default 7)." },
+          minMinutes: { type: "number", description: "Minimum slot length in minutes (default 30)." },
+          maxSlots: { type: "number", description: "Max returned free slots (default 8)." },
+          timeZone: { type: "string", description: "Optional IANA timezone for display." },
         },
         additionalProperties: false,
       },
@@ -1295,42 +1335,7 @@ export async function executeTool(args: {
       const q = typeof input?.q === "string" ? input.q.trim() : "";
       const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_list_recent" });
       await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "gmail" });
-
-      const params = new URLSearchParams();
-      params.set("maxResults", String(limit));
-      if (q) params.set("q", q);
-
-      const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!listRes.ok) {
-        const text = await listRes.text();
-        return { ok: false, error: `Gmail list failed (${listRes.status}): ${truncate(text, 400)}` };
-      }
-
-      const listData = (await listRes.json()) as any;
-      const msgs = Array.isArray(listData?.messages) ? listData.messages : [];
-      const ids = msgs.map((m: any) => String(m?.id ?? "")).filter(Boolean).slice(0, limit);
-
-      const out = await Promise.all(ids.map(async (id: string) => {
-        const metaRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!metaRes.ok) return null;
-        const meta = (await metaRes.json()) as any;
-        const headers = Array.isArray(meta?.payload?.headers) ? meta.payload.headers : [];
-        const getH = (name: string) => String(headers.find((h: any) => String(h?.name ?? "").toLowerCase() === name.toLowerCase())?.value ?? "");
-        return {
-          id: String(meta?.id ?? id),
-          threadId: String(meta?.threadId ?? ""),
-          subject: truncate(getH("Subject"), 180),
-          from: truncate(getH("From"), 220),
-          date: truncate(getH("Date"), 120),
-          snippet: truncate(String(meta?.snippet ?? ""), 280),
-        };
-      }));
-
-      const simplified = out.filter(Boolean);
+      const simplified = await fetchGmailMessageSummaries({ accessToken, q, limit });
 
       void captureEvent({
         distinctId: userId,
@@ -1342,6 +1347,28 @@ export async function executeTool(args: {
         ok: true,
         result: { q: q || null, messages: simplified },
         summary: `Returned ${simplified.length} messages.`,
+      };
+    }
+
+    if (name === "gmail_search_messages") {
+      const q = typeof input?.q === "string" ? input.q.trim() : "";
+      if (!q) return { ok: false, error: "q is required" };
+      const limit = clampInt(input?.limit, 10, 1, 25);
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "gmail", toolNameForScopes: "gmail_search_messages" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "gmail" });
+
+      const simplified = await fetchGmailMessageSummaries({ accessToken, q, limit });
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_gmail_search_messages",
+        properties: { taskId: String(taskId), q, results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { q, messages: simplified },
+        summary: `Found ${simplified.length} messages.`,
       };
     }
 
@@ -1481,6 +1508,65 @@ export async function executeTool(args: {
         ok: true,
         result: { daysAhead, events: simplified },
         summary: `Returned ${simplified.length} events.`,
+      };
+    }
+
+    if (name === "calendar_get_agenda") {
+      const limit = clampInt(input?.limit, 25, 1, 80);
+      const daysAhead = clampInt(input?.daysAhead, 3, 1, 14);
+      const timeZone = typeof input?.timeZone === "string" ? input.timeZone.trim() : "";
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_get_agenda" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "google-calendar" });
+
+      const events = await fetchCalendarUpcoming({ accessToken, limit, daysAhead });
+      const agenda = groupAgendaByDay(events, timeZone || undefined);
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_calendar_get_agenda",
+        properties: { taskId: String(taskId), daysAhead, results: events.length },
+      });
+
+      return {
+        ok: true,
+        result: { daysAhead, agenda, eventCount: events.length },
+        summary: `Built agenda for ${Object.keys(agenda).length} day(s).`,
+      };
+    }
+
+    if (name === "calendar_find_free_slots") {
+      const daysAhead = clampInt(input?.daysAhead, 7, 1, 21);
+      const minMinutes = clampInt(input?.minMinutes, 30, 15, 240);
+      const maxSlots = clampInt(input?.maxSlots, 8, 1, 30);
+      const timeZone = typeof input?.timeZone === "string" ? input.timeZone.trim() : "";
+      const { accessToken } = await getGoogleAccessToken({ ctx, userId, provider: "google-calendar", toolNameForScopes: "calendar_find_free_slots" });
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "google-calendar" });
+
+      const slots = await findCalendarFreeSlots({
+        accessToken,
+        daysAhead,
+        minMinutes,
+        maxSlots,
+      });
+
+      const mapped = slots.map((s) => ({
+        start: s.start,
+        end: s.end,
+        minutes: s.minutes,
+        localStart: formatDateTimeForDisplay(s.start, timeZone || undefined),
+        localEnd: formatDateTimeForDisplay(s.end, timeZone || undefined),
+      }));
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_calendar_find_free_slots",
+        properties: { taskId: String(taskId), daysAhead, minMinutes, results: mapped.length },
+      });
+
+      return {
+        ok: true,
+        result: { daysAhead, minMinutes, slots: mapped },
+        summary: `Found ${mapped.length} free slot(s).`,
       };
     }
 
@@ -1659,6 +1745,213 @@ export async function executeTool(args: {
       },
     });
     return { ok: false, error: message };
+  }
+}
+
+async function fetchGmailMessageSummaries(args: {
+  accessToken: string;
+  q: string;
+  limit: number;
+}): Promise<Array<{
+  id: string;
+  threadId: string;
+  subject: string;
+  from: string;
+  date: string;
+  snippet: string;
+}>> {
+  const params = new URLSearchParams();
+  params.set("maxResults", String(args.limit));
+  if (args.q) params.set("q", args.q);
+
+  const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${args.accessToken}` },
+  });
+  if (!listRes.ok) {
+    const text = await listRes.text();
+    throw new Error(`Gmail list failed (${listRes.status}): ${truncate(text, 400)}`);
+  }
+
+  const listData = (await listRes.json()) as any;
+  const msgs = Array.isArray(listData?.messages) ? listData.messages : [];
+  const ids = msgs.map((m: any) => String(m?.id ?? "")).filter(Boolean).slice(0, args.limit);
+
+  const out = await Promise.all(ids.map(async (id: string) => {
+    const metaRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
+      headers: { Authorization: `Bearer ${args.accessToken}` },
+    });
+    if (!metaRes.ok) return null;
+    const meta = (await metaRes.json()) as any;
+    const headers = Array.isArray(meta?.payload?.headers) ? meta.payload.headers : [];
+    const getH = (name: string) => String(headers.find((h: any) => String(h?.name ?? "").toLowerCase() === name.toLowerCase())?.value ?? "");
+    return {
+      id: String(meta?.id ?? id),
+      threadId: String(meta?.threadId ?? ""),
+      subject: truncate(getH("Subject"), 180),
+      from: truncate(getH("From"), 220),
+      date: truncate(getH("Date"), 120),
+      snippet: truncate(String(meta?.snippet ?? ""), 280),
+    };
+  }));
+
+  return out.filter(Boolean) as Array<{
+    id: string;
+    threadId: string;
+    subject: string;
+    from: string;
+    date: string;
+    snippet: string;
+  }>;
+}
+
+async function fetchCalendarUpcoming(args: {
+  accessToken: string;
+  limit: number;
+  daysAhead: number;
+}): Promise<Array<{
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+  location: string;
+  htmlLink: string;
+}>> {
+  const now = new Date();
+  const timeMin = now.toISOString();
+  const timeMax = new Date(Date.now() + args.daysAhead * 24 * 60 * 60 * 1000).toISOString();
+  const params = new URLSearchParams({
+    timeMin,
+    timeMax,
+    maxResults: String(args.limit),
+    singleEvents: "true",
+    orderBy: "startTime",
+  });
+
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${args.accessToken}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Calendar list failed (${res.status}): ${truncate(text, 400)}`);
+  }
+
+  const data = (await res.json()) as any;
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items.slice(0, args.limit).map((it: any) => ({
+    id: String(it?.id ?? ""),
+    summary: truncate(String(it?.summary ?? "(no title)"), 200),
+    start: String(it?.start?.dateTime ?? it?.start?.date ?? ""),
+    end: String(it?.end?.dateTime ?? it?.end?.date ?? ""),
+    location: truncate(String(it?.location ?? ""), 220),
+    htmlLink: String(it?.htmlLink ?? ""),
+  }));
+}
+
+function groupAgendaByDay(
+  events: Array<{ start: string; end: string; summary: string; location: string; htmlLink: string; id: string }>,
+  timeZone?: string
+): Record<string, Array<{ id: string; summary: string; start: string; end: string; location: string; htmlLink: string }>> {
+  const out: Record<string, Array<{ id: string; summary: string; start: string; end: string; location: string; htmlLink: string }>> = {};
+  for (const event of events) {
+    const key = dayKey(event.start, timeZone);
+    if (!out[key]) out[key] = [];
+    out[key].push({
+      id: event.id,
+      summary: event.summary,
+      start: event.start,
+      end: event.end,
+      location: event.location,
+      htmlLink: event.htmlLink,
+    });
+  }
+  return out;
+}
+
+async function findCalendarFreeSlots(args: {
+  accessToken: string;
+  daysAhead: number;
+  minMinutes: number;
+  maxSlots: number;
+}): Promise<Array<{ start: string; end: string; minutes: number }>> {
+  const now = new Date();
+  const timeMin = now.toISOString();
+  const timeMax = new Date(Date.now() + args.daysAhead * 24 * 60 * 60 * 1000).toISOString();
+
+  const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      timeMin,
+      timeMax,
+      items: [{ id: "primary" }],
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Calendar freeBusy failed (${res.status}): ${truncate(text, 400)}`);
+  }
+
+  const data = (await res.json()) as any;
+  const busy = Array.isArray(data?.calendars?.primary?.busy) ? data.calendars.primary.busy : [];
+  const busyRanges = busy
+    .map((b: any) => ({ start: new Date(String(b?.start ?? "")), end: new Date(String(b?.end ?? "")) }))
+    .filter((b: any) => Number.isFinite(b.start.getTime()) && Number.isFinite(b.end.getTime()))
+    .sort((a: any, b: any) => a.start.getTime() - b.start.getTime());
+
+  const slots: Array<{ start: string; end: string; minutes: number }> = [];
+  let cursor = new Date(timeMin);
+  const endBoundary = new Date(timeMax);
+
+  for (const range of busyRanges) {
+    if (cursor < range.start) {
+      const mins = Math.floor((range.start.getTime() - cursor.getTime()) / 60000);
+      if (mins >= args.minMinutes) {
+        slots.push({ start: cursor.toISOString(), end: range.start.toISOString(), minutes: mins });
+        if (slots.length >= args.maxSlots) return slots;
+      }
+    }
+    if (cursor < range.end) cursor = new Date(range.end);
+  }
+
+  if (cursor < endBoundary) {
+    const mins = Math.floor((endBoundary.getTime() - cursor.getTime()) / 60000);
+    if (mins >= args.minMinutes) {
+      slots.push({ start: cursor.toISOString(), end: endBoundary.toISOString(), minutes: mins });
+    }
+  }
+
+  return slots.slice(0, args.maxSlots);
+}
+
+function dayKey(isoLike: string, timeZone?: string): string {
+  const d = new Date(isoLike);
+  if (!Number.isFinite(d.getTime())) return String(isoLike).slice(0, 10) || "unknown";
+  if (timeZone) {
+    try {
+      return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+    } catch {
+      // fallback below
+    }
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDateTimeForDisplay(isoLike: string, timeZone?: string): string {
+  const d = new Date(isoLike);
+  if (!Number.isFinite(d.getTime())) return isoLike;
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return d.toISOString();
   }
 }
 

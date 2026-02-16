@@ -985,6 +985,7 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "gmail_list_recent", desc: "Lists recent email headers (read-only)." },
+                      { name: "gmail_search_messages", desc: "Searches Gmail by query (read-only)." },
                       ...(hasGmailWrite ? [
                         { name: "gmail_create_draft", desc: "Creates a draft email (no send)." },
                         { name: "gmail_send_email", desc: "Sends an email (requires approval)." },
@@ -1067,6 +1068,8 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "calendar_list_upcoming", desc: "Lists upcoming events (read-only)." },
+                      { name: "calendar_get_agenda", desc: "Builds a day-by-day agenda (read-only)." },
+                      { name: "calendar_find_free_slots", desc: "Finds free time slots (read-only)." },
                       ...(hasCalendarWrite ? [
                         { name: "calendar_create_event", desc: "Creates an event (requires approval)." },
                       ] : []),
