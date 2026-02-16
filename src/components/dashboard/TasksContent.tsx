@@ -81,6 +81,41 @@ function relativeTime(ts: number): string {
   return `${days}d ago`;
 }
 
+function toolToSourceLabel(toolName: string): string {
+  switch (toolName) {
+    case "read_soul_file":
+      return "Soul file";
+    case "list_tasks":
+      return "Tasks";
+    case "list_income_streams":
+      return "Income";
+    case "list_ideas":
+      return "Ideas";
+    case "list_mentorship_sessions":
+      return "Mentorship";
+    case "search_insights":
+      return "Saved insights";
+    case "read_url":
+      return "Web page";
+    case "web_search":
+      return "Web search";
+    default:
+      return toolName.replaceAll("_", " ");
+  }
+}
+
+function extractSourceHost(toolName: string, toolInput: string): string | null {
+  if (toolName !== "read_url" || !toolInput) return null;
+  try {
+    const parsed = JSON.parse(toolInput) as { url?: unknown };
+    if (typeof parsed?.url !== "string") return null;
+    const host = new URL(parsed.url).hostname;
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
 export function TasksContent() {
   const tasks = useQuery(api.tasks.list);
   const createTask = useMutation(api.tasks.create);
@@ -135,6 +170,30 @@ export function TasksContent() {
     api.agentFiles.listByTask,
     selectedId ? { taskId: selectedId, limit: 30 } : "skip"
   );
+
+  const sourceChips = useMemo(() => {
+    if (!Array.isArray(events)) return [] as string[];
+    const chips: string[] = [];
+    const seen = new Set<string>();
+    for (const e of events) {
+      if (String(e?.kind || "") !== "tool") continue;
+      const toolName = String(e?.toolName || "").trim();
+      if (!toolName) continue;
+
+      const label = toolToSourceLabel(toolName);
+      if (!seen.has(label)) {
+        seen.add(label);
+        chips.push(label);
+      }
+
+      const host = extractSourceHost(toolName, typeof e?.toolInput === "string" ? e.toolInput : "");
+      if (host && !seen.has(host)) {
+        seen.add(host);
+        chips.push(host);
+      }
+    }
+    return chips.slice(0, 12);
+  }, [events]);
 
   const setTaskIdParam = (taskId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -546,6 +605,18 @@ export function TasksContent() {
                   </button>
                 )}
               </div>
+              {sourceChips.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {sourceChips.map((chip) => (
+                    <span
+                      key={chip}
+                      className="inline-flex items-center rounded-full border border-stone-200 dark:border-stone-800 px-2 py-0.5 text-[10px] font-medium text-stone-600 dark:text-stone-300"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              )}
               {events === undefined ? (
                 <div className="space-y-2 mt-3">
                   <Skeleton className="h-4 w-full" />
