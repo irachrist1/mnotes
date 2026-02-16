@@ -255,6 +255,8 @@ async function runFromTaskState(
     }
   }
 
+  const recentEventContext = await buildRecentEventContext(ctx, args.userId, args.taskId);
+
   // PLAN (run if missing, including after resuming from a planning pause).
   if (planSteps.length === 0) {
     await ctx.runMutation(internal.tasks.patchAgentInternal, {
@@ -383,7 +385,14 @@ async function runFromTaskState(
       id: args.taskId,
       agentProgress: pct,
       agentPhase: `Step ${i + 1}/${total}: ${step}`,
-      agentState: JSON.stringify({ v: 1, stepIndex: i, planSteps, approvedTools, deniedTools } satisfies AgentState),
+      agentState: JSON.stringify({
+        v: 1,
+        stepIndex: i,
+        planSteps,
+        contextSummary,
+        approvedTools,
+        deniedTools,
+      } satisfies AgentState),
     });
 
     await ctx.runMutation(internal.taskEvents.addInternal, {
@@ -399,7 +408,7 @@ async function runFromTaskState(
     await sleep(800);
 
     const existingOutput = (await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }))?.agentResult ?? "";
-    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
+    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Recent Execution Signals\n${recentEventContext || "(none)"}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
 
     const tStep0 = Date.now();
     const stepRun = provider === "anthropic"
@@ -593,7 +602,7 @@ async function runFromTaskState(
   const current = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
   const draft = (current?.agentResult ?? "").trim();
 
-  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Draft Output\n${compactTextForPrompt(draft, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
+  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Context Summary So Far\n${contextSummary || "(none yet)"}\n\n## Recent Execution Signals\n${recentEventContext || "(none)"}\n\n## Draft Output\n${compactTextForPrompt(draft, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
 
   const tFinal0 = Date.now();
   const finalRun = provider === "anthropic"
@@ -687,13 +696,41 @@ async function runFromTaskState(
     return;
   }
 
-  // Progressive final output: replace agentResult with the final markdown in chunks for a more "streaming" feel.
-  await progressiveReplaceAgentResult({
-    ctx,
-    userId: args.userId,
-    taskId: args.taskId,
-    markdown: finalPayload.resultMarkdown.trim(),
-  });
+  let finalMarkdown = finalPayload.resultMarkdown.trim();
+  let streamed = false;
+  if (provider === "openrouter" || provider === "anthropic") {
+    try {
+      const streamPrompt = `${taskBlock}\n\nPolish the markdown deliverable below for clarity while preserving all key details.\nReturn ONLY markdown (no JSON, no code fences).\n\n## Draft Markdown\n${compactTextForPrompt(finalMarkdown, 14000)}`;
+      const streamedMarkdown = await streamFinalMarkdownToTask({
+        ctx,
+        userId: args.userId,
+        taskId: args.taskId,
+        provider,
+        apiKey,
+        model,
+        system: baseSystem,
+        userPrompt: streamPrompt,
+        temperature: 0.15,
+        maxTokens: 2200,
+      });
+      if (streamedMarkdown.trim().length >= 40) {
+        finalMarkdown = streamedMarkdown.trim();
+        streamed = true;
+      }
+    } catch (err) {
+      console.error("[AGENT] Final streaming failed; falling back to chunk patch.", err);
+    }
+  }
+
+  if (!streamed) {
+    // Fallback: replace output in chunks.
+    await progressiveReplaceAgentResult({
+      ctx,
+      userId: args.userId,
+      taskId: args.taskId,
+      markdown: finalMarkdown,
+    });
+  }
 
   await ctx.runMutation(internal.tasks.patchAgentInternal, {
     userId: args.userId,
@@ -734,6 +771,7 @@ async function runFromTaskState(
       planSteps: planSteps.length,
       provider,
       model,
+      streamedFinal: streamed,
     },
   });
 }
@@ -807,6 +845,136 @@ function chunkText(text: string, chunkSize: number, maxChunks: number): string[]
     }
   }
   return out;
+}
+
+async function buildRecentEventContext(ctx: any, userId: string, taskId: any): Promise<string> {
+  const events = await ctx.runQuery(internal.taskEvents.listByTaskInternal, { userId, taskId });
+  const lines = (Array.isArray(events) ? events : [])
+    .slice(-12)
+    .map((e: any) => {
+      const kind = String(e?.kind ?? "");
+      const title = String(e?.title ?? "").trim();
+      const detail = String(e?.detail ?? "").trim();
+      if (kind === "tool") {
+        const toolName = String(e?.toolName ?? "").trim();
+        const out = String(e?.toolOutput ?? "").trim();
+        return toolName ? `tool ${toolName}: ${out || detail || title}` : null;
+      }
+      if (kind === "note" || kind === "status" || kind === "error") {
+        return `${kind}: ${detail || title}`;
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .map(String);
+  return compactTextForPrompt(lines.join("\n"), 1200);
+}
+
+async function streamFinalMarkdownToTask(args: {
+  ctx: any;
+  userId: string;
+  taskId: any;
+  provider: "openrouter" | "anthropic";
+  apiKey: string;
+  model: string;
+  system: string;
+  userPrompt: string;
+  temperature: number;
+  maxTokens: number;
+}): Promise<string> {
+  let acc = "";
+  let lastFlushAt = 0;
+  let lastFlushedLen = 0;
+
+  const flush = async (force = false) => {
+    const now = Date.now();
+    const deltaLen = acc.length - lastFlushedLen;
+    if (!force && deltaLen < 120 && now - lastFlushAt < 140) return;
+    await args.ctx.runMutation(internal.tasks.patchAgentInternal, {
+      userId: args.userId,
+      id: args.taskId,
+      agentResult: acc,
+    });
+    lastFlushAt = now;
+    lastFlushedLen = acc.length;
+  };
+
+  if (args.provider === "openrouter") {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${args.apiKey}`,
+        "HTTP-Referer": "https://mnotes.app",
+        "X-Title": "MNotes Agent Tasks",
+      },
+      body: JSON.stringify({
+        model: args.model || "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: args.system },
+          { role: "user", content: args.userPrompt },
+        ],
+        temperature: args.temperature,
+        max_tokens: args.maxTokens,
+        stream: true,
+      }),
+    });
+    if (!response.ok || !response.body) {
+      const text = await response.text();
+      throw new Error(`OpenRouter stream error (${response.status}): ${text}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const lineRaw of lines) {
+        const line = lineRaw.trim();
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const obj = JSON.parse(payload) as any;
+          const delta = obj?.choices?.[0]?.delta?.content;
+          const token = typeof delta === "string" ? delta : "";
+          if (!token) continue;
+          acc += token;
+          await flush(false);
+        } catch {
+          // Ignore malformed SSE fragments.
+        }
+      }
+    }
+    await flush(true);
+    return acc;
+  }
+
+  const client = new Anthropic({ apiKey: args.apiKey });
+  const stream = (await client.messages.create({
+    model: args.model,
+    system: args.system,
+    max_tokens: args.maxTokens,
+    temperature: args.temperature,
+    stream: true,
+    messages: [{ role: "user", content: args.userPrompt }],
+  })) as any;
+
+  for await (const event of stream) {
+    const type = String(event?.type ?? "");
+    if (type === "content_block_delta" && event?.delta?.type === "text_delta") {
+      const token = String(event?.delta?.text ?? "");
+      if (!token) continue;
+      acc += token;
+      await flush(false);
+    }
+  }
+  await flush(true);
+  return acc;
 }
 
 async function runFallbackCall(args: {

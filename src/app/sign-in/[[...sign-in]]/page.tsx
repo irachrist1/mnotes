@@ -49,6 +49,8 @@ function ConnectedSignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRecoveryHint, setShowRecoveryHint] = useState(false);
   const hasRedirected = useRef(false);
 
   useEffect(() => {
@@ -81,8 +83,11 @@ function ConnectedSignInPage() {
         setError("An account with this email already exists. Try signing in instead.");
       } else if (message.includes("Invalid password")) {
         setError("Password must be at least 8 characters.");
+      } else if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("no account")) {
+        setError("No account found for this email. Try signing up.");
       } else if (message.includes("InvalidSecret") || message.includes("Invalid")) {
         setError("Incorrect password. Please try again.");
+        setShowRecoveryHint(true);
       } else if (flow === "signUp") {
         setError(
           process.env.NODE_ENV === "development"
@@ -213,17 +218,43 @@ function ConnectedSignInPage() {
               <label htmlFor="password" className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 uppercase tracking-wide">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete={flow === "signIn" ? "current-password" : "new-password"}
-                placeholder={flow === "signIn" ? "Enter your password" : "Create a password (8+ characters)"}
-                minLength={8}
-                disabled={submitting || success}
-                className="input-field"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete={flow === "signIn" ? "current-password" : "new-password"}
+                  placeholder={flow === "signIn" ? "Enter your password" : "Create a password (8+ characters)"}
+                  minLength={8}
+                  disabled={submitting || success}
+                  className="input-field pr-20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={submitting || success}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              {flow === "signIn" && (
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryHint((v) => !v)}
+                    className="text-xs text-stone-500 dark:text-stone-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+              {flow === "signIn" && showRecoveryHint && (
+                <div className="mt-2 text-xs text-stone-600 dark:text-stone-400 rounded-md bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.08] p-2.5">
+                  Password reset is not automated yet. If you can’t access your account, contact support and include your sign-in email so we can help recover access.
+                </div>
+              )}
             </div>
             <input name="flow" type="hidden" value={flow} />
 

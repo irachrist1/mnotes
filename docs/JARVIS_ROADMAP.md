@@ -37,10 +37,10 @@ If you're starting work now:
 - Treat `docs/AGENTIC_CORE.md` as the "how it works" doc for the agent loop and prompts.
 
 Remaining roadmap work is mostly polish/expansion:
-- True streaming (token-level) vs pseudo-streaming
 - Deeper activity/timeline UX polish and source chips
 - Additional connector depth (more Gmail/Calendar/GitHub actions beyond current set)
-- Advanced context summarization/compaction beyond current head+tail prompt compaction
+- Full-loop token streaming across all phases/providers (beyond current final-pass streaming on Anthropic/OpenRouter)
+- Advanced context summarization beyond current compaction + continuation summaries
 - P11 landing/auth polish
 
 **Key files to understand before starting:**

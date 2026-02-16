@@ -258,6 +258,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Updated `convex/ai/taskAgent.ts` to compact soul file, output-so-far, and final draft prompt sections.
   - Added tests/coverage updates (`convex/ai/taskAgentParsing.test.ts`, `scripts/run-coretests.js`).
 
+### P2.8.3: Continuation Context Summary + Recent Event Signals
+- **Status:** ✅ Shipped (incremental)
+- **Goal:** Improve continuity across chained runs beyond raw truncation.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added `contextSummary` to agent continuation state (`convex/ai/taskAgentParsing.ts`).
+  - Agent now updates context summary per completed step and reuses it on resume (`convex/ai/taskAgent.ts`).
+  - Added recent event signal extraction from `taskEvents` into step/final prompts (`convex/ai/taskAgent.ts`).
+
 ---
 
 ## P3 — Deep Research Agent UI
@@ -448,6 +457,17 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Step output and final output are now patched into `tasks.agentResult` in small chunks for a streaming feel (`convex/ai/taskAgent.ts`).
 
+### P3.2.1: True Final Streaming (Anthropic/OpenRouter)
+- **Status:** ✅ Shipped (initial)
+- **Goal:** Move from pseudo-streaming to token-level streaming where providers support it.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added provider streaming pass for final markdown output in `convex/ai/taskAgent.ts`:
+    - OpenRouter SSE streaming (`stream: true`)
+    - Anthropic streaming events (`messages.create(... stream: true)`)
+  - Final streamed tokens now patch `tasks.agentResult` progressively in near real-time.
+  - Added fallback to chunked replacement when streaming is unavailable or fails.
+
 ### P9.0: Proactive Suggestions (Approve → Agent Task)
 - **Status:** ✅ Shipped (minimal initial)
 - **Goal:** Jarvis proposes work to run, user approves, and a real agent task is queued.
@@ -509,6 +529,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Expanded ambient status query to return `mode: "working" | "attention"` (`convex/tasks.ts`).
   - Attention mode triggers when latest task is failed or waiting for input/approval.
   - Updated sidebar widget and mobile status pill UI to render red "Needs attention" state (`src/components/layout/Sidebar.tsx`, `src/components/layout/DashboardShell.tsx`).
+
+### P11.2: Auth Flow Polish (Sign-In UX)
+- **Status:** ✅ Shipped (incremental)
+- **Goal:** Improve sign-in usability and failure clarity.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added password show/hide toggle on sign-in form (`src/app/sign-in/[[...sign-in]]/page.tsx`).
+  - Improved error mapping for account-not-found style failures.
+  - Added explicit recovery guidance block via “Forgot password?” helper (until automated reset flow is added).
 
 ### P2.6.1: Agent Files Tools (List/Read/Update)
 - **Status:** Shipped

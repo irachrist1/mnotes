@@ -160,6 +160,14 @@ Long task prompts now use `compactTextForPrompt()` (`convex/ai/taskAgentParsing.
 - "Output so far" and final draft sections use head+tail compaction.
 - This reduces context drift on long runs where the latest sections matter.
 
+### Continuation Context Summary (P2.8 incremental)
+
+The agent now carries an explicit `contextSummary` in `tasks.agentState` and updates it after each step:
+
+- Summary lines are appended per step (`Step N: ...`) then compacted.
+- Resume runs inject both `contextSummary` and `Recent Execution Signals` (derived from recent `taskEvents`) into step/final prompts.
+- This gives better continuity across chained runs without replaying all raw output.
+
 ## Tool System
 
 Tool definitions and implementations live in `convex/ai/agentTools.ts`.
@@ -278,6 +286,10 @@ Includes the task, plan, and draft output and requests JSON:
 ```json
 { "summary": string, "resultMarkdown": string }
 ```
+
+For Anthropic/OpenRouter, final output now includes a true streaming pass:
+- The agent generates structured final JSON first.
+- Then it streams a final markdown polish pass directly into `tasks.agentResult` token-by-token.
 
 ## UI: How Progress Is Rendered
 
