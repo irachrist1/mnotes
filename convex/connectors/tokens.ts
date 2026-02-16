@@ -3,9 +3,9 @@ import { getUserId } from "../lib/auth";
 import { validateApiKey } from "../lib/validate";
 import { internalQuery, internalMutation, query, mutation } from "../_generated/server";
 
-export type ConnectorProvider = "github" | "google-calendar" | "gmail";
+export type ConnectorProvider = "github" | "google-calendar" | "gmail" | "outlook" | "microsoft-teams";
 
-const PROVIDERS: ConnectorProvider[] = ["github", "google-calendar", "gmail"];
+const PROVIDERS: ConnectorProvider[] = ["github", "google-calendar", "gmail", "outlook"];
 
 export const list = query({
   args: {},
@@ -148,6 +148,32 @@ export const listConnectedInternal = internalQuery({
       .withIndex("by_user_updated", (q) => q.eq("userId", args.userId))
       .collect();
     return tokens.map((t) => t.provider);
+  },
+});
+
+/**
+ * Public query: get a token by userId + provider.
+ * Used by MCP servers (ConvexHttpClient) to retrieve OAuth tokens.
+ * The MCP server runs server-side and is trusted — no auth context needed here.
+ */
+export const getByProvider = query({
+  args: {
+    userId: v.string(),
+    provider: v.union(
+      v.literal("github"),
+      v.literal("google-calendar"),
+      v.literal("gmail"),
+      v.literal("outlook"),
+      v.literal("microsoft-teams")
+    ),
+  },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("connectorTokens")
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
   },
 });
 

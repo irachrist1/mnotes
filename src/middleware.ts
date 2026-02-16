@@ -6,7 +6,7 @@ import {
 import { NextResponse } from "next/server";
 
 const isSignInPage = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const hasConvexUrl = Boolean(convexUrl && !convexUrl.includes("placeholder"));
@@ -29,12 +29,10 @@ export default hasConvexUrl
 
 export const config = {
   matcher: [
-    // Scope auth checks to routes that need them.
     "/dashboard/:path*",
-    "/onboarding/:path*",
     "/sign-in/:path*",
     "/sign-up/:path*",
-    // Required by ConvexAuthNextjsServerProvider, which POSTs to /api/auth.
+    // Required by ConvexAuthNextjsServerProvider
     "/api/auth/:path*",
   ],
 };

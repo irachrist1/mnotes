@@ -18,9 +18,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "MNotes — Personal Business Intelligence",
+  title: "Jarvis — Your Personal AI Assistant",
   description:
-    "Track your income streams, ideas, and mentorship sessions. Let AI connect the dots and surface what matters most.",
+    "Jarvis: a powerful AI agent that connects to your Gmail, Calendar, Outlook, and GitHub to help you stay on top of everything.",
 };
 
 export default function RootLayout({
