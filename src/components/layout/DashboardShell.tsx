@@ -237,15 +237,23 @@ export function DashboardShell({
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
-                  Jarvis is working
+                  {agentStatus.mode === "attention" ? "Jarvis needs attention" : "Jarvis is working"}
                 </p>
-                <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
+                <p className={`text-[11px] truncate mt-0.5 ${
+                  agentStatus.mode === "attention"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-stone-600 dark:text-stone-400"
+                }`}>
                   {agentStatus.title}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
-                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
+                <span className={`w-2 h-2 rounded-full ${agentStatus.mode === "attention" ? "bg-red-500" : "bg-blue-500 animate-pulse"}`} aria-hidden="true" />
+                <span className={`text-[11px] font-medium tabular-nums ${
+                  agentStatus.mode === "attention"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-blue-600 dark:text-blue-400"
+                }`}>
                   {Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%
                 </span>
               </div>

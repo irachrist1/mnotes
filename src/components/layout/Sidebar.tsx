@@ -306,6 +306,7 @@ function MobileUserProfile() {
 export function Sidebar() {
   const pathname = usePathname();
   const agentStatus = useQuery(api.tasks.currentAgentStatus);
+  const statusMode = agentStatus?.mode ?? "idle";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [desktopContentVisible, setDesktopContentVisible] = useState(false);
@@ -505,10 +506,15 @@ export function Sidebar() {
                   <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
                     Jarvis
                   </span>
-                  {agentStatus ? (
+                  {statusMode === "working" ? (
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                       Working
+                    </span>
+                  ) : statusMode === "attention" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      Needs attention
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
@@ -522,12 +528,20 @@ export function Sidebar() {
                     <p className="text-[11px] text-stone-600 dark:text-stone-400 truncate">
                       {agentStatus.title}
                     </p>
-                    <p className="text-[10px] text-stone-500 dark:text-stone-500 truncate mt-0.5">
+                    <p className={`text-[10px] truncate mt-0.5 ${
+                      statusMode === "attention"
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-stone-500 dark:text-stone-500"
+                    }`}>
                       {agentStatus.phase}
                     </p>
                     <div className="mt-2 h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-600 dark:bg-blue-400 rounded-full transition-[width] duration-500"
+                        className={`h-full rounded-full transition-[width] duration-500 ${
+                          statusMode === "attention"
+                            ? "bg-red-600 dark:bg-red-400"
+                            : "bg-blue-600 dark:bg-blue-400"
+                        }`}
                         style={{ width: `${Math.max(0, Math.min(100, Math.round(agentStatus.progress ?? 0)))}%` }}
                       />
                     </div>

@@ -286,22 +286,45 @@ export const getInternal = internalQuery({
 /** Current agent status for ambient UI (Sidebar status widget). */
 export const currentAgentStatus = query({
     args: {},
-    handler: async (ctx): Promise<null | { taskId: string; title: string; phase: string; progress: number }> => {
+    handler: async (ctx): Promise<null | {
+        mode: "working" | "attention";
+        taskId: string;
+        title: string;
+        phase: string;
+        progress: number;
+    }> => {
         const userId = await getUserId(ctx);
         // Keep it cheap: scan recent tasks only.
         const recent = await ctx.db
             .query("tasks")
             .withIndex("by_user_created", (q) => q.eq("userId", userId))
             .order("desc")
-            .take(60);
+            .take(80);
 
         const running = recent.find((t) => t.agentStatus === "running" || t.agentStatus === "queued");
-        if (!running) return null;
+        if (running) {
+            return {
+                mode: "working",
+                taskId: String(running._id),
+                title: running.title,
+                phase: running.agentPhase ?? (running.agentStatus === "queued" ? "Queued" : "Working"),
+                progress: typeof running.agentProgress === "number" ? running.agentProgress : 0,
+            };
+        }
+
+        const needsAttention = recent.find((t) => {
+            if (t.agentStatus === "failed") return true;
+            const phase = String(t.agentPhase ?? "").toLowerCase();
+            return phase.includes("waiting for input") || phase.includes("waiting for approval");
+        });
+        if (!needsAttention) return null;
+
         return {
-            taskId: String(running._id),
-            title: running.title,
-            phase: running.agentPhase ?? (running.agentStatus === "queued" ? "Queued" : "Working"),
-            progress: typeof running.agentProgress === "number" ? running.agentProgress : 0,
+            mode: "attention",
+            taskId: String(needsAttention._id),
+            title: needsAttention.title,
+            phase: needsAttention.agentPhase ?? (needsAttention.agentStatus === "failed" ? "Failed" : "Needs attention"),
+            progress: typeof needsAttention.agentProgress === "number" ? needsAttention.agentProgress : 0,
         };
     },
 });

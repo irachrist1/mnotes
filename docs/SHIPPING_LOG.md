@@ -501,6 +501,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added dismiss button and swipe-to-dismiss behavior for the mobile status pill (`src/components/layout/DashboardShell.tsx`).
   - Pill auto-reappears when a different running task becomes active.
 
+### P8.1.1: Ambient "Needs Attention" State
+- **Status:** ✅ Shipped (incremental)
+- **Goal:** Sidebar/mobile status should surface failures and waiting states, not just running tasks.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Expanded ambient status query to return `mode: "working" | "attention"` (`convex/tasks.ts`).
+  - Attention mode triggers when latest task is failed or waiting for input/approval.
+  - Updated sidebar widget and mobile status pill UI to render red "Needs attention" state (`src/components/layout/Sidebar.tsx`, `src/components/layout/DashboardShell.tsx`).
+
 ### P2.6.1: Agent Files Tools (List/Read/Update)
 - **Status:** Shipped
 - **Goal:** Let the agent manage its own created deliverables as first-class objects (not only create).
