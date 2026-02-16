@@ -284,6 +284,34 @@ export function getBuiltInToolDefs(): AgentToolDef[] {
       },
     },
     {
+      name: "github_list_issues",
+      description:
+        "List GitHub issues (optionally filtered to a specific repo). Requires GitHub connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          repo: { type: "string", description: "Optional owner/name repo filter." },
+          state: { type: "string", description: "open | closed | all (default open)." },
+          limit: { type: "number", description: "Max results (default 10)." },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "github_get_repo_activity",
+      description:
+        "Get recent activity events for a GitHub repository. Requires GitHub connection.",
+      input_schema: {
+        type: "object",
+        properties: {
+          repo: { type: "string", description: "Repo in owner/name format." },
+          limit: { type: "number", description: "Max events (default 15)." },
+        },
+        required: ["repo"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "github_create_issue",
       description:
         "Create a GitHub issue in a repo (external side-effect; requires approval). Requires GitHub connection.",
@@ -1327,6 +1355,101 @@ export async function executeTool(args: {
         ok: true,
         result: { repo, title, url: htmlUrl || null, number: typeof data?.number === "number" ? data.number : null },
         summary: htmlUrl ? "Created GitHub issue." : "Created GitHub issue (no URL returned).",
+      };
+    }
+
+    if (name === "github_list_issues") {
+      const token = await getConnectorToken(ctx, userId, "github");
+      if (!token) return { ok: false, error: "GitHub is not connected. Connect in Settings > Connections." };
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "github" });
+
+      const repo = typeof input?.repo === "string" ? input.repo.trim() : "";
+      const limit = clampInt(input?.limit, 10, 1, 30);
+      const stateRaw = typeof input?.state === "string" ? input.state.trim().toLowerCase() : "open";
+      const state = stateRaw === "closed" || stateRaw === "all" ? stateRaw : "open";
+      const queryParts = ["is:issue", `state:${state}`, "sort:updated-desc"];
+      if (repo) queryParts.push(`repo:${repo}`);
+      const query = queryParts.join(" ");
+
+      const params = new URLSearchParams({
+        q: query,
+        per_page: String(limit),
+      });
+      const res = await fetch(`https://api.github.com/search/issues?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `GitHub issue search failed (${res.status}): ${truncate(text, 500)}` };
+      }
+      const data = (await res.json()) as any;
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const simplified = items.slice(0, limit).map((it: any) => ({
+        id: typeof it?.id === "number" ? it.id : undefined,
+        title: truncate(String(it?.title ?? ""), 200),
+        url: String(it?.html_url ?? ""),
+        repo: String(it?.repository_url ?? "").replace("https://api.github.com/repos/", ""),
+        number: typeof it?.number === "number" ? it.number : undefined,
+        state: String(it?.state ?? ""),
+        updatedAt: String(it?.updated_at ?? ""),
+      }));
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_github_list_issues",
+        properties: { taskId: String(taskId), repo: repo || undefined, state, results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { query, issues: simplified },
+        summary: `Returned ${simplified.length} issues.`,
+      };
+    }
+
+    if (name === "github_get_repo_activity") {
+      const token = await getConnectorToken(ctx, userId, "github");
+      if (!token) return { ok: false, error: "GitHub is not connected. Connect in Settings > Connections." };
+      await ctx.runMutation(internal.connectors.tokens.touchInternal, { userId, provider: "github" });
+
+      const repo = typeof input?.repo === "string" ? input.repo.trim() : "";
+      if (!repo) return { ok: false, error: "repo is required" };
+      const limit = clampInt(input?.limit, 15, 1, 50);
+
+      const res = await fetch(`https://api.github.com/repos/${repo}/events?per_page=${limit}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, error: `GitHub repo activity failed (${res.status}): ${truncate(text, 500)}` };
+      }
+      const data = (await res.json()) as any;
+      const items = Array.isArray(data) ? data : [];
+      const simplified = items.slice(0, limit).map((it: any) => ({
+        id: String(it?.id ?? ""),
+        type: String(it?.type ?? ""),
+        actor: String(it?.actor?.login ?? ""),
+        createdAt: String(it?.created_at ?? ""),
+      }));
+
+      void captureEvent({
+        distinctId: userId,
+        event: "agent_github_repo_activity",
+        properties: { taskId: String(taskId), repo, results: simplified.length },
+      });
+
+      return {
+        ok: true,
+        result: { repo, events: simplified },
+        summary: `Returned ${simplified.length} activity events.`,
       };
     }
 

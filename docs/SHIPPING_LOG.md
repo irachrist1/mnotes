@@ -404,6 +404,7 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added `gmail_search_messages` tool (`convex/ai/agentTools.ts`).
   - Added `calendar_get_agenda` and `calendar_find_free_slots` tools (`convex/ai/agentTools.ts`).
+  - Added GitHub read tools: `github_list_issues`, `github_get_repo_activity` (`convex/ai/agentTools.ts`).
   - Added scope mappings for new tools (`convex/connectors/googleScopes.ts`).
   - Updated Settings connector capability list UI (`src/app/dashboard/settings/page.tsx`).
 

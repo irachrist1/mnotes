@@ -906,6 +906,8 @@ export default function SettingsPage() {
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {[
                       { name: "github_list_my_pull_requests", desc: "Lists your open PRs (read-only)." },
+                      { name: "github_list_issues", desc: "Lists issues (read-only)." },
+                      { name: "github_get_repo_activity", desc: "Shows recent repo activity (read-only)." },
                       ...(hasGithubWrite ? [{ name: "github_create_issue", desc: "Creates an issue (requires approval)." }] : []),
                     ].map((t) => (
                       <div key={t.name} className="flex items-start justify-between gap-3">

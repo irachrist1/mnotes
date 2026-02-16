@@ -191,6 +191,8 @@ Shipped tools:
 - `web_search` (public web search, requires approval per task)
 - `read_url` (public URL read, requires approval per task)
 - `github_list_my_pull_requests` (requires GitHub connection)
+- `github_list_issues` (requires GitHub connection)
+- `github_get_repo_activity` (requires GitHub connection)
 - `github_create_issue` (requires GitHub connection + approval)
 - `gmail_list_recent` (requires Gmail connection; read-only)
 - `gmail_search_messages` (requires Gmail connection; read-only)
