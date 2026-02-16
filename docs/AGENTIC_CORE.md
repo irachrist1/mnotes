@@ -152,6 +152,14 @@ To avoid Convex action timeout limits, the agent now yields and resumes automati
 - Resume uses the same `planSteps`, `stepIndex`, and approval maps so the run continues safely without losing context.
 - PostHog captures `agent_task_continuation_scheduled` for observability.
 
+### Prompt Context Compaction (P2.8 partial)
+
+Long task prompts now use `compactTextForPrompt()` (`convex/ai/taskAgentParsing.ts`) to keep context within bounded size while preserving both beginning and latest content:
+
+- Soul excerpt is compacted instead of only taking the first N chars.
+- "Output so far" and final draft sections use head+tail compaction.
+- This reduces context drift on long runs where the latest sections matter.
+
 ## Tool System
 
 Tool definitions and implementations live in `convex/ai/agentTools.ts`.

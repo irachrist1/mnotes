@@ -27,7 +27,14 @@ function run() {
     "googleScopes.js"
   ));
 
-  const { parseAgentState, parseFinalPayload, parsePlan, parseStepPayload, shouldYieldAgentRun } = parsing;
+  const {
+    parseAgentState,
+    parseFinalPayload,
+    parsePlan,
+    parseStepPayload,
+    shouldYieldAgentRun,
+    compactTextForPrompt,
+  } = parsing;
   const { parseTaskOutput, serializeChecklist } = outputFormats;
   const { hasAnyScope, requiredScopesForTool, GOOGLE_SCOPES } = googleScopes;
 
@@ -86,6 +93,11 @@ function run() {
     maxElapsedMs: 10000,
     maxStepsPerRun: 2,
   }), true);
+
+  const compacted = compactTextForPrompt("A".repeat(200) + "B".repeat(200), 220);
+  assert.equal(compacted.includes("[omitted for context]"), true);
+  assert.equal(compacted.startsWith("A"), true);
+  assert.equal(compacted.endsWith("B"), true);
 
   // output formats
   const parsed1 = parseTaskOutput("- [ ] a\n- [x] b\n");

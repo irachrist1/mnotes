@@ -27,6 +27,18 @@ export function shouldYieldAgentRun(args: {
   return elapsedMs >= maxElapsedMs || stepsCompleted >= maxStepsPerRun;
 }
 
+export function compactTextForPrompt(raw: string, maxChars: number): string {
+  const text = String(raw ?? "");
+  const budget = Math.max(200, Math.floor(maxChars));
+  if (text.length <= budget) return text;
+
+  const marker = "\n\n...[omitted for context]...\n\n";
+  const remaining = Math.max(80, budget - marker.length);
+  const head = Math.max(40, Math.floor(remaining * 0.45));
+  const tail = Math.max(40, remaining - head);
+  return `${text.slice(0, head)}${marker}${text.slice(text.length - tail)}`;
+}
+
 function parseJsonCandidate(raw: string): string | null {
   const trimmed = (raw || "").trim();
   const first = trimmed.indexOf("{");

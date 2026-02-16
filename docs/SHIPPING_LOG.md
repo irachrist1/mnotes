@@ -249,6 +249,15 @@ These are the guiding principles for the agent task experience, to be implemente
   - Added PostHog event `agent_task_continuation_scheduled` for runtime observability.
   - Added tested utility `shouldYieldAgentRun()` in `convex/ai/taskAgentParsing.ts` with coverage updates (`convex/ai/taskAgentParsing.test.ts`, `scripts/run-coretests.js`).
 
+### P2.8.2: Prompt Context Compaction (Head+Tail)
+- **Status:** Shipped (initial)
+- **Goal:** Keep long prompt context useful by preserving both early and recent content instead of truncating from the front only.
+- **Shipped:** 2026-02-16
+- **Changes:**
+  - Added `compactTextForPrompt()` utility in `convex/ai/taskAgentParsing.ts`.
+  - Updated `convex/ai/taskAgent.ts` to compact soul file, output-so-far, and final draft prompt sections.
+  - Added tests/coverage updates (`convex/ai/taskAgentParsing.test.ts`, `scripts/run-coretests.js`).
+
 ---
 
 ## P3 — Deep Research Agent UI

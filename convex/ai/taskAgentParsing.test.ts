@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  compactTextForPrompt,
   parseAgentState,
   parseFinalPayload,
   parsePlan,
@@ -77,5 +78,14 @@ describe("taskAgentParsing", () => {
       maxElapsedMs: 10_000,
       maxStepsPerRun: 2,
     })).toBe(true);
+  });
+
+  it("compactTextForPrompt keeps start and end when truncating", () => {
+    const raw = "A".repeat(180) + "B".repeat(180);
+    const compact = compactTextForPrompt(raw, 220);
+    expect(compact.length).toBeLessThanOrEqual(260);
+    expect(compact.includes("[omitted for context]")).toBe(true);
+    expect(compact.startsWith("A")).toBe(true);
+    expect(compact.endsWith("B")).toBe(true);
   });
 });

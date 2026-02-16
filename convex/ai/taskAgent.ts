@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getBuiltInToolDefs, executeTool } from "./agentTools";
 import { callChat, resolveApiKeyFromSettings, type AiProvider } from "./llm";
 import {
+  compactTextForPrompt,
   parseAgentState,
   parseFinalPayload,
   parsePlan,
@@ -153,7 +154,7 @@ async function runFromTaskState(
 
   const baseSystem = buildAgentSystemPrompt();
   const taskBlock = `## Task\nTitle: ${task.title}\nNote: ${task.note ?? "(none)"}`;
-  const soulExcerpt = (soulFile?.content ?? "").slice(0, 7000);
+  const soulExcerpt = compactTextForPrompt(soulFile?.content ?? "", 7000);
 
   let planSteps: string[] = Array.isArray(task.agentPlan) ? task.agentPlan : [];
   let stepIndex = 0;
@@ -388,7 +389,7 @@ async function runFromTaskState(
     await sleep(800);
 
     const existingOutput = (await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId }))?.agentResult ?? "";
-    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${existingOutput.slice(0, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
+    const stepPrompt = `${taskBlock}\n\n## User Profile Excerpt\n${soulExcerpt || "(no profile found)"}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Current Step\n${i + 1}. ${step}\n\n## Output So Far (may be empty)\n${compactTextForPrompt(existingOutput, 6000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Use tools to look up the user's data as needed. If ambiguous, call ask_user. If you are producing a real deliverable (doc/checklist/table), prefer create_file.\n\nReturn ONLY valid JSON: {\n  \"stepSummary\": string,\n  \"stepOutputMarkdown\": string\n}`;
 
     const tStep0 = Date.now();
     const stepRun = provider === "anthropic"
@@ -571,7 +572,7 @@ async function runFromTaskState(
   const current = await ctx.runQuery(internal.tasks.getInternal, { id: args.taskId, userId: args.userId });
   const draft = (current?.agentResult ?? "").trim();
 
-  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${draft.slice(0, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
+  const finalPrompt = `${taskBlock}\n\n## Plan\n${planSteps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}\n\n## Draft Output\n${compactTextForPrompt(draft, 12000) || "(none)"}\n\n${resumeClarification ? `${resumeClarification}\n\n` : ""}Return ONLY valid JSON with this shape:\n{\n  \"summary\": string,\n  \"resultMarkdown\": string\n}\nRules: resultMarkdown must be immediately usable, with checklists/tables when helpful. If you created agent files, include a short \"Files created\" section listing file titles and what each contains (do not paste the full file content).`;
 
   const tFinal0 = Date.now();
   const finalRun = provider === "anthropic"
