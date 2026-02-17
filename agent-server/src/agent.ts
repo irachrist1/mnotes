@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { GoogleGenAI, type Chat } from "@google/genai";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import type { AgentConfig, ChatRequest, SSEEvent } from "./types.js";
@@ -21,6 +22,14 @@ const CONNECTOR_SERVER_NAMES: Record<string, string> = {
   github: "github",
 };
 
+const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_SESSION_TTL_MS = 30 * 60 * 1000;
+const GEMINI_MAX_SESSIONS = 200;
+const geminiChats = new Map<
+  string,
+  { chat: Chat; model: string; apiKey: string; updatedAt: number }
+>();
+
 /**
  * Run the agent for one user message, streaming SSE events.
  */
@@ -34,7 +43,104 @@ export async function runAgent(
   Object.assign(process.env, getAgentEnv(config));
 
   const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
+  if (config.mode === "gemini") {
+    return runGeminiFallback(req, config, systemPrompt, onEvent);
+  }
 
+  try {
+    return await runClaudeAgent(req, config, connectors, systemPrompt, onEvent);
+  } catch (error) {
+    if (!shouldFallbackToGemini(config, error)) {
+      throw error;
+    }
+
+    const fallbackModel = process.env.GOOGLE_MODEL ?? process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
+    return runGeminiFallback(
+      req,
+      {
+        mode: "gemini",
+        model: fallbackModel,
+        googleApiKey: config.googleApiKey,
+      },
+      systemPrompt,
+      onEvent
+    );
+  }
+}
+
+async function runGeminiFallback(
+  req: ChatRequest,
+  config: AgentConfig,
+  systemPrompt: string,
+  onEvent: (event: SSEEvent) => void
+): Promise<{ sessionId: string; response: string }> {
+  if (!config.googleApiKey) {
+    throw new Error("Google Gemini selected, but GOOGLE_AI_KEY is missing.");
+  }
+
+  const sessionId =
+    req.sessionId ??
+    `gemini-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const sessionKey = `${req.userId}:${sessionId}`;
+
+  onEvent({
+    type: "session_init",
+    sessionId,
+    model: config.model,
+  });
+
+  pruneGeminiChats();
+
+  let chatSession = geminiChats.get(sessionKey);
+  if (
+    !chatSession ||
+    chatSession.model !== config.model ||
+    chatSession.apiKey !== config.googleApiKey
+  ) {
+    const client = new GoogleGenAI({ apiKey: config.googleApiKey });
+    const chat = client.chats.create({
+      model: config.model,
+      config: {
+        systemInstruction: systemPrompt,
+      },
+    });
+    chatSession = {
+      chat,
+      model: config.model,
+      apiKey: config.googleApiKey,
+      updatedAt: Date.now(),
+    };
+    geminiChats.set(sessionKey, chatSession);
+  } else {
+    chatSession.updatedAt = Date.now();
+  }
+
+  let responseText = "";
+  const stream = await chatSession.chat.sendMessageStream({ message: req.message });
+  for await (const chunk of stream) {
+    const chunkText = chunk.text ?? "";
+    if (!chunkText) continue;
+    // Handle both delta and cumulative chunk shapes defensively.
+    const delta = chunkText.startsWith(responseText)
+      ? chunkText.slice(responseText.length)
+      : chunkText;
+    if (!delta) continue;
+    responseText += delta;
+    onEvent({ type: "text", content: delta });
+  }
+
+  onEvent({ type: "done", content: responseText });
+
+  return { sessionId, response: responseText };
+}
+
+async function runClaudeAgent(
+  req: ChatRequest,
+  config: AgentConfig,
+  connectors: string[],
+  systemPrompt: string,
+  onEvent: (event: SSEEvent) => void
+): Promise<{ sessionId: string; response: string }> {
   // Build MCP servers based on connected integrations
   const mcpServers = buildMcpServers(connectors, req.userId);
 
@@ -55,7 +161,7 @@ export async function runAgent(
     prompt: req.message,
     options: {
       ...(req.sessionId ? { resume: req.sessionId } : {}),
-      model: config.mode !== "gemini" ? config.model : undefined,
+      model: config.model,
       systemPrompt,
       allowedTools,
       mcpServers,
@@ -103,6 +209,14 @@ export async function runAgent(
 
   onEvent({ type: "done", content: finalResponse });
   return { sessionId, response: finalResponse };
+}
+
+function shouldFallbackToGemini(config: AgentConfig, error: unknown): boolean {
+  if (!config.googleApiKey) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return /claude code process exited|no ai auth configured|anthropic|rate limit|billing|overloaded|429|401|403/i.test(
+    message
+  );
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -198,4 +312,23 @@ function extractToolUses(
       const block = b as { name?: string; input?: unknown };
       return { name: block.name ?? "", input: block.input };
     });
+}
+
+function pruneGeminiChats(): void {
+  const now = Date.now();
+  for (const [sessionId, session] of geminiChats) {
+    if (now - session.updatedAt > GEMINI_SESSION_TTL_MS) {
+      geminiChats.delete(sessionId);
+    }
+  }
+
+  if (geminiChats.size <= GEMINI_MAX_SESSIONS) return;
+
+  const oldestFirst = [...geminiChats.entries()].sort(
+    (a, b) => a[1].updatedAt - b[1].updatedAt
+  );
+  const removeCount = geminiChats.size - GEMINI_MAX_SESSIONS;
+  for (let i = 0; i < removeCount; i += 1) {
+    geminiChats.delete(oldestFirst[i][0]);
+  }
 }

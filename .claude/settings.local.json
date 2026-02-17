@@ -19,7 +19,10 @@
       "Bash(CORRECT_UID=\"js794m79x0b9dmtha03fprrg2581171z\")",
       "Bash(npx tsc:*)",
       "Bash(npx next lint)",
-      "WebFetch(domain:intuitionlabs.ai)"
+      "WebFetch(domain:intuitionlabs.ai)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

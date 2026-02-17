@@ -3,6 +3,37 @@ import { homedir } from "os";
 import { join } from "path";
 import type { AgentConfig, AuthMode } from "./types.js";
 
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+
+export interface AuthOverrides {
+  preferredProvider?: "anthropic" | "google" | "openrouter";
+  preferredModel?: string;
+  anthropicApiKey?: string;
+  googleApiKey?: string;
+}
+
+function hasClaudeCredentials(): boolean {
+  const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+  const credentialsPaths = [
+    join(claudeConfigDir, ".credentials.json"),
+    join(claudeConfigDir, "credentials.json"),
+  ];
+  return credentialsPaths.some((path) => existsSync(path));
+}
+
+function normalizeGeminiModel(model: string | undefined): string {
+  if (!model) return process.env.GOOGLE_MODEL ?? process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
+  if (model.startsWith("google/")) return model.slice("google/".length);
+  return model.startsWith("gemini-") ? model : DEFAULT_GEMINI_MODEL;
+}
+
+function normalizeAnthropicModel(model: string | undefined): string {
+  if (!model) return process.env.ANTHROPIC_MODEL ?? DEFAULT_ANTHROPIC_MODEL;
+  if (model.startsWith("anthropic/")) return model.slice("anthropic/".length);
+  return model.startsWith("claude-") ? model : DEFAULT_ANTHROPIC_MODEL;
+}
+
 /**
  * Detect which auth mode to use for the agent, in priority order:
  * 1. ANTHROPIC_API_KEY env var -> API key mode
@@ -10,30 +41,73 @@ import type { AgentConfig, AuthMode } from "./types.js";
  * 3. GOOGLE_AI_KEY env var -> Gemini fallback
  * 4. Throw: no auth configured
  */
-export function detectAuthMode(): AgentConfig {
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  const googleKey = process.env.GOOGLE_AI_KEY;
+export function detectAuthMode(overrides?: AuthOverrides): AgentConfig {
+  const anthropicKey = overrides?.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  const googleKey =
+    overrides?.googleApiKey ??
+    process.env.GOOGLE_AI_KEY ??
+    process.env.GOOGLE_API_KEY ??
+    process.env.GEMINI_API_KEY;
+  const preferredProvider = overrides?.preferredProvider;
+
+  // Respect explicit Google provider selection from user settings.
+  if (preferredProvider === "google") {
+    if (!googleKey) {
+      throw new Error("Google Gemini selected, but no Google AI key was provided.");
+    }
+    return {
+      mode: "gemini",
+      model: normalizeGeminiModel(overrides?.preferredModel),
+      googleApiKey: googleKey,
+    };
+  }
+
+  // Respect explicit Anthropic provider selection from user settings.
+  if (preferredProvider === "anthropic") {
+    if (anthropicKey) {
+      return {
+        mode: "api-key",
+        model: normalizeAnthropicModel(overrides?.preferredModel),
+        anthropicApiKey: anthropicKey,
+        ...(googleKey ? { googleApiKey: googleKey } : {}),
+      };
+    }
+
+    if (hasClaudeCredentials()) {
+      return {
+        mode: "subscription",
+        model: normalizeAnthropicModel(overrides?.preferredModel),
+        ...(googleKey ? { googleApiKey: googleKey } : {}),
+      };
+    }
+
+    if (googleKey) {
+      return {
+        mode: "gemini",
+        model: normalizeGeminiModel(undefined),
+        googleApiKey: googleKey,
+      };
+    }
+
+    throw new Error("Anthropic selected, but no API key or local Claude subscription session was found.");
+  }
 
   // Priority 1: explicit API key
   if (anthropicKey) {
     return {
       mode: "api-key",
-      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5-20250929",
+      model: normalizeAnthropicModel(overrides?.preferredModel),
       anthropicApiKey: anthropicKey,
+      ...(googleKey ? { googleApiKey: googleKey } : {}),
     };
   }
 
-  // Priority 2: Claude Code subscription session.
-  // Newer Claude installs often use .credentials.json; keep credentials.json fallback.
-  const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
-  const credentialsPaths = [
-    join(claudeConfigDir, ".credentials.json"),
-    join(claudeConfigDir, "credentials.json"),
-  ];
-  if (credentialsPaths.some((path) => existsSync(path))) {
+  // Priority 2: Claude Code subscription session
+  if (hasClaudeCredentials()) {
     return {
       mode: "subscription",
-      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5-20250929",
+      model: normalizeAnthropicModel(overrides?.preferredModel),
+      ...(googleKey ? { googleApiKey: googleKey } : {}),
     };
   }
 
@@ -41,7 +115,7 @@ export function detectAuthMode(): AgentConfig {
   if (googleKey) {
     return {
       mode: "gemini",
-      model: process.env.GOOGLE_MODEL ?? "gemini-3-flash-preview",
+      model: normalizeGeminiModel(overrides?.preferredModel),
       googleApiKey: googleKey,
     };
   }
@@ -59,19 +133,31 @@ export function getAgentEnv(config: AgentConfig): Record<string, string> {
   if (config.mode === "api-key" && config.anthropicApiKey) {
     return { ANTHROPIC_API_KEY: config.anthropicApiKey };
   }
+  if (config.mode === "gemini" && config.googleApiKey) {
+    return {
+      GOOGLE_AI_KEY: config.googleApiKey,
+      GOOGLE_API_KEY: config.googleApiKey,
+      GEMINI_API_KEY: config.googleApiKey,
+    };
+  }
   // Subscription mode auto-reads Claude credentials from the Claude config dir.
   return {};
 }
 
 export function getStatusInfo(config: AgentConfig) {
+  const hasGeminiFallback = config.mode !== "gemini" && !!config.googleApiKey;
   return {
     mode: config.mode as AuthMode,
     model: config.model,
     description:
       config.mode === "subscription"
-        ? "Using Claude subscription (local session)"
+        ? hasGeminiFallback
+          ? "Using Claude subscription (local session) with Gemini fallback"
+          : "Using Claude subscription (local session)"
         : config.mode === "api-key"
-          ? "Using Anthropic API key"
+          ? hasGeminiFallback
+            ? "Using Anthropic API key with Gemini fallback"
+            : "Using Anthropic API key"
           : "Using Google Gemini 3 Flash",
   };
 }

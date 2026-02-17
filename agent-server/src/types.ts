@@ -8,6 +8,11 @@ export interface ChatRequest {
   connectors?: string[];
   soulFile?: string; // User's soul file content
   memories?: MemoryEntry[]; // Persistent memories
+  aiProvider?: "anthropic" | "google" | "openrouter";
+  aiModel?: string;
+  anthropicApiKey?: string;
+  googleApiKey?: string;
+  openrouterApiKey?: string;
 }
 
 export interface MemoryEntry {
