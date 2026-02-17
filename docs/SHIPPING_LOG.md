@@ -547,3 +547,53 @@ These are the guiding principles for the agent task experience, to be implemente
 - **Changes:**
   - Added tools: `list_agent_files`, `read_agent_file`, `update_agent_file` (`convex/ai/agentTools.ts`).
   - Added internal list API for agent files (`convex/agentFiles.ts`).
+
+---
+
+## Full Rewrite — Jarvis Agent SDK Architecture
+
+### Jarvis Full Rewrite (Agent SDK Core)
+- **Status:** ✅ Shipped
+- **Goal:** Replace the Convex-native task agent with a proper Anthropic Agent SDK architecture. Jarvis becomes a standalone AI assistant with persistent chat threads, real SSE streaming, tool call visualization, and a dedicated agent server process.
+- **Shipped:** 2026-02-17
+- **Branch:** `feature/jarvis-rewrite`
+- **Changes:**
+  - Deleted all pre-rewrite code: `convex/ai/`, `convex/tasks.ts`, `convex/taskEvents.ts`, `convex/agentFiles.ts`, `convex/proactiveSuggestions.ts`, `convex/memoryEntries.ts`, all old dashboard page components, etc.
+  - New `agent-server/` Express process: runs the Anthropic Agent SDK, streams SSE events (`session_init`, `text`, `tool_start`, `tool_done`, `tool_error`, `done`, `error`)
+  - New `convex/messages.ts`: `chatThreads` + `chatMessages` tables, mutations for thread management and message persistence
+  - New `convex/memory.ts`: three-tier memory system (`persistent`, `archival`, `session`) with full-text search
+  - New `src/app/api/agent/route.ts`: Next.js API proxy — forwards to agent server, relays SSE, injects auth headers
+  - New `src/components/chat/JarvisChat.tsx`: full chat UI with thread management, SSE parsing, streaming tool cards, welcome state
+  - New `src/components/chat/ToolCallCard.tsx`: expandable tool call cards showing input/output
+  - New `src/components/chat/MessageStream.tsx`: lazy markdown renderer for assistant messages
+  - New `src/components/layout/JarvisShell.tsx`: sidebar shell (Chat / Memory / Settings nav)
+  - New `src/app/dashboard/memory/page.tsx`: memory browser with tier tabs and search
+  - New `src/app/dashboard/settings/page.tsx`: agent server URL, API keys, connector management, save
+
+### Schema Backward-Compat Fixes
+- **Status:** ✅ Shipped
+- **Goal:** Allow Convex deployment to succeed with legacy `chatMessages` documents that don't match the new schema.
+- **Shipped:** 2026-02-17
+- **Changes:**
+  - Made `chatMessages.threadId` optional (`v.optional(v.id("chatThreads"))`) to support old messages missing this field
+  - Added optional legacy fields to `chatMessages`: `intent` (`v.optional(v.object({ table, operation, data: v.optional(v.any()) }))`) and `intentStatus` (`v.optional(v.string())`) to match old MNotes AI message shape
+  - Fixed `intent.data` from required `v.any()` to `v.optional(v.any())` after verifying original schema
+
+### UI: System Color Scheme + Blue Accent
+- **Status:** ✅ Shipped
+- **Goal:** Respect OS light/dark preference. Replace amber/yellow accent with premium royal blue. All Jarvis UI pages adaptive.
+- **Shipped:** 2026-02-17
+- **Changes:**
+  - **Color**: Replaced all `amber-*` classes with `blue-600` (primary), `blue-500` (hover), `blue-400` (dark mode text) across all Jarvis components
+  - **Theme**: Added full `dark:` variant coverage to every hardcoded-dark class — components now adapt via `@media (prefers-color-scheme: dark)` (Tailwind `darkMode: "media"` was already set)
+  - Files updated: `JarvisShell.tsx`, `JarvisChat.tsx`, `MessageStream.tsx` (`prose dark:prose-invert`), `ToolCallCard.tsx`, `sign-in/page.tsx`, `settings/page.tsx`, `memory/page.tsx`
+  - Light mode: `bg-white`, `bg-stone-50` cards, `text-stone-800/900` text, `border-stone-200` borders
+  - Dark mode: `bg-stone-950`, `bg-stone-900` cards, `text-stone-100/200` text, `border-stone-800` borders
+  - Sign-in page now renders correctly in both modes (was previously hardcoded dark)
+
+### Docs Cleanup
+- **Status:** ✅ Shipped
+- **Shipped:** 2026-02-17
+- **Changes:**
+  - Removed stale docs unrelated to Jarvis direction: `OPENCLAW_LEARNINGS.md`, `OPENCLAW_VS_MNOTES.md`, `REBRAND_PROMPT.md`, `IMPLEMENTATION_PLAN.md`, `UI_REDESIGN_PLAN.md`, `bugs-feedback-norman.md`, `MIGRATION.md`
+  - Added `docs/AGENT_SDK_NOTES.md`: comprehensive research notes on Agent SDK architecture, skills, memory, cost model, and deployment strategies

@@ -9,7 +9,7 @@ import { ToolCallCard } from "./ToolCallCard";
 import type { SSEEvent } from "../../lib/agentTypes";
 
 interface Message {
-  id: string;
+  _id: string;
   role: "user" | "assistant" | "tool";
   content: string;
   toolName?: string;
@@ -42,7 +42,7 @@ export default function JarvisChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const threads = useQuery(api.messages.listThreads) as Thread[] | undefined;
+  const threads = useQuery(api.messages.listThreads, {}) as Thread[] | undefined;
   const messages = useQuery(
     api.messages.listMessages,
     activeThreadId ? { threadId: activeThreadId as string } : "skip"
@@ -229,10 +229,10 @@ export default function JarvisChat() {
   return (
     <div className="flex flex-col h-full">
       {/* ── Thread header ──────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-stone-800 bg-stone-950">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950">
         <button
           onClick={() => setShowThreads(!showThreads)}
-          className="flex items-center gap-1.5 text-sm text-stone-300 hover:text-stone-100 font-medium min-w-0"
+          className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 font-medium min-w-0"
         >
           <span className="truncate max-w-[180px] sm:max-w-xs">
             {threads?.find((t) => t._id === activeThreadId)?.title ?? "Conversation"}
@@ -243,7 +243,7 @@ export default function JarvisChat() {
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={startNewThread}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors"
+            className="p-1.5 rounded-lg text-stone-400 dark:text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
             title="New conversation"
           >
             <Plus className="w-4 h-4" />
@@ -252,7 +252,7 @@ export default function JarvisChat() {
 
         {/* Thread list dropdown */}
         {showThreads && (
-          <div className="absolute top-14 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 z-30 bg-stone-900 border border-stone-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute top-14 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 z-30 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl overflow-hidden">
             <div className="p-2 space-y-0.5 max-h-72 overflow-y-auto">
               {threads?.length ? (
                 threads.map((thread) => (
@@ -265,19 +265,19 @@ export default function JarvisChat() {
                     className={`
                       w-full text-left px-3 py-2 rounded-lg text-sm transition-colors
                       ${activeThreadId === thread._id
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "text-stone-300 hover:bg-stone-800 hover:text-stone-100"
+                        ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+                        : "text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100"
                       }
                     `}
                   >
                     <div className="truncate font-medium">{thread.title}</div>
-                    <div className="text-xs text-stone-500 mt-0.5">
+                    <div className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
                       {new Date(thread.lastMessageAt).toLocaleDateString()}
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-4 text-sm text-stone-500 text-center">No conversations yet</div>
+                <div className="px-3 py-4 text-sm text-stone-400 dark:text-stone-500 text-center">No conversations yet</div>
               )}
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function JarvisChat() {
         )}
 
         {allMessages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+          <ChatMessage key={msg._id} message={msg} />
         ))}
 
         {/* Streaming state */}
@@ -312,9 +312,9 @@ export default function JarvisChat() {
               <div className="flex gap-3 items-center">
                 <AgentAvatar />
                 <div className="flex items-center gap-1.5 text-stone-400 text-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             )}
@@ -325,8 +325,8 @@ export default function JarvisChat() {
       </div>
 
       {/* ── Input ──────────────────────────────────────── */}
-      <div className="px-4 pb-4 pt-2 border-t border-stone-800 bg-stone-950">
-        <div className="flex items-end gap-2 bg-stone-900 rounded-2xl border border-stone-700 focus-within:border-amber-500/50 transition-colors px-3 py-2">
+      <div className="px-4 pb-4 pt-2 border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950">
+        <div className="flex items-end gap-2 bg-stone-50 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-700 focus-within:border-blue-500/50 transition-colors px-3 py-2">
           <textarea
             ref={textareaRef}
             value={input}
@@ -334,12 +334,12 @@ export default function JarvisChat() {
             onKeyDown={handleKeyDown}
             placeholder="Ask Jarvis anything…"
             rows={1}
-            className="flex-1 bg-transparent text-stone-100 placeholder-stone-500 text-base sm:text-sm resize-none outline-none min-h-[28px] max-h-40 leading-relaxed py-0.5"
+            className="flex-1 bg-transparent text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-base sm:text-sm resize-none outline-none min-h-[28px] max-h-40 leading-relaxed py-0.5"
           />
           {isStreaming ? (
             <button
               onClick={stopStreaming}
-              className="flex-shrink-0 p-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-300 transition-colors mb-0.5"
+              className="flex-shrink-0 p-1.5 rounded-lg bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-600 dark:text-stone-300 transition-colors mb-0.5"
             >
               <Loader2 className="w-4 h-4 animate-spin" />
             </button>
@@ -347,13 +347,13 @@ export default function JarvisChat() {
             <button
               onClick={() => void sendMessage()}
               disabled={!input.trim()}
-              className="flex-shrink-0 p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-500 text-stone-950 transition-colors mb-0.5"
+              className="flex-shrink-0 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-stone-200 dark:disabled:bg-stone-700 disabled:text-stone-400 dark:disabled:text-stone-500 text-white transition-colors mb-0.5"
             >
               <Send className="w-4 h-4" />
             </button>
           )}
         </div>
-        <p className="text-xs text-stone-600 text-center mt-2">
+        <p className="text-xs text-stone-400 dark:text-stone-600 text-center mt-2">
           Shift+Enter for new line · Enter to send
         </p>
       </div>
@@ -378,7 +378,7 @@ function ChatMessage({ message }: { message: Message }) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] sm:max-w-[70%] bg-amber-500 text-stone-950 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="max-w-[85%] sm:max-w-[70%] bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
           {message.content}
         </div>
       </div>
@@ -397,8 +397,8 @@ function ChatMessage({ message }: { message: Message }) {
 
 function AgentAvatar() {
   return (
-    <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-      <span className="text-xs font-bold text-amber-400">J</span>
+    <div className="w-7 h-7 rounded-lg bg-blue-600/15 dark:bg-blue-600/20 border border-blue-600/25 dark:border-blue-600/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">J</span>
     </div>
   );
 }
@@ -413,10 +413,10 @@ function WelcomeState({ onSend }: { onSend: (text: string) => void }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
-        <span className="text-3xl font-bold text-amber-400">J</span>
+      <div className="w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center mb-4">
+        <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">J</span>
       </div>
-      <h2 className="text-xl font-semibold text-stone-200 mb-2">How can I help?</h2>
+      <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-200 mb-2">How can I help?</h2>
       <p className="text-stone-500 text-sm mb-8 max-w-xs">
         I can check your email, calendar, GitHub, and more.
       </p>
@@ -425,7 +425,7 @@ function WelcomeState({ onSend }: { onSend: (text: string) => void }) {
           <button
             key={prompt}
             onClick={() => onSend(prompt)}
-            className="text-left px-3 py-2.5 rounded-xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700 text-sm text-stone-300 transition-colors"
+            className="text-left px-3 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800/60 hover:bg-stone-200 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-sm text-stone-600 dark:text-stone-300 transition-colors"
           >
             {prompt}
           </button>
