@@ -7,9 +7,30 @@ import { buildSseErrorResponse, getUserIdFromToken } from "@/lib/agentRouteUtils
 const AGENT_SERVER_URL = process.env.AGENT_SERVER_URL ?? "http://localhost:3001";
 const AGENT_SERVER_SECRET = process.env.AGENT_SERVER_SECRET ?? "";
 const SUPPORTED_CONNECTORS = new Set(["gmail", "google-calendar", "github"]);
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_GOOGLE_MODEL = "gemini-3-flash-preview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function normalizeModelForProvider(
+  provider: "anthropic" | "google" | "openrouter",
+  model: string | undefined
+): string {
+  if (provider === "google") {
+    if (!model) return DEFAULT_GOOGLE_MODEL;
+    if (model.startsWith("google/")) return model.slice("google/".length);
+    return model.startsWith("gemini-") ? model : DEFAULT_GOOGLE_MODEL;
+  }
+
+  if (provider === "anthropic") {
+    if (!model) return DEFAULT_ANTHROPIC_MODEL;
+    if (model.startsWith("anthropic/")) return model.slice("anthropic/".length);
+    return model.startsWith("claude-") ? model : DEFAULT_ANTHROPIC_MODEL;
+  }
+
+  return model ?? "google/gemini-3-flash-preview";
+}
 
 /**
  * POST /api/agent
@@ -30,6 +51,8 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let resolvedAgentServerUrl = AGENT_SERVER_URL;
+
   try {
     const body = (await req.json()) as {
       threadId: string;
@@ -49,7 +72,10 @@ export async function POST(req: NextRequest) {
       .map((c) => c.provider);
 
     const agentServerUrl = userSettings?.agentServerUrl ?? AGENT_SERVER_URL;
+    resolvedAgentServerUrl = agentServerUrl;
     const agentServerSecret = userSettings?.agentServerSecret ?? AGENT_SERVER_SECRET;
+    const aiProvider = userSettings?.aiProvider ?? "anthropic";
+    const aiModel = normalizeModelForProvider(aiProvider, userSettings?.aiModel);
 
     const agentRes = await fetch(`${agentServerUrl}/api/chat`, {
       method: "POST",
@@ -70,6 +96,11 @@ export async function POST(req: NextRequest) {
           content: memory.content,
           importance: memory.importance,
         })),
+        aiProvider,
+        aiModel,
+        anthropicApiKey: userSettings?.anthropicApiKey,
+        googleApiKey: userSettings?.googleApiKey,
+        openrouterApiKey: userSettings?.openrouterApiKey,
       }),
     });
 
@@ -88,6 +119,11 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown agent proxy error";
+    if (/fetch failed/i.test(message)) {
+      return buildSseErrorResponse(
+        `Agent server error: Could not reach agent server at ${resolvedAgentServerUrl}. Start it with \`npm run agent\`.`
+      );
+    }
     return buildSseErrorResponse(`Agent server error: ${message}`);
   }
 }

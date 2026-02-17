@@ -81,7 +81,12 @@ app.post("/api/chat", requireAuth, async (req, res) => {
   };
 
   try {
-    const config = detectAuthMode();
+    const config = detectAuthMode({
+      preferredProvider: body.aiProvider,
+      preferredModel: body.aiModel,
+      anthropicApiKey: body.anthropicApiKey,
+      googleApiKey: body.googleApiKey,
+    });
 
     // Determine which connectors this user has (passed from Next.js)
     const connectors: string[] = Array.isArray(body.connectors)
