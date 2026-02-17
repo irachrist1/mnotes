@@ -7,6 +7,7 @@ import type { ChatRequest, SSEEvent } from "./types.js";
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const AGENT_SERVER_SECRET = process.env.AGENT_SERVER_SECRET;
+const SUPPORTED_CONNECTORS = new Set(["gmail", "google-calendar", "github"]);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ app.post("/api/chat", requireAuth, async (req, res) => {
 
     // Determine which connectors this user has (passed from Next.js)
     const connectors: string[] = Array.isArray(body.connectors)
-      ? (body.connectors as string[])
+      ? (body.connectors as string[]).filter((connector) => SUPPORTED_CONNECTORS.has(connector))
       : [];
 
     await runAgent(body, config, connectors, sendEvent);

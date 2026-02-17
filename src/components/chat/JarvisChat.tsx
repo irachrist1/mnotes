@@ -26,6 +26,11 @@ interface Thread {
   lastMessageAt: number;
 }
 
+function shouldNotifyUrgent(text: string): boolean {
+  if (!text) return false;
+  return /(urgent|asap|action required|immediately|critical)/i.test(text);
+}
+
 export default function JarvisChat() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -182,6 +187,18 @@ export default function JarvisChat() {
 
             case "done":
               finalResponse = event.content || finalResponse;
+              if (
+                typeof window !== "undefined" &&
+                document.visibilityState !== "visible" &&
+                localStorage.getItem("jarvis:web-notifications-enabled") === "true" &&
+                "Notification" in window &&
+                Notification.permission === "granted" &&
+                shouldNotifyUrgent(finalResponse)
+              ) {
+                new Notification("Jarvis: Urgent update", {
+                  body: finalResponse.slice(0, 180),
+                });
+              }
               break;
 
             case "error":

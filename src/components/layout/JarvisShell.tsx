@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeft, X, MessageSquare, Brain, Settings, Zap } from "lucide-react";
+import { Toaster } from "sonner";
 
 // Lazy-load the chat panel (heavy — streaming logic)
 const JarvisChat = dynamic(() => import("@/components/chat/JarvisChat"), {
@@ -24,6 +25,7 @@ export default function JarvisShell({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 overflow-hidden">
+      <Toaster position="top-center" richColors />
       {/* ── Sidebar ────────────────────────────────────── */}
       {/* Mobile overlay */}
       {sidebarOpen && (

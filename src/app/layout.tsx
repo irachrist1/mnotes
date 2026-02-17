@@ -41,7 +41,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="font-sans antialiased">
+      <body suppressHydrationWarning className="font-sans antialiased">
         {hasConvexUrl ? (
           <ConvexAuthNextjsServerProvider storageNamespace="mnotes-auth">
             {inner}

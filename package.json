@@ -5,6 +5,8 @@
   "scripts": {
     "postinstall": "node scripts/patch-vitest-vite-net-use.js",
     "dev": "next dev",
+    "agent": "npm --prefix agent-server run dev",
+    "dev:all": "bash -lc 'npm run agent & npm run dev'",
     "build": "(npx convex codegen || echo 'Convex codegen skipped — using committed types') && next build --webpack",
     "start": "next start",
     "lint": "next lint",
