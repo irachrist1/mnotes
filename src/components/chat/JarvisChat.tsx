@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@convex/api";
+import { api } from "@convex/_generated/api";
 import { Send, Loader2, Plus, ChevronDown } from "lucide-react";
 import { MessageStream } from "./MessageStream";
 import { ToolCallCard } from "./ToolCallCard";

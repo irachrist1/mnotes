@@ -19,11 +19,11 @@ function DisconnectedAuthPage() {
       <div className="w-full max-w-[420px] relative z-10">
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/25">
-              <span className="text-white text-base font-bold">M</span>
+            <div className="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25">
+              <span className="text-stone-950 text-base font-bold">J</span>
             </div>
             <span className="text-2xl font-semibold text-stone-900 dark:text-white tracking-tight">
-              MNotes
+              Jarvis
             </span>
           </div>
         </div>
@@ -125,11 +125,11 @@ function ConnectedSignInPage() {
         {/* Logo */}
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/25">
-              <span className="text-white text-base font-bold">M</span>
+            <div className="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/25">
+              <span className="text-stone-950 text-base font-bold">J</span>
             </div>
             <span className="text-2xl font-semibold text-stone-900 dark:text-white tracking-tight">
-              MNotes
+              Jarvis
             </span>
           </div>
         </div>
@@ -172,8 +172,8 @@ function ConnectedSignInPage() {
             </h1>
             <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
               {flow === "signIn"
-                ? "Sign in to continue to your dashboard."
-                : "Get started tracking your business."}
+                ? "Sign in to continue to Jarvis."
+                : "Create your account to get started."}
             </p>
           </div>
 

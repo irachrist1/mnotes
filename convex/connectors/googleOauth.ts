@@ -2,7 +2,6 @@ import { action, httpAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
-import { captureEvent } from "../lib/posthog";
 // Use Web Crypto API (works in both Convex V8 and Node runtimes)
 function randomHex(bytes: number): string {
   const buf = new Uint8Array(bytes);
@@ -89,12 +88,6 @@ export const start = action({
       expiresAt,
     });
 
-    void captureEvent({
-      distinctId: userId,
-      event: "connector_oauth_started",
-      properties: { provider, scopes, access },
-    });
-
     return {
       authUrl: buildGoogleAuthUrl({ clientId, redirectUri, state, scopes }),
     };
@@ -114,11 +107,6 @@ export const callback = httpAction(async (ctx, request) => {
       : null;
     if (sess) {
       await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: sess._id });
-      void captureEvent({
-        distinctId: sess.userId,
-        event: "connector_oauth_failed",
-        properties: { provider: sess.provider, error },
-      });
       return new Response(buildPostMessageHtml({
         title: "Google connection failed",
         body: error,
@@ -162,11 +150,6 @@ export const callback = httpAction(async (ctx, request) => {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   if (!convexSiteUrl || !clientId || !clientSecret) {
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: session.provider, error: "server_not_configured" },
-    });
     return new Response(buildPostMessageHtml({
       title: "Server not configured",
       body: "Missing Google OAuth env vars. Ask the app owner to configure GOOGLE_OAUTH_CLIENT_ID/SECRET.",
@@ -195,12 +178,6 @@ export const callback = httpAction(async (ctx, request) => {
     const text = await tokenRes.text();
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
 
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: session.provider, error: "token_exchange_failed", status: tokenRes.status },
-    });
-
     return new Response(buildPostMessageHtml({
       title: "Token exchange failed",
       body: text.slice(0, 900),
@@ -220,11 +197,6 @@ export const callback = httpAction(async (ctx, request) => {
 
   if (!accessToken) {
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: session.provider, error: "no_access_token" },
-    });
     return new Response(buildPostMessageHtml({
       title: "Token exchange failed",
       body: "No access token returned.",
@@ -240,7 +212,7 @@ export const callback = httpAction(async (ctx, request) => {
   const now = Date.now();
   await ctx.runMutation(internal.connectors.tokens.setInternal, {
     userId: session.userId,
-    provider: session.provider,
+    provider: session.provider as "gmail" | "google-calendar",
     accessToken,
     refreshToken,
     scopes,
@@ -248,12 +220,6 @@ export const callback = httpAction(async (ctx, request) => {
   });
 
   await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-
-  void captureEvent({
-    distinctId: session.userId,
-    event: "connector_oauth_connected",
-    properties: { provider: session.provider, scopes },
-  });
 
   return new Response(buildPostMessageHtml({
     title: "Connected",

@@ -2,7 +2,6 @@ import { action, httpAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getUserId } from "../lib/auth";
-import { captureEvent } from "../lib/posthog";
 // Use Web Crypto API (works in both Convex V8 and Node runtimes)
 function randomHex(bytes: number): string {
   const buf = new Uint8Array(bytes);
@@ -73,12 +72,6 @@ export const start = action({
       expiresAt,
     });
 
-    void captureEvent({
-      distinctId: userId,
-      event: "connector_oauth_started",
-      properties: { provider: "github", scopes, access },
-    });
-
     return {
       authUrl: buildGithubAuthUrl({ clientId, redirectUri, state, scopes }),
     };
@@ -117,11 +110,6 @@ export const callback = httpAction(async (ctx, request) => {
   if (error) {
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
     const msg = errorDescription ? `${error}: ${errorDescription}` : error;
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: "github", error: msg },
-    });
     return new Response(buildPostMessageHtml({
       title: "GitHub connection failed",
       body: msg,
@@ -135,11 +123,6 @@ export const callback = httpAction(async (ctx, request) => {
 
   if (!code) {
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: "github", error: "missing_code" },
-    });
     return new Response(buildPostMessageHtml({
       title: "GitHub connection failed",
       body: "Missing code in callback.",
@@ -155,11 +138,6 @@ export const callback = httpAction(async (ctx, request) => {
   const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: "github", error: "server_not_configured" },
-    });
     return new Response(buildPostMessageHtml({
       title: "Server not configured",
       body: "Missing GitHub OAuth env vars. Ask the app owner to configure GITHUB_OAUTH_CLIENT_ID/SECRET.",
@@ -187,11 +165,6 @@ export const callback = httpAction(async (ctx, request) => {
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: "github", error: "token_exchange_failed", status: tokenRes.status },
-    });
     return new Response(buildPostMessageHtml({
       title: "Token exchange failed",
       body: text.slice(0, 900),
@@ -210,11 +183,6 @@ export const callback = httpAction(async (ctx, request) => {
 
   if (!accessToken) {
     await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-    void captureEvent({
-      distinctId: session.userId,
-      event: "connector_oauth_failed",
-      properties: { provider: "github", error: "no_access_token" },
-    });
     return new Response(buildPostMessageHtml({
       title: "Token exchange failed",
       body: "No access token returned.",
@@ -233,12 +201,6 @@ export const callback = httpAction(async (ctx, request) => {
     scopes,
   });
   await ctx.runMutation(internal.connectors.authSessions.deleteInternal, { id: session._id });
-
-  void captureEvent({
-    distinctId: session.userId,
-    event: "connector_oauth_connected",
-    properties: { provider: "github", scopes },
-  });
 
   return new Response(buildPostMessageHtml({
     title: "Connected",
