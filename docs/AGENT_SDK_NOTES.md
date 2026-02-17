@@ -1,208 +1,280 @@
-# Agent SDK — Research Notes & Architecture Learnings
+# Jarvis — Agent Handover Brief
 
-Organized from exploratory notes after ~1 week of building a personal AI agent (Luna L1) using the Anthropic Agent SDK. These notes cover what the SDK is, how it differs from other frameworks, architecture decisions, real-world costs, and deployment strategies.
+**Status: Pre-alpha. The UI shell exists. The agent is not functional.**
 
----
-
-## 1. What Changed — Why the Hype Is Justified
-
-AI agents have existed for a while (earlier builds on this stack used a custom agent for daily planning). The shift happened when Anthropic released their **Agent SDK** — a way for developers to build custom agents on top of the same technology that powers Claude Code. Claude Code is currently one of the strongest agents on the market, so this is a meaningful unlock.
-
-The innovation is not one big thing — it is the combination of many small, well-designed details that together make it feel like you have Claude Code's power applied to your own use case.
+Read this document first. Then read `CLAUDE.md`. Then scan the codebase starting from `agent-server/src/`. Then start shipping.
 
 ---
 
-## 2. What an Agent Actually Is
+## What Jarvis Is Supposed to Be
 
-At the core, an agent is three things:
+A personal AI agent — not a productivity dashboard, not a task manager. A conversational agent that lives on web and mobile, is connected to your email, calendar, GitHub, Slack, and anything else you authorize, has persistent memory about who you are and what you care about, and runs proactive tasks on a schedule.
 
-1. **An LLM** (e.g. Claude Sonnet, Opus)
-2. **A set of tools** the LLM can invoke
-3. **A loop** where the agent executes tools, reviews results, and keeps going until it decides the task is complete
+The vision: ask it "anything urgent?" and it actually goes through your Gmail, Slack, calendar, and GitHub, reasons about what's important to *you specifically*, and surfaces what matters. It takes 1–2 minutes because it's doing real work, not a keyword search. It remembers that you prefer short answers, that you're building X, that last time you asked about Y you wanted Z. It gets smarter the more you use it.
 
-The execution loop is literally a `while` loop: call the LLM → it picks a tool → execute it → append the result → loop again. Simple in theory, but there is a lot of boilerplate: conversation history management, tool execution, edge case handling.
-
-Libraries like Vercel's AI SDK abstract the loop. The Agent SDK does too, but with a fundamentally different approach that results in a noticeably better experience.
+The agent runs on your machine (or a cheap VPS) using your Claude Code subscription — not paying per-token. For personal use this is essentially free with a $20/month subscription. The front-end is just a web UI backed by Convex for persistence and real-time sync across devices.
 
 ---
 
-## 3. Vercel AI SDK vs Anthropic Agent SDK
+## Current Reality — What's Actually Built vs What's Broken
 
-They both let you create agents. The path they take is completely different.
+### What exists and roughly works
+- **Convex backend**: `chatThreads`, `chatMessages`, and `memoryEntries` tables are wired up with queries and mutations. Thread management, message persistence, and the three-tier memory schema are in place.
+- **Front-end shell**: `JarvisShell.tsx` (sidebar with Chat/Memory/Settings nav), `JarvisChat.tsx` (chat UI with SSE parsing, thread switcher, tool cards), `MessageStream.tsx` (markdown renderer), `ToolCallCard.tsx` (expandable tool call display), `memory/page.tsx` (memory browser), `settings/page.tsx` (settings form).
+- **Agent server structure**: `agent-server/` is an Express process with auth detection, SSE streaming, and placeholder MCP server stubs for Gmail, Calendar, GitHub, Outlook, and Memory.
+- **Auth detection logic**: `agent-server/src/auth.ts` correctly detects whether to use `ANTHROPIC_API_KEY`, `~/.claude/credentials.json` (subscription), or `GOOGLE_AI_KEY` in priority order.
 
-| Concern | Vercel AI SDK | Anthropic Agent SDK |
-|---|---|---|
-| Conversation history | You maintain the `messages` array | Managed automatically via session ID |
-| Context compaction | You implement it | Automatic (same system Claude Code uses) |
-| Built-in tools | None | Bash, Read, Edit, Grep, Glob, WebSearch, WebFetch |
-| Sub-agents | Manual | First-class, built-in support |
-| Skills / capability system | None | Progressive disclosure via skills folders |
+### What is broken and makes the whole thing unusable right now
 
-The Agent SDK's built-in tools are particularly strong. The hypothesis is that because Claude Code only ships a small number of tools, Anthropic focused intensely on making each one excellent. The web search and web scraping tools in particular are noticeably better than ad-hoc alternatives.
+**1. Agent SDK `query()` never receives the API key.**
+`agent-server/src/agent.ts` has a `getAgentEnv()` function in `auth.ts` that builds the correct env overrides — but it is never called in `agent.ts`. The auth config is detected but the env vars are never applied before `query()` runs. In subscription mode this is irrelevant (reads `~/.claude/credentials.json` automatically), but for API key mode the key is never set. Fix: call `getAgentEnv(config)` and apply those env vars to `process.env` before calling `query()`.
 
----
+**2. The Next.js API proxy sends `userId: "default"` to the agent.**
+`src/app/api/agent/route.ts` hardcodes `userId: "default"`. This means all memory tool calls will read/write to a single shared "default" user in Convex, not the actual logged-in user. The route has a TODO comment about this. Fix: extract the real Convex user ID from the session before proxying the request.
 
-## 4. Conversation & Context Management
+**3. The API proxy sends no soul file or memories to the agent.**
+The `ChatRequest` type expects `soulFile` and `memories[]` — the system prompt is built from these. The Next.js proxy never fetches them from Convex before forwarding to the agent server. So the agent has zero context about the user — no personality, no preferences, no history. Fix: before proxying, fetch the user's soul file and persistent memories from Convex and inject them into the request body.
 
-**Sessions**: The SDK provides a session ID and manages all conversation context internally. You do not pass a messages array yourself. When context gets long, the SDK automatically compacts earlier conversation turns (summarizes them) to preserve token budget — same mechanism Claude Code uses internally. This is a significant benefit for long-running workflows that previously required custom compaction logic.
+**4. The memory MCP server TypeScript source is never compiled.**
+`agent-server/src/agent.ts` references `mcp/memory-server.js` (the compiled output) but the repo only has `mcp/memory.ts` (the TypeScript source). There is no `memory-server.js`. The agent server must be compiled before running, or configured to run TypeScript directly with `tsx`. Check `agent-server/package.json` — if there's no build step, add one.
 
-**Caveat — persistence is your responsibility**: The SDK manages context in-memory within a session. Sessions appear to have a ~30-day lifespan. If you want to render conversation history in a UI, or sync across devices, you must persist messages yourself in a database. Convex was used for this project and worked well for real-time cross-device sync.
+**5. All connector MCP servers (Gmail, Calendar, GitHub, Outlook) are likely stubs.**
+The files exist (`agent-server/src/mcp/gmail.ts`, etc.) but need to be read and verified. They likely need OAuth tokens fetched from Convex before making API calls. Most are probably incomplete.
 
----
+**6. Settings page connector section uses non-functional placeholder UI.**
+The connectors section in `src/app/dashboard/settings/page.tsx` shows emoji icons (📧, 📅, 📨, 🐙) and a "Connect" button that does nothing. The old codebase had working Google OAuth and GitHub OAuth flows in `convex/connectors/`. These need to be wired into the new settings page.
 
-## 5. Tools via MCP
+**7. No way to start the agent server easily.**
+There is no root-level script to run both the Next.js dev server and the agent server together. A developer (or agent) opening this project has no way to know they need to `cd agent-server && npm install && npm run dev` separately in another terminal.
 
-Tools are defined using **Model Context Protocol (MCP)**. Each tool has:
+**8. The `connectors` field is never fetched and passed to the agent.**
+`JarvisChat.tsx` never fetches which integrations the user has connected. So the agent server always receives `connectors: []` and spawns zero MCP servers. Even if Gmail worked, it would never be called.
 
-- `name` — the tool identifier
-- `description` — **critically important**: this is how the agent decides whether to use the tool. Vague descriptions lead to the agent not knowing when to call it. Write descriptions carefully.
-- A Zod schema defining the input shape
-- A handler function that executes when the tool is called
-
-Tools are bundled into an MCP server and passed into the query. On top of custom tools, the SDK provides the same built-in tools as Claude Code: `Bash`, `Read`, `Edit`, `Grep`, `Glob`, `WebSearch`, `WebFetch`. These are added to the `allowedTools` array by name.
-
-The SDK handles the execution loop, tool call parsing, and result injection. You only define the tools and their handlers.
-
----
-
-## 6. Skills — Progressive Disclosure of Capabilities
-
-Skills are a way to give the agent specific, complex capabilities without bloating the system prompt on every request. They are loaded on-demand.
-
-**Key details:**
-
-- Skills are organized as folders in the file system, not code objects
-- Each skill folder contains a `skill.md` file with YAML metadata (name, description) and detailed markdown instructions
-- Skills are **not** passed into the query explicitly — they are auto-discovered at startup
-- The SDK scans the skills folder, reads just the name and description from each `skill.md`, and adds those lightweight descriptions to the system prompt
-- When a user request matches a skill's description, the agent loads the full skill instructions into context at that moment
-
-This is called **progressive disclosure**: only relevant skills are loaded, so you can have dozens of skills without degrading context quality. The agent figures out which skills to load based on descriptions — which makes writing good descriptions essential.
-
-**Common setup mistake**: The `Skill` tool must be explicitly included in the `allowedTools` array, and `settingsSources` + `cwd` must be configured so the SDK knows where to look for the skills folder. Project skills (scoped to one project) and user skills (cross-project) are configured separately here.
+**9. There is no soul file system.**
+The old codebase had `convex/soulFile.ts` for a user-editable profile blob. The new architecture references it in `ChatRequest.soulFile` but there is no Convex function to create or fetch it, and no UI to edit it. The agent will have no persistent identity context until this is added.
 
 ---
 
-## 7. Memory Architecture
+## Priority Order for Shipping
 
-Memory is one of the most interesting architectural problems in personal agents. There is no single right answer, but a three-tier model worked well in practice.
+Ship these in order. Do not start the next item until the previous one is testable end-to-end.
 
-### Three Tiers
+### P0 — Make the agent actually run (nothing else matters until this works)
 
-| Tier | Purpose | Loaded |
-|---|---|---|
-| **Session** | Current conversation context — what's happening right now | Every conversation |
-| **Persistent** | Important facts, preferences, corrections — "Chris builds productivity apps, has a dog named Luna" | Every conversation |
-| **Archival** | Heavy reference material — full documents, past project notes, research — not needed constantly | On demand |
+**P0.1: Research current Agent SDK API before touching any code**
 
-All memories stored in Convex, queryable by the agent via custom tools.
+The Agent SDK is evolving fast. Before changing anything, fetch and read the current documentation:
+- Anthropic Agent SDK: `https://docs.anthropic.com/en/docs/claude-code/sdk`
+- Check the npm package version in `agent-server/package.json` and compare to latest
+- Verify: does `query()` still accept the same `options` shape? Are `allowedTools`, `mcpServers`, `systemPrompt`, `settingSources`, `cwd` still the right field names?
+- Verify: how does subscription auth actually work? Does the SDK read `~/.claude/credentials.json` automatically, or does it need something else?
+- Verify: what does the message stream from `query()` actually look like? The current code checks `message.type === "system"`, `"assistant"`, `"tool_result"` — are these still the right types and subtypes?
 
-### Making the Agent Proactively Maintain Memory
+Do not skip this step. The code may be working against a stale API.
 
-The key insight: don't just process conversation history after the fact. Instead, explicitly instruct the agent to maintain memory as it works.
+**P0.2: Fix API key injection and verify subscription mode**
 
-The system prompt includes instructions like:
-- *Use the memory tools proactively to save critical information without being asked*
-- *Save a memory whenever the user gives you a correction*
+In `agent-server/src/agent.ts`, before the `query()` call:
+1. Import and call `getAgentEnv(config)` from `auth.ts`
+2. Apply the returned env vars to `process.env` (e.g. `Object.assign(process.env, agentEnv)`)
+3. For subscription mode: verify `~/.claude/credentials.json` exists on the local machine (the dev machine running the agent server). If `claude` CLI is installed and logged in, this file should exist. Test by logging in via `claude` CLI and checking the file path.
 
-Combined with a memory skill that defines exactly when to save, this means the agent automatically recognizes and persists important information, corrections, and preferences — without the user explicitly asking it to "remember" things. This is what makes a personal agent feel genuinely personalized vs a generic chatbot.
+**P0.3: Confirm agent server starts and compiles**
 
-### Custom Agent Memory Tools
+Check `agent-server/package.json`. Determine the correct way to start the server:
+- If it uses `tsx` or `ts-node`, verify those are in devDependencies and the start script is correct
+- If it compiles first, run the build and check that `dist/mcp/memory-server.js` exists
+- Fix whichever path is broken
+- Add a `dev` script that runs the server with hot-reload
 
-The agent has direct access to tools for reading, writing, searching, and archiving memories in the Convex database. This is more robust than building a separate post-processing pipeline to extract memories from conversation history.
+Then add a root-level `npm run agent` or update `package.json` to use `concurrently` to start both servers.
+
+**P0.4: Wire real userId through the API proxy**
+
+In `src/app/api/agent/route.ts`:
+1. Import the Convex auth utilities — look at how other Next.js server components in this project access the Convex user ID (check `convex/lib/auth.ts` and any server components using `ConvexAuthNextjsServerProvider`)
+2. Extract the authenticated user's Convex ID
+3. Pass it as `userId` in the agent server request
+4. If unauthenticated, return 401
+
+**P0.5: Send a real message and get a real response**
+
+At this point you should be able to: sign in → type a message → see the agent respond (even without memory, soul file, or connectors). The SSE stream should arrive in the browser and display in the chat UI. Fix anything that prevents this from working.
+
+### P1 — Memory works end to end
+
+**P1.1: Verify and fix memory MCP server**
+
+Read `agent-server/src/mcp/memory.ts` in full. Verify the JSON-RPC over stdin/stdout protocol is correct and complete. The tools should be: `memory_save`, `memory_search`, `memory_list`. Each tool should call Convex using `ConvexHttpClient` with `CONVEX_URL` and `CONVEX_DEPLOY_KEY` from env, scoped to `USER_ID`. Test by running the memory server directly:
+```
+USER_ID=test CONVEX_URL=... CONVEX_DEPLOY_KEY=... node dist/mcp/memory-server.js
+```
+Send it a `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}` request and verify the response.
+
+**P1.2: Soul file — create Convex function + UI**
+
+Add `convex/soulFile.ts` with at minimum:
+- `get` query: returns the user's soul file text (or null if not set)
+- `upsert` mutation: creates or updates the soul file text
+
+Add a "Your profile" section to `src/app/dashboard/memory/page.tsx` with a textarea that lets the user read and edit their soul file. The soul file is a free-text description of who they are, their projects, preferences, and how they want Jarvis to behave.
+
+**P1.3: Inject soul file + persistent memories into agent requests**
+
+In `src/app/api/agent/route.ts`, after resolving userId:
+1. Fetch soul file: `await convex.query(api.soulFile.get, { userId })`
+2. Fetch persistent memories: `await convex.query(api.memory.listByTier, { userId, tier: "persistent", limit: 50 })`
+3. Add both to the request body before forwarding to the agent server
+
+Verify by starting a conversation and asking "what do you know about me?" — the agent should be able to read and reference the soul file.
+
+### P2 — Connectors work end to end
+
+**P2.1: Fix settings page connector icons**
+
+Replace emoji with proper Lucide icons in `src/app/dashboard/settings/page.tsx`:
+- Gmail → `Mail` from lucide-react
+- Google Calendar → `CalendarDays` from lucide-react
+- Outlook → `Mail` (use a label to differentiate)
+- GitHub → `Github` from lucide-react
+
+**P2.2: Wire Google OAuth connect/disconnect**
+
+The OAuth flow exists in `convex/connectors/googleOauth.ts`. Wire it into the new settings page:
+1. "Connect" for Gmail/Calendar opens a popup calling `convex.action(api.connectors.googleOauth.start, { scope: "gmail" | "google-calendar" })`
+2. The popup redirects through Google OAuth and the callback at `/connectors/google/callback` posts back to the opener
+3. On success, the settings page shows "Connected ✓" and a "Disconnect" button
+4. Disconnect calls a mutation that deletes the token from `connectorTokens`
+
+Test end-to-end by connecting Gmail, then asking Jarvis "check my last 5 emails."
+
+**P2.3: Wire GitHub OAuth connect/disconnect**
+
+Same pattern as P2.2 but for `convex/connectors/githubOauth.ts`.
+
+**P2.4: Pass connected connectors to the agent**
+
+In `src/app/api/agent/route.ts`, after resolving userId, fetch which connectors the user has active tokens for. Pass the list of connector IDs (e.g. `["gmail", "github"]`) to the agent server. This enables the agent to spawn the right MCP servers.
+
+**P2.5: Verify and fix connector MCP servers**
+
+Read each of `agent-server/src/mcp/gmail.ts`, `calendar.ts`, `github.ts`. For each one:
+1. Verify it fetches the OAuth token from Convex using `USER_ID`
+2. Makes real API calls (Gmail API, Google Calendar API, GitHub API)
+3. Returns results in the MCP JSON-RPC response format
+4. Handles token expiry / refresh
+
+Start with GitHub (read-only, PAT or OAuth, simpler to test). Then Gmail. Calendar last.
+
+### P3 — Polish
+
+**P3.1: Welcome state personalization**
+
+The welcome state in `JarvisChat.tsx` shows 4 static prompt suggestions. Make them conditional on which connectors are connected. Fetch connected connector IDs in the chat component and only show "Check my Gmail" if Gmail is connected, etc.
+
+**P3.2: Agent server URL from settings**
+
+Currently `src/app/api/agent/route.ts` reads `AGENT_SERVER_URL` from `process.env`. The settings page lets users configure this URL but saves it to Convex. These need to be connected — either read from Convex per-request on the server side, or make the env var the canonical source and document how to change it.
+
+**P3.3: Mobile testing**
+
+Test on a real phone. Common issues to check:
+- Textarea zoom on iOS (need `font-size: 16px` minimum = `text-base`)
+- Thread dropdown overflow with `position: absolute` in a flex container
+- Scroll behavior when keyboard opens
 
 ---
 
-## 8. Cost Reality — The Honest Numbers
+## Architecture Reference
 
-The Agent SDK (and agentic workflows in general) are expensive. Understanding the real costs before building for others is critical.
+```
+Browser (Next.js)
+  └── /dashboard → JarvisChat.tsx
+        ├── Convex hooks: listThreads, listMessages, addUserMessage, addAssistantMessage
+        └── POST /api/agent → Next.js API route (server-side proxy)
+              ├── Resolves userId from Convex session          ← BROKEN: hardcoded "default"
+              ├── Fetches soulFile + persistent memories       ← MISSING
+              ├── Fetches connected connectors                 ← MISSING
+              └── POST agent-server:3001/api/chat → SSE stream
+                    └── agent-server/src/agent.ts
+                          ├── query() from @anthropic-ai/claude-agent-sdk
+                          │     ├── Auth: ANTHROPIC_API_KEY or ~/.claude/credentials.json
+                          │     │         ← BROKEN: env never applied from getAgentEnv()
+                          │     ├── Tools: WebSearch, WebFetch, Skill
+                          │     └── MCP servers (subprocesses):
+                          │           ├── memory-server (always on → Convex)  ← may not compile
+                          │           ├── gmail-server (if connected)          ← likely stub
+                          │           ├── calendar-server (if connected)       ← likely stub
+                          │           ├── github-server (if connected)         ← likely stub
+                          │           └── outlook-server (if connected)        ← likely stub
+                          └── Streams SSE events back through the chain to browser
+```
 
-**Observed costs per message:**
-- Heavy tool-call messages (e.g., "find everything urgent I need to respond to") using Opus 4.6: **$2–3 per query**
-- Normal conversational messages: **$0.07–0.30 per query**
+### Key files to understand first
+| File | What it does |
+|---|---|
+| `agent-server/src/index.ts` | Express server, `/api/chat` and `/api/status` routes |
+| `agent-server/src/agent.ts` | `query()` call, MCP server config, SSE event emission |
+| `agent-server/src/auth.ts` | Detects subscription vs API key vs Gemini |
+| `agent-server/src/mcp/memory.ts` | Memory MCP server (JSON-RPC subprocess) |
+| `src/app/api/agent/route.ts` | Next.js proxy — the main thing to fix in P0 |
+| `src/components/chat/JarvisChat.tsx` | Main chat UI |
+| `convex/messages.ts` | Thread and message CRUD |
+| `convex/memory.ts` | Three-tier memory system |
+| `convex/connectors/googleOauth.ts` | Google OAuth flow (exists, needs UI wiring) |
+| `convex/connectors/githubOauth.ts` | GitHub OAuth flow (exists, needs UI wiring) |
+| `convex/connectors/tokens.ts` | OAuth token storage |
 
-**Estimated personal usage:** $200–400/month at active usage levels.
+### Environment variables
+```bash
+# .env.local (Next.js)
+NEXT_PUBLIC_CONVEX_URL=https://...
+AGENT_SERVER_URL=http://localhost:3001
+AGENT_SERVER_SECRET=                        # optional shared secret
 
-### The Subscription Offset
-
-Anthropic currently allows using your Claude Code subscription to fund Agent SDK token usage. At the time of writing, the $200/month Claude Code plan is estimated to provide the equivalent of ~$2,000 of API tokens — making personal experimentation essentially free. This is only for personal use. If you deploy for other users, you pay API pricing.
-
-### Consumer SaaS Is Not Viable Yet
-
-At $100+ per user per month in API costs, a consumer product would need to charge ~$200/month to operate safely. With ChatGPT and Claude at $20/month (including free tiers), this is not a realistic consumer pricing model right now.
-
-### B2B Use Cases Work
-
-Where the economics make sense:
-- Business workflows with clear ROI per agent run
-- Example: HIPAA compliance audits — $50–100 to generate a first-pass audit report; saves $5,000–10,000 in engineering time
-- Any workflow where the agent run cost is small relative to the value of the output
-
-The pattern: **high-value, low-frequency, clearly scoped business tasks** where a company can calculate concrete savings.
-
-### Cost Will Improve
-
-Non-Anthropic models can be used with the Agent SDK (though it requires some workarounds). Local LLMs are theoretically possible but were not performant enough on current hardware at time of testing. Expect this to improve over the next 1–2 years as models get cheaper and local inference gets faster, which should eventually make consumer use cases viable.
-
----
-
-## 9. Database — Why Convex
-
-Convex was used for all persistence (conversation history, memory entries, user settings, cron jobs).
-
-Key advantages for agentic apps:
-- **Real-time by default** — conversation syncs live across web and mobile without custom WebSocket infrastructure
-- **Infrastructure as code** — schema, functions, and queries are all in the codebase, so the AI coding assistant (Claude Code) fully understands the data layer without needing an MCP connection to a separate database service
-- **Built-in crons** — scheduled jobs live in the same codebase; used here for morning digest workflows (check for critical overnight messages, etc.)
-- **Good log tooling** — debugging Convex functions is significantly easier than spinning up a separate backend service
-
-Crons power the proactive automation layer: every morning the agent summarizes overnight action items and sends them as a push notification.
-
----
-
-## 10. Deployment Strategy
-
-The Agent SDK runs on a machine — it needs somewhere to live to work when your laptop is off. Two approaches were used in practice:
-
-### VPS (Hetzner)
-- Cheap virtual private server running 24/7
-- Claude Code running with Anthropic subscription logged in
-- Handles requests when the local machine is off
-- Limitation: cannot access Mac-only tools (iMessages, local Mac apps)
-
-### Local Machine Toggle
-- UI toggle lets you point the frontend at the local machine instead of the VPS
-- Local machine has access to iMessages, Mac system tools
-- Preferred when available for full capability
-
-Both instances share the same Convex database for conversation history and memory, so state is seamless regardless of which machine is responding.
-
-**Caveat**: Secure, production-grade deployment of Agent SDK apps is still a relatively new problem. Best practices for multi-tenant deployment, auth, isolation, and scaling are still evolving. Worth further research before deploying to others.
+# agent-server/.env
+CONVEX_URL=https://...
+CONVEX_DEPLOY_KEY=...
+ANTHROPIC_API_KEY=                          # OR log in with `claude` CLI
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929  # optional model override
+GOOGLE_AI_KEY=                              # optional Gemini fallback
+NEXT_PUBLIC_APP_URL=http://localhost:3000   # for CORS
+```
 
 ---
 
-## 11. What Was Not Covered (Further Areas to Explore)
+## Research Required Before Coding
 
-The following Agent SDK capabilities were not explored in depth but are worth investigating:
+The Agent SDK evolves frequently. Before touching the agent code, fetch and read:
 
-- **Sub-agents**: Spawning specialized child agents for parallel or delegated work
-- **Computer use**: The agent directly controlling a computer (clicking, typing, navigating UIs)
-- **Streaming**: Token-level streaming from the agent loop to a UI in real time
-- **Advanced memory API**: The SDK has a built-in beta memory command — limited at time of writing but worth monitoring
-- **Model routing**: Strategies for routing simpler queries to cheaper models (Haiku) and complex ones to Opus
+1. **Current Agent SDK docs**: `https://docs.anthropic.com/en/docs/claude-code/sdk`
+   - Verify `query()` options shape: `model`, `systemPrompt`, `allowedTools`, `mcpServers`, `settingSources`, `cwd`, `resume`
+   - Verify subscription auth mechanism
+   - Verify message stream event types and shapes
 
----
+2. **Current MCP specification**: `https://modelcontextprotocol.io/specification`
+   - Verify the JSON-RPC protocol used by the memory MCP server is correct
 
-## 12. Practical Takeaways
+3. **Convex auth in Next.js server context**: `https://docs.convex.dev/auth/nextjs`
+   - How to get the authenticated user's ID from a Next.js API route using `@convex-dev/auth/nextjs`
 
-1. **Write tool and skill descriptions like you write documentation** — they are the agent's decision inputs, not just labels.
-2. **Don't rely on the SDK for persistence** — it manages context, not conversation history. Use a real database.
-3. **Build memory proactively** — instruct the agent to maintain memory as a first-class behavior, not as a post-processing step.
-4. **Budget before you build for others** — run cost projections at realistic usage levels before committing to a consumer pricing model.
-5. **Use Claude Code subscription for personal tools** — dramatically lowers the cost of personal experimentation.
-6. **B2B first** — if you want to monetize agent work today, target business workflows with a clear $/run ROI.
-7. **VPS + local toggle** is a practical deployment pattern for personal agents that need both 24/7 availability and access to local Mac tools.
+Do not assume the existing code is using the current API. Check first.
 
 ---
 
-*Notes captured: 2026-02-17. Agent SDK is evolving rapidly — features and pricing will likely change.*
+## Definition of Done
+
+The product is ready to use daily when:
+1. `npm run dev` (or `npm run dev:all`) starts everything and you can chat in the browser
+2. Jarvis uses the Claude Code subscription from `~/.claude/credentials.json` — no API key needed
+3. Sending a message gets a real AI response with visible streaming
+4. Jarvis remembers things across conversations (soul file + memory tools work)
+5. You can connect GitHub in Settings and ask "summarize my open PRs" and get a real answer
+6. You can connect Gmail in Settings and ask "anything urgent in my email?" and get a real answer
+7. The memory page shows your stored memories and you can search them
+
+Everything else — Outlook, mobile, proactive scheduling, voice, advanced analytics — comes after this baseline is solid.
+
+---
+
+*Last updated: 2026-02-17. Update this doc when a P0/P1/P2 item ships.*
