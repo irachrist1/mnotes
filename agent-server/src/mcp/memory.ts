@@ -6,7 +6,6 @@
  */
 
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api.js";
 
 const CONVEX_URL = process.env.CONVEX_URL ?? "";
 const USER_ID = process.env.USER_ID ?? "";
@@ -17,6 +16,14 @@ const convex = new ConvexHttpClient(CONVEX_URL);
 import { createInterface } from "readline";
 
 const rl = createInterface({ input: process.stdin });
+
+type MemoryRow = {
+  tier: "persistent" | "archival" | "session";
+  category: string;
+  title: string;
+  content: string;
+  importance: number;
+};
 
 function respond(id: unknown, result: unknown) {
   process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result }) + "\n");
@@ -135,7 +142,7 @@ rl.on("line", async (line) => {
 async function handleTool(name: string, args: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case "memory_save": {
-      await convex.mutation(api.memory.save, {
+      await convex.mutation("memory:save" as any, {
         tier: args.tier as "persistent" | "archival" | "session",
         category: String(args.category ?? "fact"),
         title: String(args.title),
@@ -147,11 +154,11 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
     }
 
     case "memory_search": {
-      const results = await convex.query(api.memory.search, {
+      const results = await convex.query("memory:search" as any, {
         query: String(args.query),
         tier: args.tier as "persistent" | "archival" | "session" | undefined,
         limit: 10,
-      });
+      }) as MemoryRow[];
       if (!results.length) return "No memories found for that query.";
       return results
         .map((m) => `[${m.tier}/${m.category}] **${m.title}**: ${m.content}`)
@@ -160,7 +167,7 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
 
     case "memory_list": {
       const tier = (args.tier as "persistent" | "archival" | "session") ?? "persistent";
-      const results = await convex.query(api.memory.listByTier, { tier, limit: 30 });
+      const results = await convex.query("memory:listByTier" as any, { tier, limit: 30 }) as MemoryRow[];
       if (!results.length) return `No ${tier} memories found.`;
       return results
         .map((m) => `• **${m.title}** (${m.category}, importance ${m.importance}): ${m.content}`)

@@ -4,7 +4,6 @@
  */
 
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api.js";
 import { createInterface } from "readline";
 
 const CONVEX_URL = process.env.CONVEX_URL ?? "";
@@ -101,7 +100,7 @@ rl.on("line", async (line) => {
 
 async function getAccessToken(): Promise<string> {
   // First try stored OAuth token
-  const tokens = await convex.query(api.connectors.tokens.getByProvider, {
+  const tokens = await convex.query("connectors/tokens:getByProvider" as any, {
     userId: USER_ID,
     provider: "outlook",
   });

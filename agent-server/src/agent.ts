@@ -3,7 +3,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import type { AgentConfig, ChatRequest, SSEEvent } from "./types.js";
 import { buildSystemPrompt } from "./prompt.js";
-import { createMemoryMcpServer } from "./mcp/memory.js";
+import { getAgentEnv } from "./auth.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, "..", "skills");
@@ -14,15 +14,14 @@ const CORE_TOOLS = [
   "WebFetch",
 ];
 
-// Tools that require explicit allow (side-effect or heavy)
-const OPTIONAL_TOOLS = [
-  "Bash",
-  "Read",
-  "Write",
-  "Edit",
-  "Glob",
-  "Grep",
-];
+const OPTIONAL_LOCAL_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"];
+
+const CONNECTOR_SERVER_NAMES: Record<string, string> = {
+  gmail: "gmail",
+  "google-calendar": "calendar",
+  outlook: "outlook",
+  github: "github",
+};
 
 /**
  * Run the agent for one user message, streaming SSE events.
@@ -39,6 +38,8 @@ export async function runAgent(
   connectors: string[],
   onEvent: (event: SSEEvent) => void
 ): Promise<{ sessionId: string; response: string }> {
+  Object.assign(process.env, getAgentEnv(config));
+
   const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
 
   // Build MCP servers based on connected integrations
@@ -47,8 +48,12 @@ export async function runAgent(
   // Allowed tools list
   const allowedTools = [
     ...CORE_TOOLS,
+    ...OPTIONAL_LOCAL_TOOLS,
     // MCP tool format: "mcp__serverName"
-    ...connectors.map((c) => `mcp__${c}`),
+    ...connectors
+      .map((connector) => CONNECTOR_SERVER_NAMES[connector])
+      .filter((serverName): serverName is string => Boolean(serverName))
+      .map((serverName) => `mcp__${serverName}`),
     // Memory tools (always on)
     "mcp__memory",
     // Skills (auto-discovered from SKILLS_DIR)
@@ -102,23 +107,6 @@ export async function runAgent(
       }
     }
 
-    // Tool results
-    if (message.type === "tool_result") {
-      const m = message as {
-        tool_name?: string;
-        content?: string;
-        is_error?: boolean;
-      };
-      if (m.tool_name) {
-        onEvent({
-          type: m.is_error ? "tool_error" : "tool_done",
-          toolName: m.tool_name,
-          toolOutput: m.content ?? "",
-          ...(m.is_error ? { error: m.content ?? "" } : {}),
-        });
-      }
-    }
-
     // Final result
     if ("result" in message && typeof (message as { result?: string }).result === "string") {
       finalResponse = (message as { result: string }).result;
@@ -140,7 +128,7 @@ function buildMcpServers(
   // Memory MCP server (always on — reads/writes Convex)
   servers["memory"] = {
     command: "node",
-    args: [join(__dirname, "mcp", "memory-server.js")],
+    args: [join(__dirname, "mcp", "memory.js")],
     env: {
       CONVEX_URL: process.env.CONVEX_URL ?? "",
       CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -151,7 +139,7 @@ function buildMcpServers(
   if (connectors.includes("gmail")) {
     servers["gmail"] = {
       command: "node",
-      args: [join(__dirname, "mcp", "gmail-server.js")],
+      args: [join(__dirname, "mcp", "gmail.js")],
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -163,7 +151,7 @@ function buildMcpServers(
   if (connectors.includes("google-calendar")) {
     servers["calendar"] = {
       command: "node",
-      args: [join(__dirname, "mcp", "calendar-server.js")],
+      args: [join(__dirname, "mcp", "calendar.js")],
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -175,7 +163,7 @@ function buildMcpServers(
   if (connectors.includes("outlook")) {
     servers["outlook"] = {
       command: "node",
-      args: [join(__dirname, "mcp", "outlook-server.js")],
+      args: [join(__dirname, "mcp", "outlook.js")],
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -190,7 +178,7 @@ function buildMcpServers(
   if (connectors.includes("github")) {
     servers["github"] = {
       command: "node",
-      args: [join(__dirname, "mcp", "github-server.js")],
+      args: [join(__dirname, "mcp", "github.js")],
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -224,9 +212,4 @@ function extractToolUses(message: unknown): Array<{ name: string; input: unknown
       const block = b as { name?: string; input?: unknown };
       return { name: block.name ?? "", input: block.input };
     });
-}
-
-// Minimal stub for import — actual MCP runs as subprocess
-export function createMemoryMcpServer(_userId: string) {
-  return {};
 }
