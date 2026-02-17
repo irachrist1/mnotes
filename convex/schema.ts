@@ -52,6 +52,15 @@ export default defineSchema({
     threadId: v.optional(v.id("chatThreads")),
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
     content: v.string(),
+    // Legacy compatibility: older chat messages may include intent metadata.
+    intent: v.optional(
+      v.object({
+        table: v.string(),
+        operation: v.string(),
+        data: v.optional(v.any()),
+      })
+    ),
+    intentStatus: v.optional(v.string()),
     // For tool messages: which tool was called and what happened
     toolName: v.optional(v.string()),
     toolInput: v.optional(v.string()),
