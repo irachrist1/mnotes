@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { Settings, Zap, Link2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Settings, Zap, Link2, CheckCircle2, AlertCircle, Eye, EyeOff, Mail, CalendarDays, Github, Bell } from "lucide-react";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -28,15 +28,20 @@ const PROVIDERS = [
 ];
 
 const CONNECTORS = [
-  { id: "gmail", label: "Gmail", icon: "📧", description: "Read, search, draft, and send emails" },
-  { id: "google-calendar", label: "Google Calendar", icon: "📅", description: "View events, find free slots, create meetings" },
-  { id: "outlook", label: "Outlook / Office 365", icon: "📨", description: "Read and send Outlook email + calendar" },
-  { id: "github", label: "GitHub", icon: "🐙", description: "PRs, issues, repo activity" },
-];
+  { id: "gmail", label: "Gmail", icon: Mail, description: "Read, search, draft, reply, and send emails" },
+  { id: "google-calendar", label: "Google Calendar", icon: CalendarDays, description: "View events, find free slots, create meetings" },
+  { id: "github", label: "GitHub", icon: Github, description: "PRs, issues, repo activity and repo automation" },
+] as const;
+
+type SupportedConnectorId = (typeof CONNECTORS)[number]["id"];
 
 export default function SettingsPage() {
   const settings = useQuery(api.settings.get);
+  const connectorStatus = useQuery(api.connectors.tokens.list);
   const upsertSettings = useMutation(api.settings.upsert);
+  const clearToken = useMutation(api.connectors.tokens.clearToken);
+  const startGoogleOauth = useAction(api.connectors.googleOauth.start);
+  const startGithubOauth = useAction(api.connectors.githubOauth.start);
 
   const [provider, setProvider] = useState<"anthropic" | "google" | "openrouter">("anthropic");
   const [anthropicKey, setAnthropicKey] = useState("");
@@ -50,6 +55,11 @@ export default function SettingsPage() {
   } | null>(null);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    setNotificationsEnabled(localStorage.getItem("jarvis:web-notifications-enabled") === "true");
+  }, []);
 
   useEffect(() => {
     if (!settings) return;
@@ -86,6 +96,67 @@ export default function SettingsPage() {
       toast.error("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Browser notifications are not supported.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      toast.error("Notification permission was denied.");
+      return;
+    }
+    localStorage.setItem("jarvis:web-notifications-enabled", "true");
+    setNotificationsEnabled(true);
+    toast.success("Browser notifications enabled");
+  };
+
+  const connectConnector = async (connectorId: SupportedConnectorId) => {
+    try {
+      const origin = window.location.origin;
+      const authUrl = connectorId === "github"
+        ? (await startGithubOauth({ origin, access: "write" })).authUrl
+        : (await startGoogleOauth({ provider: connectorId, origin, access: "write" })).authUrl;
+
+      const popup = window.open(authUrl, "jarvis-connector-auth", "width=560,height=720");
+      if (!popup) {
+        toast.error("Popup blocked. Please allow popups and retry.");
+        return;
+      }
+
+      const onMessage = (event: MessageEvent) => {
+        const data = event.data as { type?: string; provider?: string; error?: string };
+        if (data?.type === "mnotes:connector_connected") {
+          toast.success(`${connectorId} connected`);
+          window.removeEventListener("message", onMessage);
+        }
+        if (data?.type === "mnotes:connector_error") {
+          toast.error(data.error || "Connector auth failed");
+          window.removeEventListener("message", onMessage);
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+      const timer = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(timer);
+          window.removeEventListener("message", onMessage);
+        }
+      }, 500);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to start OAuth flow");
+    }
+  };
+
+  const disconnectConnector = async (connectorId: SupportedConnectorId) => {
+    try {
+      await clearToken({ provider: connectorId });
+      toast.success(`${connectorId} disconnected`);
+    } catch {
+      toast.error("Disconnect failed");
     }
   };
 
@@ -212,20 +283,54 @@ export default function SettingsPage() {
           Integrations
         </h2>
         <div className="space-y-2">
-          {CONNECTORS.map((connector) => (
-            <div key={connector.id} className="flex items-center gap-3 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-3">
-              <span className="text-xl">{connector.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-stone-700 dark:text-stone-300">{connector.label}</div>
-                <div className="text-xs text-stone-500">{connector.description}</div>
+          {CONNECTORS.map((connector) => {
+            const status = connectorStatus?.find((c) => c.provider === connector.id);
+            const Icon = connector.icon;
+            const isConnected = Boolean(status?.connected);
+            return (
+              <div key={connector.id} className="flex items-center gap-3 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-3">
+                <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-stone-700 dark:text-stone-300">{connector.label}</div>
+                  <div className="text-xs text-stone-500">{connector.description}</div>
+                </div>
+                {isConnected ? (
+                  <button
+                    onClick={() => disconnectConnector(connector.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition-colors flex-shrink-0"
+                  >
+                    Connected ✓ (Disconnect)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => connectConnector(connector.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors flex-shrink-0"
+                  >
+                    Connect
+                  </button>
+                )}
               </div>
-              <button className="text-xs px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors flex-shrink-0">
-                Connect
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
-        <p className="text-xs text-stone-400 dark:text-stone-600 mt-2">OAuth connector flows coming soon. GitHub uses a personal access token.</p>
+        <p className="text-xs text-stone-400 dark:text-stone-600 mt-2">Enabled for this phase: Gmail, Google Calendar, and GitHub.</p>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-3 flex items-center gap-2">
+          <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          Notifications
+        </h2>
+        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-3">
+          <p className="text-xs text-stone-500">Enable browser notifications so Jarvis can alert you when urgent items are detected.</p>
+          <button
+            onClick={enableNotifications}
+            disabled={notificationsEnabled}
+            className="text-xs px-3 py-2 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 text-stone-700 dark:text-stone-300 transition-colors"
+          >
+            {notificationsEnabled ? "Notifications enabled ✓" : "Enable browser notifications"}
+          </button>
+        </div>
       </section>
 
       {/* Save */}

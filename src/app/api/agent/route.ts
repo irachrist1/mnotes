@@ -1,7 +1,28 @@
 import { NextRequest } from "next/server";
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "../../../../convex/_generated/api";
+
+function getUserIdFromToken(token: string): string | null {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const decoded = JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as {
+      sub?: string;
+    };
+
+    return decoded.sub?.split("|")[0] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const AGENT_SERVER_URL = process.env.AGENT_SERVER_URL ?? "http://localhost:3001";
 const AGENT_SERVER_SECRET = process.env.AGENT_SERVER_SECRET ?? "";
+const SUPPORTED_CONNECTORS = new Set(["gmail", "google-calendar", "github"]);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,25 +36,55 @@ export const dynamic = "force-dynamic";
  *  3. Work around CORS when the agent server is on a different domain
  */
 export async function POST(req: NextRequest) {
+  const token = await convexAuthNextjsToken();
+  if (!token) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = getUserIdFromToken(token);
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json() as {
     threadId: string;
     message: string;
     sessionId?: string;
-    connectors?: string[];
   };
 
-  // TODO: verify the user's Convex session here for production
-  // const userId = await getConvexUserId(req);
+  const [soulFileDoc, persistentMemories, tokenStatus, userSettings] = await Promise.all([
+    fetchQuery(api.memory.getSoulFile, {}, { token }),
+    fetchQuery(api.memory.listByTier, { tier: "persistent", limit: 50 }, { token }),
+    fetchQuery(api.connectors.tokens.list, {}, { token }),
+    fetchQuery(api.settings.getRaw, { userId }, { token }),
+  ]);
 
-  const agentRes = await fetch(`${AGENT_SERVER_URL}/api/chat`, {
+  const connectors = tokenStatus
+    .filter((c) => c.connected && SUPPORTED_CONNECTORS.has(c.provider))
+    .map((c) => c.provider);
+
+  const agentServerUrl = userSettings?.agentServerUrl ?? AGENT_SERVER_URL;
+  const agentServerSecret = userSettings?.agentServerSecret ?? AGENT_SERVER_SECRET;
+
+  const agentRes = await fetch(`${agentServerUrl}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(AGENT_SERVER_SECRET ? { Authorization: `Bearer ${AGENT_SERVER_SECRET}` } : {}),
+      ...(agentServerSecret ? { Authorization: `Bearer ${agentServerSecret}` } : {}),
     },
     body: JSON.stringify({
       ...body,
-      userId: "default", // Will be replaced with real userId from Convex session
+      userId,
+      connectors,
+      soulFile: soulFileDoc?.content ?? "",
+      memories: persistentMemories.map((memory) => ({
+        id: memory._id,
+        tier: memory.tier,
+        category: memory.category,
+        title: memory.title,
+        content: memory.content,
+        importance: memory.importance,
+      })),
     }),
   });
 

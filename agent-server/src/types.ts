@@ -5,6 +5,7 @@ export interface ChatRequest {
   message: string;
   userId: string;
   sessionId?: string; // Agent SDK session ID for resume
+  connectors?: string[];
   soulFile?: string; // User's soul file content
   memories?: MemoryEntry[]; // Persistent memories
 }
