@@ -34,9 +34,7 @@ export default function RootLayout({
   const inner = (
     <PostHogProvider>
       <ConvexClientProvider>
-        <div className="min-h-screen bg-stone-950">
-          {children}
-        </div>
+        {children}
       </ConvexClientProvider>
     </PostHogProvider>
   );

@@ -107,7 +107,7 @@ function AgentStatusPill() {
   return (
     <div className="px-3 py-3 border-t border-stone-800">
       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-stone-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
         Agent ready
       </div>
     </div>

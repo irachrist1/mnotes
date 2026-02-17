@@ -49,7 +49,7 @@ export default defineSchema({
   // ─── Chat Messages ────────────────────────────────────────────────────────
   chatMessages: defineTable({
     userId: v.string(),
-    threadId: v.id("chatThreads"),
+    threadId: v.optional(v.id("chatThreads")),
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
     content: v.string(),
     // For tool messages: which tool was called and what happened

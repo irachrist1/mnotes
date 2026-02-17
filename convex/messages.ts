@@ -36,7 +36,7 @@ export const listMessages = query({
     if (!thread || thread.userId !== userId) return [];
     return ctx.db
       .query("chatMessages")
-      .withIndex("by_thread_created", (q) => q.eq("threadId", threadId))
+      .withIndex("by_thread_created", (q) => q.eq("threadId", threadId as any))
       .order("asc")
       .take(limit);
   },
@@ -95,7 +95,7 @@ export const deleteThread = mutation({
     // Delete all messages first
     const messages = await ctx.db
       .query("chatMessages")
-      .withIndex("by_thread_created", (q) => q.eq("threadId", threadId))
+      .withIndex("by_thread_created", (q) => q.eq("threadId", threadId as any))
       .collect();
     for (const msg of messages) await ctx.db.delete(msg._id);
     await ctx.db.delete(threadId);
