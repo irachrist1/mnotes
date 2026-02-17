@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { getUserId } from "./lib/auth";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -123,6 +123,72 @@ export const clearSessionMemories = mutation({
     for (const entry of sessionEntries) {
       await ctx.db.delete(entry._id);
     }
+  },
+});
+
+// ─── Server-side functions (for MCP servers via ConvexHttpClient) ─────────────
+
+export const saveByUserId = mutation({
+  args: {
+    userId: v.string(),
+    tier: v.union(v.literal("persistent"), v.literal("archival"), v.literal("session")),
+    category: v.string(),
+    title: v.string(),
+    content: v.string(),
+    importance: v.optional(v.number()),
+    source: v.optional(v.union(v.literal("user"), v.literal("agent"))),
+  },
+  handler: async (ctx, { userId, tier, category, title, content, importance = 5, source = "agent" }) => {
+    const now = Date.now();
+    return ctx.db.insert("memoryEntries", {
+      userId,
+      tier,
+      category,
+      title,
+      content,
+      importance,
+      source,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const searchByUserId = query({
+  args: {
+    userId: v.string(),
+    query: v.string(),
+    tier: v.optional(v.union(v.literal("persistent"), v.literal("archival"), v.literal("session"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, query: searchQuery, tier, limit = 20 }) => {
+    return ctx.db
+      .query("memoryEntries")
+      .withSearchIndex("search_content", (q) => {
+        let s = q.search("content", searchQuery).eq("userId", userId).eq("archived", false);
+        if (tier) s = s.eq("tier", tier);
+        return s;
+      })
+      .take(limit);
+  },
+});
+
+export const listByTierByUserId = query({
+  args: {
+    userId: v.string(),
+    tier: v.union(v.literal("persistent"), v.literal("archival"), v.literal("session")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, tier, limit = 50 }) => {
+    return ctx.db
+      .query("memoryEntries")
+      .withIndex("by_user_tier_updated", (q) =>
+        q.eq("userId", userId).eq("tier", tier)
+      )
+      .order("desc")
+      .filter((q) => q.eq(q.field("archived"), false))
+      .take(limit);
   },
 });
 

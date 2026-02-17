@@ -8,13 +8,11 @@ import { getAgentEnv } from "./auth.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, "..", "skills");
 
-// Tools always available to Jarvis
-const CORE_TOOLS = [
-  "WebSearch",
-  "WebFetch",
-];
+// Resolve tsx from our node_modules for running .ts MCP servers
+const TSX_BIN = join(__dirname, "..", "node_modules", ".bin", "tsx");
 
-const OPTIONAL_LOCAL_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"];
+// Tools always available to Jarvis
+const CORE_TOOLS = ["WebSearch", "WebFetch"];
 
 const CONNECTOR_SERVER_NAMES: Record<string, string> = {
   gmail: "gmail",
@@ -25,12 +23,6 @@ const CONNECTOR_SERVER_NAMES: Record<string, string> = {
 
 /**
  * Run the agent for one user message, streaming SSE events.
- *
- * @param req       - Incoming chat request
- * @param config    - Auth config (subscription / api-key / gemini)
- * @param connectors - Which connectors are enabled for this user
- * @param onEvent   - Callback to emit SSE events
- * @returns         - The final agent session ID (for resume)
  */
 export async function runAgent(
   req: ChatRequest,
@@ -38,6 +30,7 @@ export async function runAgent(
   connectors: string[],
   onEvent: (event: SSEEvent) => void
 ): Promise<{ sessionId: string; response: string }> {
+  // Apply auth env vars so the SDK picks them up
   Object.assign(process.env, getAgentEnv(config));
 
   const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
@@ -45,19 +38,14 @@ export async function runAgent(
   // Build MCP servers based on connected integrations
   const mcpServers = buildMcpServers(connectors, req.userId);
 
-  // Allowed tools list
+  // Allowed tools: core + wildcard MCP tool access per server
   const allowedTools = [
     ...CORE_TOOLS,
-    ...OPTIONAL_LOCAL_TOOLS,
-    // MCP tool format: "mcp__serverName"
+    "mcp__memory__*",
     ...connectors
-      .map((connector) => CONNECTOR_SERVER_NAMES[connector])
-      .filter((serverName): serverName is string => Boolean(serverName))
-      .map((serverName) => `mcp__${serverName}`),
-    // Memory tools (always on)
-    "mcp__memory",
-    // Skills (auto-discovered from SKILLS_DIR)
-    "Skill",
+      .map((c) => CONNECTOR_SERVER_NAMES[c])
+      .filter((s): s is string => Boolean(s))
+      .map((s) => `mcp__${s}__*`),
   ];
 
   let sessionId = req.sessionId ?? "";
@@ -71,8 +59,9 @@ export async function runAgent(
       systemPrompt,
       allowedTools,
       mcpServers,
-      permissionMode: "acceptEdits",
-      settingSources: ["project"],
+      permissionMode: "bypassPermissions" as const,
+      allowDangerouslySkipPermissions: true,
+      maxTurns: 25,
       cwd: SKILLS_DIR,
     },
   });
@@ -80,23 +69,19 @@ export async function runAgent(
   for await (const message of agentQuery) {
     // Capture session ID from init message
     if (message.type === "system" && message.subtype === "init") {
-      sessionId = (message as { session_id?: string }).session_id ?? sessionId;
-      onEvent({
-        type: "session_init",
-        sessionId,
-        model: config.model,
-      });
+      const initMsg = message as { session_id?: string };
+      sessionId = initMsg.session_id ?? sessionId;
+      onEvent({ type: "session_init", sessionId, model: config.model });
       continue;
     }
 
-    // Stream text output
+    // Stream text output from assistant messages
     if (message.type === "assistant") {
       const content = extractText(message);
       if (content) {
         finalResponse += content;
         onEvent({ type: "text", content });
       }
-      // Detect tool use
       const toolUses = extractToolUses(message);
       for (const tool of toolUses) {
         onEvent({
@@ -107,9 +92,12 @@ export async function runAgent(
       }
     }
 
-    // Final result
-    if ("result" in message && typeof (message as { result?: string }).result === "string") {
-      finalResponse = (message as { result: string }).result;
+    // Final result message from SDK
+    if (message.type === "result") {
+      const resultMsg = message as { subtype?: string; result?: string };
+      if (resultMsg.subtype === "success" && resultMsg.result) {
+        finalResponse = resultMsg.result;
+      }
     }
   }
 
@@ -119,55 +107,53 @@ export async function runAgent(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+type McpServerConfig = {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+};
+
 function buildMcpServers(
   connectors: string[],
   userId: string
-): Record<string, { command: string; args: string[]; env?: Record<string, string> }> {
-  const servers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> = {};
+): Record<string, McpServerConfig> {
+  const servers: Record<string, McpServerConfig> = {};
+
+  const baseEnv = {
+    CONVEX_URL: process.env.CONVEX_URL ?? "",
+    CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
+    USER_ID: userId,
+  };
 
   // Memory MCP server (always on — reads/writes Convex)
   servers["memory"] = {
-    command: "node",
-    args: [join(__dirname, "mcp", "memory.js")],
-    env: {
-      CONVEX_URL: process.env.CONVEX_URL ?? "",
-      CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
-      USER_ID: userId,
-    },
+    command: TSX_BIN,
+    args: [join(__dirname, "mcp", "memory.ts")],
+    env: { ...baseEnv },
   };
 
   if (connectors.includes("gmail")) {
     servers["gmail"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "gmail.js")],
-      env: {
-        CONVEX_URL: process.env.CONVEX_URL ?? "",
-        CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
-        USER_ID: userId,
-      },
+      command: TSX_BIN,
+      args: [join(__dirname, "mcp", "gmail.ts")],
+      env: { ...baseEnv },
     };
   }
 
   if (connectors.includes("google-calendar")) {
     servers["calendar"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "calendar.js")],
-      env: {
-        CONVEX_URL: process.env.CONVEX_URL ?? "",
-        CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
-        USER_ID: userId,
-      },
+      command: TSX_BIN,
+      args: [join(__dirname, "mcp", "calendar.ts")],
+      env: { ...baseEnv },
     };
   }
 
   if (connectors.includes("outlook")) {
     servers["outlook"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "outlook.js")],
+      command: TSX_BIN,
+      args: [join(__dirname, "mcp", "outlook.ts")],
       env: {
-        CONVEX_URL: process.env.CONVEX_URL ?? "",
-        CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
-        USER_ID: userId,
+        ...baseEnv,
         MS_TENANT_ID: process.env.MS_TENANT_ID ?? "",
         MS_CLIENT_ID: process.env.MS_CLIENT_ID ?? "",
         MS_CLIENT_SECRET: process.env.MS_CLIENT_SECRET ?? "",
@@ -177,13 +163,9 @@ function buildMcpServers(
 
   if (connectors.includes("github")) {
     servers["github"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "github.js")],
-      env: {
-        CONVEX_URL: process.env.CONVEX_URL ?? "",
-        CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
-        USER_ID: userId,
-      },
+      command: TSX_BIN,
+      args: [join(__dirname, "mcp", "github.ts")],
+      env: { ...baseEnv },
     };
   }
 
@@ -191,11 +173,12 @@ function buildMcpServers(
 }
 
 function extractText(message: unknown): string {
-  const m = message as { content?: unknown };
-  if (!m.content) return "";
-  if (typeof m.content === "string") return m.content;
-  if (Array.isArray(m.content)) {
-    return m.content
+  const m = message as { message?: { content?: unknown } };
+  const content = m.message?.content;
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
       .filter((b: unknown) => (b as { type?: string }).type === "text")
       .map((b: unknown) => (b as { text?: string }).text ?? "")
       .join("");
@@ -203,10 +186,13 @@ function extractText(message: unknown): string {
   return "";
 }
 
-function extractToolUses(message: unknown): Array<{ name: string; input: unknown }> {
-  const m = message as { content?: unknown };
-  if (!Array.isArray(m.content)) return [];
-  return m.content
+function extractToolUses(
+  message: unknown
+): Array<{ name: string; input: unknown }> {
+  const m = message as { message?: { content?: unknown } };
+  const content = m.message?.content;
+  if (!Array.isArray(content)) return [];
+  return content
     .filter((b: unknown) => (b as { type?: string }).type === "tool_use")
     .map((b: unknown) => {
       const block = b as { name?: string; input?: unknown };

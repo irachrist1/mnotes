@@ -2,18 +2,22 @@
  * Memory MCP server — runs as a subprocess.
  * Provides tools for Jarvis to read/write the three-tier memory system in Convex.
  *
- * This file is the entrypoint for the memory-server subprocess.
+ * Uses the userId-accepting Convex functions (saveByUserId, searchByUserId,
+ * listByTierByUserId) so this server can operate without an authenticated session.
  */
 
 import { ConvexHttpClient } from "convex/browser";
+import { createInterface } from "readline";
 
 const CONVEX_URL = process.env.CONVEX_URL ?? "";
 const USER_ID = process.env.USER_ID ?? "";
 
-const convex = new ConvexHttpClient(CONVEX_URL);
+if (!CONVEX_URL) {
+  process.stderr.write("memory-server: CONVEX_URL is required\n");
+  process.exit(1);
+}
 
-// MCP protocol: read JSON-RPC from stdin, write to stdout
-import { createInterface } from "readline";
+const convex = new ConvexHttpClient(CONVEX_URL);
 
 const rl = createInterface({ input: process.stdin });
 
@@ -39,7 +43,6 @@ function respondError(id: unknown, message: string) {
   );
 }
 
-// Tool definitions
 const TOOLS = [
   {
     name: "memory_save",
@@ -51,17 +54,26 @@ const TOOLS = [
         tier: {
           type: "string",
           enum: ["persistent", "archival", "session"],
-          description: "persistent: always loaded (facts/preferences). archival: on-demand (heavy docs). session: this conversation only.",
+          description:
+            "persistent: always loaded (facts/preferences). archival: on-demand (heavy docs). session: this conversation only.",
         },
         category: {
           type: "string",
-          description: "Category: 'fact', 'preference', 'project', 'correction', 'note'",
+          description:
+            "Category: 'fact', 'preference', 'project', 'correction', 'note'",
         },
-        title: { type: "string", description: "Short title for this memory (5-10 words)" },
-        content: { type: "string", description: "The memory content to save" },
+        title: {
+          type: "string",
+          description: "Short title for this memory (5-10 words)",
+        },
+        content: {
+          type: "string",
+          description: "The memory content to save",
+        },
         importance: {
           type: "number",
-          description: "Importance 1-10. Corrections=10, major preferences=8-9, facts=5-7, minor=1-4",
+          description:
+            "Importance 1-10. Corrections=10, major preferences=8-9, facts=5-7, minor=1-4",
         },
       },
       required: ["tier", "category", "title", "content"],
@@ -69,7 +81,8 @@ const TOOLS = [
   },
   {
     name: "memory_search",
-    description: "Search through stored memories. Use this when you need to recall something about the user.",
+    description:
+      "Search through stored memories. Use this when you need to recall something about the user.",
     inputSchema: {
       type: "object",
       properties: {
@@ -100,7 +113,12 @@ const TOOLS = [
 ];
 
 rl.on("line", async (line) => {
-  let req: { jsonrpc: string; id: unknown; method: string; params?: unknown };
+  let req: {
+    jsonrpc: string;
+    id: unknown;
+    method: string;
+    params?: unknown;
+  };
   try {
     req = JSON.parse(line);
   } catch {
@@ -118,6 +136,11 @@ rl.on("line", async (line) => {
     return;
   }
 
+  // Handle notifications/initialized (MCP lifecycle — no response needed)
+  if (method === "notifications/initialized") {
+    return;
+  }
+
   if (method === "tools/list") {
     respond(id, { tools: TOOLS });
     return;
@@ -128,7 +151,15 @@ rl.on("line", async (line) => {
     try {
       const result = await handleTool(p.name, p.arguments);
       respond(id, {
-        content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text:
+              typeof result === "string"
+                ? result
+                : JSON.stringify(result, null, 2),
+          },
+        ],
       });
     } catch (err) {
       respondError(id, err instanceof Error ? err.message : "Tool error");
@@ -136,29 +167,39 @@ rl.on("line", async (line) => {
     return;
   }
 
+  // Unknown method — respond with null per JSON-RPC
   respond(id, null);
 });
 
-async function handleTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+async function handleTool(
+  name: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
   switch (name) {
     case "memory_save": {
-      await convex.mutation("memory:save" as any, {
+      await convex.mutation("memory:saveByUserId" as any, {
+        userId: USER_ID,
         tier: args.tier as "persistent" | "archival" | "session",
         category: String(args.category ?? "fact"),
         title: String(args.title),
         content: String(args.content),
         importance: typeof args.importance === "number" ? args.importance : 5,
-        source: "agent",
+        source: "agent" as const,
       });
       return `Memory saved: "${args.title}" (${args.tier}, importance ${args.importance ?? 5})`;
     }
 
     case "memory_search": {
-      const results = await convex.query("memory:search" as any, {
+      const results = (await convex.query("memory:searchByUserId" as any, {
+        userId: USER_ID,
         query: String(args.query),
-        tier: args.tier as "persistent" | "archival" | "session" | undefined,
+        tier: args.tier as
+          | "persistent"
+          | "archival"
+          | "session"
+          | undefined,
         limit: 10,
-      }) as MemoryRow[];
+      })) as MemoryRow[];
       if (!results.length) return "No memories found for that query.";
       return results
         .map((m) => `[${m.tier}/${m.category}] **${m.title}**: ${m.content}`)
@@ -166,11 +207,22 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
     }
 
     case "memory_list": {
-      const tier = (args.tier as "persistent" | "archival" | "session") ?? "persistent";
-      const results = await convex.query("memory:listByTier" as any, { tier, limit: 30 }) as MemoryRow[];
+      const tier =
+        (args.tier as "persistent" | "archival" | "session") ?? "persistent";
+      const results = (await convex.query(
+        "memory:listByTierByUserId" as any,
+        {
+          userId: USER_ID,
+          tier,
+          limit: 30,
+        }
+      )) as MemoryRow[];
       if (!results.length) return `No ${tier} memories found.`;
       return results
-        .map((m) => `• **${m.title}** (${m.category}, importance ${m.importance}): ${m.content}`)
+        .map(
+          (m) =>
+            `- **${m.title}** (${m.category}, importance ${m.importance}): ${m.content}`
+        )
         .join("\n");
     }
 
