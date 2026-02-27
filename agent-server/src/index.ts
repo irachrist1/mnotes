@@ -102,6 +102,50 @@ app.post("/api/chat", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/task
+ * Non-streaming task execution for scheduled/proactive agent runs.
+ * Body: same as ChatRequest minus sessionId (tasks always start fresh)
+ * Response: { success: true, response: string, sessionId: string }
+ *         | { success: false, error: string }
+ */
+app.post("/api/task", requireAuth, async (req, res) => {
+  const body = req.body as ChatRequest;
+
+  if (!body.userId || !body.message || !body.threadId) {
+    res.status(400).json({ error: "Missing required fields: userId, message, threadId" });
+    return;
+  }
+
+  try {
+    const config = detectAuthMode({
+      preferredProvider: body.aiProvider,
+      preferredModel: body.aiModel,
+      anthropicApiKey: body.anthropicApiKey,
+      googleApiKey: body.googleApiKey,
+    });
+
+    const connectors: string[] = Array.isArray(body.connectors)
+      ? (body.connectors as string[]).filter((c) => SUPPORTED_CONNECTORS.has(c))
+      : [];
+
+    // Collect events but don't stream — return when done
+    const events: SSEEvent[] = [];
+    const onEvent = (event: SSEEvent) => events.push(event);
+
+    const result = await runAgent(body, config, connectors, onEvent);
+
+    res.json({
+      success: true,
+      response: result.response,
+      sessionId: result.sessionId,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Agent error";
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const authConfig = (() => {
