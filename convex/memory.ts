@@ -126,6 +126,74 @@ export const clearSessionMemories = mutation({
   },
 });
 
+// ─── Agent-facing variants (accept userId directly, no auth context) ──────────
+// These are used by MCP servers which run server-side with a trusted USER_ID.
+// Pattern mirrors connectors/tokens.ts getByProvider.
+
+export const saveForAgent = mutation({
+  args: {
+    userId: v.string(),
+    tier: v.union(v.literal("persistent"), v.literal("archival"), v.literal("session")),
+    category: v.string(),
+    title: v.string(),
+    content: v.string(),
+    importance: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, tier, category, title, content, importance = 5 }) => {
+    if (!userId || userId === "default") throw new Error("Invalid userId");
+    const now = Date.now();
+    return ctx.db.insert("memoryEntries", {
+      userId,
+      tier,
+      category,
+      title,
+      content,
+      importance,
+      source: "agent",
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const searchForAgent = query({
+  args: {
+    userId: v.string(),
+    query: v.string(),
+    tier: v.optional(v.union(v.literal("persistent"), v.literal("archival"), v.literal("session"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, query: searchQuery, tier, limit = 20 }) => {
+    if (!userId || userId === "default") return [];
+    return ctx.db
+      .query("memoryEntries")
+      .withSearchIndex("search_content", (q) => {
+        let s = q.search("content", searchQuery).eq("userId", userId).eq("archived", false);
+        if (tier) s = s.eq("tier", tier);
+        return s;
+      })
+      .take(limit);
+  },
+});
+
+export const listByTierForAgent = query({
+  args: {
+    userId: v.string(),
+    tier: v.union(v.literal("persistent"), v.literal("archival"), v.literal("session")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, tier, limit = 30 }) => {
+    if (!userId || userId === "default") return [];
+    return ctx.db
+      .query("memoryEntries")
+      .withIndex("by_user_tier_updated", (q) => q.eq("userId", userId).eq("tier", tier))
+      .order("desc")
+      .filter((q) => q.eq(q.field("archived"), false))
+      .take(limit);
+  },
+});
+
 // ─── Soul File (long-form user profile) ──────────────────────────────────────
 
 export const getSoulFile = query({

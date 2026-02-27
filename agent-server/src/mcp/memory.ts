@@ -142,19 +142,20 @@ rl.on("line", async (line) => {
 async function handleTool(name: string, args: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case "memory_save": {
-      await convex.mutation("memory:save" as any, {
+      await convex.mutation("memory:saveForAgent" as any, {
+        userId: USER_ID,
         tier: args.tier as "persistent" | "archival" | "session",
         category: String(args.category ?? "fact"),
         title: String(args.title),
         content: String(args.content),
         importance: typeof args.importance === "number" ? args.importance : 5,
-        source: "agent",
       });
       return `Memory saved: "${args.title}" (${args.tier}, importance ${args.importance ?? 5})`;
     }
 
     case "memory_search": {
-      const results = await convex.query("memory:search" as any, {
+      const results = await convex.query("memory:searchForAgent" as any, {
+        userId: USER_ID,
         query: String(args.query),
         tier: args.tier as "persistent" | "archival" | "session" | undefined,
         limit: 10,
@@ -167,7 +168,11 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
 
     case "memory_list": {
       const tier = (args.tier as "persistent" | "archival" | "session") ?? "persistent";
-      const results = await convex.query("memory:listByTier" as any, { tier, limit: 30 }) as MemoryRow[];
+      const results = await convex.query("memory:listByTierForAgent" as any, {
+        userId: USER_ID,
+        tier,
+        limit: 30,
+      }) as MemoryRow[];
       if (!results.length) return `No ${tier} memories found.`;
       return results
         .map((m) => `• **${m.title}** (${m.category}, importance ${m.importance}): ${m.content}`)
