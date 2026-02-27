@@ -2,11 +2,12 @@ import type { MemoryEntry } from "./types.js";
 
 /**
  * Build the Jarvis system prompt.
- * Injects soul file content + persistent memories + tool use guidelines.
+ * Injects soul file content + persistent memories + connected integrations + tool use guidelines.
  */
 export function buildSystemPrompt(
   soulFile: string | undefined,
-  memories: MemoryEntry[]
+  memories: MemoryEntry[],
+  connectors: string[] = []
 ): string {
   const persistentMemories = memories.filter((m) => m.tier === "persistent");
   const sortedMemories = persistentMemories.sort((a, b) => b.importance - a.importance);
@@ -22,11 +23,28 @@ export function buildSystemPrompt(
     ? `## Your Profile (Soul File)\n\n${soulFile}`
     : "";
 
+  const connectorSection =
+    connectors.length > 0
+      ? `## Connected Integrations\n\nThe following external services are connected and available via tools:\n${connectors
+          .map((c) => {
+            const labels: Record<string, string> = {
+              gmail: "- **Gmail** — use gmail_list_recent, gmail_search, gmail_get_message, gmail_send, gmail_create_draft",
+              "google-calendar": "- **Google Calendar** — use calendar_list_events, calendar_get_agenda, calendar_find_free_slots, calendar_create_event",
+              github: "- **GitHub** — use github_list_prs, github_list_issues, github_get_pr, github_create_issue, github_list_my_prs, github_get_repo_activity",
+              outlook: "- **Outlook** — use outlook_* tools",
+            };
+            return labels[c] ?? `- ${c}`;
+          })
+          .join("\n")}\n\nIf a service is NOT listed above, do not attempt to use its tools — they are not connected.`
+      : `## Connected Integrations\n\nNo external integrations are currently connected. You cannot check email, calendar, or GitHub. Suggest the user connect them in Settings.`;
+
   return `You are Jarvis, a personal AI assistant. You are intelligent, proactive, and deeply personalized.
 
 ${soulSection}
 
 ${memoriesSection}
+
+${connectorSection}
 
 ## Memory Guidelines (IMPORTANT)
 - Save memories proactively WITHOUT being asked. If the user tells you something important about themselves, their preferences, projects, or corrections — save it immediately using the memory_save tool.
