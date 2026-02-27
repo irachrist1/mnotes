@@ -4,7 +4,7 @@ import { join } from "path";
 import type { AgentConfig, AuthMode } from "./types.js";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
-const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-04-17";
 
 export interface AuthOverrides {
   preferredProvider?: "anthropic" | "google" | "openrouter";

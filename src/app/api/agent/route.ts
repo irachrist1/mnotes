@@ -8,7 +8,7 @@ const AGENT_SERVER_URL = process.env.AGENT_SERVER_URL ?? "http://localhost:3001"
 const AGENT_SERVER_SECRET = process.env.AGENT_SERVER_SECRET ?? "";
 const SUPPORTED_CONNECTORS = new Set(["gmail", "google-calendar", "github"]);
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
-const DEFAULT_GOOGLE_MODEL = "gemini-3-flash-preview";
+const DEFAULT_GOOGLE_MODEL = "gemini-2.5-flash-preview-04-17";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ function normalizeModelForProvider(
     return model.startsWith("claude-") ? model : DEFAULT_ANTHROPIC_MODEL;
   }
 
-  return model ?? "google/gemini-3-flash-preview";
+  return model ?? "google/gemini-2.5-flash-preview-04-17";
 }
 
 /**

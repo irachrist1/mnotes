@@ -44,10 +44,10 @@ const CHAT_MODELS = [
     note: "requires Google API key",
     provider: "google" as const,
     models: [
-      { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Newest, fast" },
-      { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Newest, powerful" },
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Stable" },
-      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Deep reasoning" },
+      { value: "gemini-2.5-flash-preview-04-17", label: "Gemini 2.5 Flash", description: "Fast, recommended" },
+      { value: "gemini-2.5-pro-preview-05-06", label: "Gemini 2.5 Pro", description: "Most capable" },
+      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash", description: "Stable" },
+      { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite", description: "Fastest, cheapest" },
     ],
   },
 ] as const;
@@ -98,7 +98,7 @@ export default function JarvisChat() {
   const [streamingStatus, setStreamingStatus] = useState("");
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingModel, setStreamingModel] = useState("");
-  const [activityExpanded, setActivityExpanded] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(true);
   const [streamingTools, setStreamingTools] = useState<Array<{
     id?: string;
     name: string;
@@ -128,6 +128,9 @@ export default function JarvisChat() {
   const addUserMessage = useMutation(api.messages.addUserMessage);
   const addAssistantMessage = useMutation(api.messages.addAssistantMessage);
   const updateThreadSession = useMutation(api.messages.updateThreadSession);
+
+  const notifications = useQuery(api.notifications.list, { limit: 5, unreadOnly: true });
+  const markAllRead = useMutation(api.notifications.markAllRead);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -203,10 +206,10 @@ export default function JarvisChat() {
     }
   }, [threads, activeThreadId, startNewThread]);
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isStreaming || !activeThreadId) return;
+  const sendMessage = useCallback(async (overrideText?: string) => {
+    const userText = (overrideText ?? input).trim();
+    if (!userText || isStreaming || !activeThreadId) return;
 
-    const userText = input.trim();
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -287,8 +290,6 @@ export default function JarvisChat() {
               break;
 
             case "text":
-              // Collapse activity panel when text starts flowing (like Claude.ai / Perplexity)
-              setActivityExpanded(false);
               setStreamingStatus("Responding…");
               finalResponse += event.content;
               setStreamingContent((prev) => prev + event.content);
@@ -318,6 +319,7 @@ export default function JarvisChat() {
 
             case "done":
               doneReceived = true;
+              setActivityExpanded(false); // collapse when fully done
               setStreamingStatus("");
               finalResponse = event.content || finalResponse;
               if (
@@ -524,8 +526,40 @@ export default function JarvisChat() {
 
       {/* ── Messages ───────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {notifications && notifications.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                While you were away
+              </span>
+              <button
+                onClick={() => void markAllRead()}
+                className="text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Dismiss all
+              </button>
+            </div>
+            <div className="space-y-2">
+              {notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className="bg-blue-600/5 dark:bg-blue-600/10 border border-blue-600/15 dark:border-blue-600/20 rounded-xl p-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <AgentAvatar />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-stone-600 dark:text-stone-300 mb-1">{n.title}</p>
+                      <MessageStream content={n.body} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {allMessages.length === 0 && !isStreaming && (
-          <WelcomeState onSend={(text) => { setInput(text); void sendMessage(); }} />
+          <WelcomeState onSend={(text) => void sendMessage(text)} />
         )}
 
         {allMessages.map((msg) => (
