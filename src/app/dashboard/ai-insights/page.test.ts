@@ -25,4 +25,4 @@ describe("AI insights save button state", () => {
       isNearDuplicate: true,
     })).toBe("Similar exists");
   });
-});
+}); 

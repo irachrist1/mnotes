@@ -114,6 +114,7 @@ export default defineSchema({
     aiModel: v.string(),
     openrouterApiKey: v.optional(v.string()),
     googleApiKey: v.optional(v.string()),
+    agentServerUrl: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
@@ -197,6 +198,7 @@ export default defineSchema({
     title: v.string(),       // auto-set from first user message (truncated 50 chars)
     createdAt: v.number(),
     lastMessageAt: v.number(),
+    agentSessionId: v.optional(v.string()),
   }).index("by_user_updated", ["userId", "lastMessageAt"]),
 
   chatMessages: defineTable({
