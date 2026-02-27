@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { Settings, Zap, Link2, CheckCircle2, AlertCircle, Eye, EyeOff, Mail, CalendarDays, Github, Bell } from "lucide-react";
+import { Settings, Zap, Link2, CheckCircle2, AlertCircle, Eye, EyeOff, Mail, CalendarDays, Github, Bell, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -43,6 +43,14 @@ export default function SettingsPage() {
   const startGoogleOauth = useAction(api.connectors.googleOauth.start);
   const startGithubOauth = useAction(api.connectors.githubOauth.start);
 
+  const scheduledTasks = useQuery(api.scheduledTasks.list);
+  const upsertScheduledTask = useMutation(api.scheduledTasks.upsert);
+  const toggleScheduledTask = useMutation(api.scheduledTasks.toggle);
+  const removeScheduledTask = useMutation(api.scheduledTasks.remove);
+
+  const soulFile = useQuery(api.memory.getSoulFile);
+  const upsertSoulFile = useMutation(api.memory.upsertSoulFile);
+
   const [provider, setProvider] = useState<"anthropic" | "google" | "openrouter">("anthropic");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
@@ -56,6 +64,8 @@ export default function SettingsPage() {
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [soulFileContent, setSoulFileContent] = useState("");
+  const [editingSoulFile, setEditingSoulFile] = useState(false);
 
   useEffect(() => {
     setNotificationsEnabled(localStorage.getItem("jarvis:web-notifications-enabled") === "true");
@@ -66,6 +76,10 @@ export default function SettingsPage() {
     setProvider(settings.aiProvider ?? "anthropic");
     setAgentServerUrl(settings.agentServerUrl ?? "http://localhost:3001");
   }, [settings]);
+
+  useEffect(() => {
+    if (soulFile?.content) setSoulFileContent(soulFile.content);
+  }, [soulFile]);
 
   const checkAgentStatus = async () => {
     setChecking(true);
@@ -330,6 +344,110 @@ export default function SettingsPage() {
           >
             {notificationsEnabled ? "Notifications enabled ✓" : "Enable browser notifications"}
           </button>
+        </div>
+      </section>
+
+      {/* Scheduled Tasks */}
+      <section>
+        <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          Scheduled Tasks
+        </h2>
+        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-3">
+          <p className="text-xs text-stone-500">
+            Jarvis can proactively check your accounts and surface important information.
+            Requires the agent server to be running.
+          </p>
+          {scheduledTasks?.length === 0 && (
+            <button
+              onClick={() => void upsertScheduledTask({
+                name: "Morning Briefing",
+                prompt: "Check my email for anything urgent, look at my calendar for today and tomorrow, and summarize my open GitHub PRs if I have GitHub connected. Give me a concise morning briefing.",
+                schedule: "0 8 * * *",
+                enabled: true,
+                connectors: ["gmail", "google-calendar", "github"],
+              })}
+              className="text-xs px-3 py-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/20 text-blue-600 dark:text-blue-400 transition-colors"
+            >
+              + Add Morning Briefing
+            </button>
+          )}
+          <div className="space-y-2">
+            {scheduledTasks?.map((task) => (
+              <div key={task._id} className="flex items-center gap-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg p-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-stone-700 dark:text-stone-300">{task.name}</p>
+                  <p className="text-xs text-stone-400 truncate">{task.prompt}</p>
+                </div>
+                <button
+                  onClick={() => void toggleScheduledTask({ id: task._id, enabled: !task.enabled })}
+                  className={`text-xs px-2 py-1 rounded-md transition-colors ${
+                    task.enabled
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                      : "bg-stone-100 dark:bg-stone-700 text-stone-500"
+                  }`}
+                >
+                  {task.enabled ? "On" : "Off"}
+                </button>
+                <button
+                  onClick={() => void removeScheduledTask({ id: task._id })}
+                  className="text-stone-300 dark:text-stone-600 hover:text-red-400 dark:hover:text-red-400 text-xs"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Profile (Soul File) */}
+      <section>
+        <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-3">
+          Your Profile (Soul File)
+        </h2>
+        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-3">
+          <p className="text-xs text-stone-500">
+            Jarvis uses this profile to personalize responses. It&apos;s built automatically during onboarding and updated as you interact.
+          </p>
+          {soulFile ? (
+            editingSoulFile ? (
+              <div className="space-y-2">
+                <textarea
+                  value={soulFileContent}
+                  onChange={(e) => setSoulFileContent(e.target.value)}
+                  rows={10}
+                  className="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 text-xs text-stone-700 dark:text-stone-300 font-mono outline-none focus:border-blue-500/50 transition-colors resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      await upsertSoulFile({ content: soulFileContent });
+                      setEditingSoulFile(false);
+                      toast.success("Profile updated");
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                  >Save</button>
+                  <button
+                    onClick={() => { setSoulFileContent(soulFile.content); setEditingSoulFile(false); }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 transition-colors"
+                  >Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <pre className="text-xs text-stone-600 dark:text-stone-400 font-mono whitespace-pre-wrap bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
+                  {soulFile.content || "(empty)"}
+                </pre>
+                <button
+                  onClick={() => setEditingSoulFile(true)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors"
+                >Edit Profile</button>
+              </div>
+            )
+          ) : (
+            <p className="text-xs text-stone-400">No profile yet. Complete onboarding to create one.</p>
+          )}
         </div>
       </section>
 
