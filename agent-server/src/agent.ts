@@ -45,7 +45,7 @@ const CONNECTOR_SERVER_NAMES: Record<string, string> = {
   github: "github",
 };
 
-const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-04-17";
 const GEMINI_SESSION_TTL_MS = 30 * 60 * 1000;
 const GEMINI_MAX_SESSIONS = 200;
 const geminiChats = new Map<
@@ -70,18 +70,19 @@ export async function runAgent(
 ): Promise<{ sessionId: string; response: string }> {
   Object.assign(process.env, getAgentEnv(config));
 
-  const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
   if (config.mode === "gemini") {
+    const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
     return runGeminiFallback(req, config, systemPrompt, onEvent);
   }
 
   try {
-    return await runClaudeAgent(req, config, connectors, systemPrompt, onEvent);
+    return await runClaudeAgent(req, config, connectors, onEvent);
   } catch (error) {
     if (!shouldFallbackToGemini(config, error)) {
       throw error;
     }
 
+    const fallbackSystemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? []);
     const fallbackModel = process.env.GOOGLE_MODEL ?? process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
     return runGeminiFallback(
       req,
@@ -90,7 +91,7 @@ export async function runAgent(
         model: fallbackModel,
         googleApiKey: config.googleApiKey,
       },
-      systemPrompt,
+      fallbackSystemPrompt,
       onEvent
     );
   }
@@ -166,9 +167,9 @@ async function runClaudeAgent(
   req: ChatRequest,
   config: AgentConfig,
   connectors: string[],
-  systemPrompt: string,
   onEvent: (event: SSEEvent) => void
 ): Promise<{ sessionId: string; response: string }> {
+  const systemPrompt = buildSystemPrompt(req.soulFile, req.memories ?? [], connectors);
   // Build MCP servers based on connected integrations
   const mcpServers = buildMcpServers(connectors, req.userId);
 
@@ -301,6 +302,8 @@ function buildMcpServers(
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
         USER_ID: userId,
+        GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? "",
+        GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "",
       },
     };
   }
@@ -315,6 +318,8 @@ function buildMcpServers(
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
         USER_ID: userId,
+        GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? "",
+        GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "",
       },
     };
   }

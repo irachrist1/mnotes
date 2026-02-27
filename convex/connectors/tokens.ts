@@ -177,6 +177,41 @@ export const getByProvider = query({
   },
 });
 
+/**
+ * Public mutation: update access token + expiry by userId + provider.
+ * Called by MCP servers after refreshing an expired OAuth token.
+ * Intentionally accepts userId directly (no auth context) — MCP servers are trusted.
+ */
+export const updateAccessToken = mutation({
+  args: {
+    userId: v.string(),
+    provider: v.union(
+      v.literal("github"),
+      v.literal("google-calendar"),
+      v.literal("gmail"),
+      v.literal("outlook"),
+      v.literal("microsoft-teams")
+    ),
+    accessToken: v.string(),
+    expiresAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.userId || args.userId === "default") throw new Error("Invalid userId");
+    const existing = await ctx.db
+      .query("connectorTokens")
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
+    if (!existing) return;
+    await ctx.db.patch(existing._id, {
+      accessToken: args.accessToken,
+      ...(args.expiresAt !== undefined ? { expiresAt: args.expiresAt } : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const touchInternal = internalMutation({
   args: {
     userId: v.string(),

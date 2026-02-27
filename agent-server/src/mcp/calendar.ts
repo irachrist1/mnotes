@@ -9,6 +9,31 @@ const CONVEX_URL = process.env.CONVEX_URL ?? "";
 const USER_ID = process.env.USER_ID ?? "";
 const convex = new ConvexHttpClient(CONVEX_URL);
 
+const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
+const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
+const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // refresh 5 min before expiry
+
+async function refreshGoogleToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+  if (!GOOGLE_OAUTH_CLIENT_ID || !GOOGLE_OAUTH_CLIENT_SECRET) {
+    throw new Error("GOOGLE_OAUTH_CLIENT_ID/SECRET not configured. Cannot refresh token.");
+  }
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: GOOGLE_OAUTH_CLIENT_ID,
+      client_secret: GOOGLE_OAUTH_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }).toString(),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Token refresh failed: ${err}`);
+  }
+  return res.json() as Promise<{ access_token: string; expires_in: number }>;
+}
+
 const TOOLS = [
   {
     name: "calendar_list_events",
@@ -93,12 +118,33 @@ rl.on("line", async (line) => {
   respond(id, null);
 });
 
-async function getAccessToken() {
+async function getAccessToken(): Promise<string> {
   const tokens = await convex.query("connectors/tokens:getByProvider" as any, {
     userId: USER_ID,
     provider: "google-calendar",
-  });
-  if (!tokens?.accessToken) throw new Error("Google Calendar not connected. Please connect in Settings.");
+  }) as { accessToken: string; refreshToken?: string; expiresAt?: number } | null;
+
+  if (!tokens?.accessToken) {
+    throw new Error("Google Calendar not connected. Please connect in Settings.");
+  }
+
+  // Refresh if expired or expiring soon
+  if (tokens.expiresAt && tokens.expiresAt < Date.now() + TOKEN_EXPIRY_BUFFER_MS) {
+    if (!tokens.refreshToken) {
+      throw new Error("Google Calendar token expired and no refresh token available. Please reconnect in Settings.");
+    }
+    const refreshed = await refreshGoogleToken(tokens.refreshToken);
+    const newExpiresAt = Date.now() + refreshed.expires_in * 1000;
+    // Persist the new token
+    await convex.mutation("connectors/tokens:updateAccessToken" as any, {
+      userId: USER_ID,
+      provider: "google-calendar",
+      accessToken: refreshed.access_token,
+      expiresAt: newExpiresAt,
+    });
+    return refreshed.access_token;
+  }
+
   return tokens.accessToken;
 }
 
