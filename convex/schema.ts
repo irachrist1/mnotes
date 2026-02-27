@@ -139,4 +139,38 @@ export default defineSchema({
     expiresAt: v.number(),
   }).index("by_state", ["state"])
     .index("by_user_created", ["userId", "createdAt"]),
+
+  // ─── Agent Notifications ──────────────────────────────────────────────────────
+  // Proactive findings from scheduled agent tasks. Shown to user in chat.
+  agentNotifications: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    body: v.string(),          // markdown content
+    type: v.union(
+      v.literal("briefing"),   // morning/evening summary
+      v.literal("alert"),      // urgent item detected
+      v.literal("digest"),     // periodic digest (email, GitHub, etc.)
+      v.literal("reminder"),   // user-set reminder
+    ),
+    source: v.optional(v.string()), // "gmail" | "github" | "google-calendar" | etc.
+    read: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_read", ["userId", "read"]),
+
+  // ─── Scheduled Agent Tasks ────────────────────────────────────────────────────
+  // User-configured recurring tasks Jarvis runs automatically.
+  scheduledAgentTasks: defineTable({
+    userId: v.string(),
+    name: v.string(),          // e.g. "Morning Briefing"
+    prompt: v.string(),        // what to ask the agent
+    schedule: v.string(),      // cron expression e.g. "0 8 * * *" (8am daily)
+    enabled: v.boolean(),
+    connectors: v.array(v.string()), // which connectors this task needs
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_next_run", ["nextRunAt"]),
 });
