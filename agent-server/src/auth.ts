@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import type { AgentConfig, AuthMode } from "./types.js";
@@ -15,11 +15,26 @@ export interface AuthOverrides {
 
 function hasClaudeCredentials(): boolean {
   const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+
+  // Legacy: credentials.json (old API key auth format)
   const credentialsPaths = [
     join(claudeConfigDir, ".credentials.json"),
     join(claudeConfigDir, "credentials.json"),
   ];
-  return credentialsPaths.some((path) => existsSync(path));
+  if (credentialsPaths.some((path) => existsSync(path))) return true;
+
+  // Modern: OAuth-based session files stored in session-env/ directory
+  // (used by Claude Code 1.x+ with subscription auth)
+  const sessionEnvDir = join(claudeConfigDir, "session-env");
+  if (existsSync(sessionEnvDir)) {
+    try {
+      return readdirSync(sessionEnvDir).length > 0;
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  return false;
 }
 
 function normalizeGeminiModel(model: string | undefined): string {

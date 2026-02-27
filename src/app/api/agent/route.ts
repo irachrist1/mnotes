@@ -53,30 +53,70 @@ export async function POST(req: NextRequest) {
 
   let resolvedAgentServerUrl = AGENT_SERVER_URL;
 
+  let body: { threadId: string; message: string; sessionId?: string; modelOverride?: string };
   try {
-    const body = (await req.json()) as {
+    body = (await req.json()) as {
       threadId: string;
       message: string;
       sessionId?: string;
+      modelOverride?: string;
     };
+  } catch {
+    return buildSseErrorResponse("Invalid request body");
+  }
 
-    const [soulFileDoc, persistentMemories, tokenStatus, userSettings] = await Promise.all([
+  // Fetch Convex data first — errors here are backend issues, not agent server issues
+  let soulFileDoc: { content: string } | null;
+  let persistentMemories: Array<{ _id: string; tier: string; category: string; title: string; content: string; importance: number }>;
+  let tokenStatus: Array<{ connected: boolean; provider: string }>;
+  let userSettings: {
+    agentServerUrl?: string;
+    agentServerSecret?: string;
+    aiProvider?: "anthropic" | "google" | "openrouter";
+    aiModel?: string;
+    anthropicApiKey?: string;
+    googleApiKey?: string;
+    openrouterApiKey?: string;
+  } | null;
+
+  try {
+    [soulFileDoc, persistentMemories, tokenStatus, userSettings] = await Promise.all([
       fetchQuery(api.memory.getSoulFile, {}, { token }),
       fetchQuery(api.memory.listByTier, { tier: "persistent", limit: 50 }, { token }),
       fetchQuery(api.connectors.tokens.list, {}, { token }),
       fetchQuery(api.settings.getRaw, { userId }, { token }),
     ]);
+  } catch (convexError) {
+    const msg = convexError instanceof Error ? convexError.message : "Backend error";
+    return buildSseErrorResponse(`Backend error: ${msg}`);
+  }
 
-    const connectors = tokenStatus
-      .filter((c) => c.connected && SUPPORTED_CONNECTORS.has(c.provider))
-      .map((c) => c.provider);
+  const connectors = tokenStatus
+    .filter((c) => c.connected && SUPPORTED_CONNECTORS.has(c.provider))
+    .map((c) => c.provider);
 
-    const agentServerUrl = userSettings?.agentServerUrl ?? AGENT_SERVER_URL;
-    resolvedAgentServerUrl = agentServerUrl;
-    const agentServerSecret = userSettings?.agentServerSecret ?? AGENT_SERVER_SECRET;
-    const aiProvider = userSettings?.aiProvider ?? "anthropic";
-    const aiModel = normalizeModelForProvider(aiProvider, userSettings?.aiModel);
+  const agentServerUrl = userSettings?.agentServerUrl ?? AGENT_SERVER_URL;
+  resolvedAgentServerUrl = agentServerUrl;
+  const agentServerSecret = userSettings?.agentServerSecret ?? AGENT_SERVER_SECRET;
 
+  // Model selection: chat UI override takes precedence over user settings
+  let aiProvider = userSettings?.aiProvider ?? "anthropic";
+  let aiModel = normalizeModelForProvider(aiProvider, userSettings?.aiModel);
+  if (body.modelOverride) {
+    const m = body.modelOverride;
+    if (m.startsWith("gemini-")) {
+      aiProvider = "google";
+      aiModel = m;
+    } else if (m.startsWith("claude-")) {
+      aiProvider = "anthropic";
+      aiModel = m;
+    } else if (m.includes("/")) {
+      aiProvider = "openrouter";
+      aiModel = m;
+    }
+  }
+
+  try {
     const agentRes = await fetch(`${agentServerUrl}/api/chat`, {
       method: "POST",
       headers: {
@@ -118,12 +158,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown agent proxy error";
-    if (/fetch failed/i.test(message)) {
-      return buildSseErrorResponse(
-        `Agent server error: Could not reach agent server at ${resolvedAgentServerUrl}. Start it with \`npm run agent\`.`
-      );
-    }
-    return buildSseErrorResponse(`Agent server error: ${message}`);
+    // Only this catch block is for agent server connectivity issues
+    return buildSseErrorResponse(
+      `Could not reach agent server at ${resolvedAgentServerUrl}. Start it with \`npm run agent\`.`
+    );
   }
 }

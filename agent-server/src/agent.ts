@@ -2,12 +2,33 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { GoogleGenAI, type Chat } from "@google/genai";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { existsSync } from "fs";
 import type { AgentConfig, ChatRequest, SSEEvent } from "./types.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { getAgentEnv } from "./auth.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const SKILLS_DIR = join(__dirname, "..", "skills");
+
+// When running with `tsx watch` the source files are .ts; when running the
+// compiled build they are .js. Detect this so MCP subprocesses use the right
+// runner and file extension.
+const IS_DEV = __filename.endsWith(".ts");
+const TSX_BIN = join(__dirname, "..", "node_modules", ".bin", "tsx");
+const MCP_EXT = IS_DEV ? ".ts" : ".js";
+
+/** Returns the command + args prefix needed to run an MCP script. */
+function mcpRunner(scriptPath: string): { command: string; args: string[] } {
+  if (IS_DEV && existsSync(TSX_BIN)) {
+    return { command: TSX_BIN, args: [scriptPath] };
+  }
+  if (IS_DEV) {
+    // Fall back to npx tsx if local tsx binary not found
+    return { command: "npx", args: ["tsx", scriptPath] };
+  }
+  return { command: "node", args: [scriptPath] };
+}
 
 // Tools always available to Jarvis
 const CORE_TOOLS = [
@@ -168,6 +189,8 @@ async function runClaudeAgent(
 
   let sessionId = req.sessionId ?? "";
   let finalResponse = "";
+  // Map tool_use id → tool name so we can emit tool_done with the right name
+  const toolIdToName = new Map<string, string>();
 
   const agentQuery = query({
     prompt: req.message,
@@ -195,20 +218,36 @@ async function runClaudeAgent(
       continue;
     }
 
-    // Stream text output
+    // Stream text output + tool_start events
     if (message.type === "assistant") {
       const content = extractText(message);
       if (content) {
         finalResponse += content;
         onEvent({ type: "text", content });
       }
-      // Detect tool use
       const toolUses = extractToolUses(message);
       for (const tool of toolUses) {
+        if (tool.id) toolIdToName.set(tool.id, tool.name);
         onEvent({
           type: "tool_start",
           toolName: tool.name,
           toolInput: JSON.stringify(tool.input),
+          messageId: tool.id,
+        });
+      }
+    }
+
+    // Tool results — emit tool_done / tool_error to close open tool cards
+    if (message.type === "user") {
+      const results = extractToolResults(message);
+      for (const result of results) {
+        const toolName = toolIdToName.get(result.toolUseId) ?? "";
+        if (!toolName) continue;
+        onEvent({
+          type: result.isError ? "tool_error" : "tool_done",
+          toolName,
+          toolOutput: result.output,
+          messageId: result.toolUseId,
         });
       }
     }
@@ -240,9 +279,11 @@ function buildMcpServers(
   const servers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> = {};
 
   // Memory MCP server (always on — reads/writes Convex)
+  const memoryScript = join(__dirname, "mcp", `memory${MCP_EXT}`);
+  const { command: memCmd, args: memArgs } = mcpRunner(memoryScript);
   servers["memory"] = {
-    command: "node",
-    args: [join(__dirname, "mcp", "memory.js")],
+    command: memCmd,
+    args: memArgs,
     env: {
       CONVEX_URL: process.env.CONVEX_URL ?? "",
       CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -251,9 +292,11 @@ function buildMcpServers(
   };
 
   if (connectors.includes("gmail")) {
+    const script = join(__dirname, "mcp", `gmail${MCP_EXT}`);
+    const { command, args } = mcpRunner(script);
     servers["gmail"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "gmail.js")],
+      command,
+      args,
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -263,9 +306,11 @@ function buildMcpServers(
   }
 
   if (connectors.includes("google-calendar")) {
+    const script = join(__dirname, "mcp", `calendar${MCP_EXT}`);
+    const { command, args } = mcpRunner(script);
     servers["calendar"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "calendar.js")],
+      command,
+      args,
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -275,9 +320,11 @@ function buildMcpServers(
   }
 
   if (connectors.includes("outlook")) {
+    const script = join(__dirname, "mcp", `outlook${MCP_EXT}`);
+    const { command, args } = mcpRunner(script);
     servers["outlook"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "outlook.js")],
+      command,
+      args,
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -290,9 +337,11 @@ function buildMcpServers(
   }
 
   if (connectors.includes("github")) {
+    const script = join(__dirname, "mcp", `github${MCP_EXT}`);
+    const { command, args } = mcpRunner(script);
     servers["github"] = {
-      command: "node",
-      args: [join(__dirname, "mcp", "github.js")],
+      command,
+      args,
       env: {
         CONVEX_URL: process.env.CONVEX_URL ?? "",
         CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY ?? "",
@@ -317,15 +366,36 @@ function extractText(message: unknown): string {
   return "";
 }
 
-function extractToolUses(message: unknown): Array<{ name: string; input: unknown }> {
+function extractToolUses(message: unknown): Array<{ id: string; name: string; input: unknown }> {
   const m = message as { content?: unknown };
   if (!Array.isArray(m.content)) return [];
   return m.content
     .filter((b: unknown) => (b as { type?: string }).type === "tool_use")
     .map((b: unknown) => {
-      const block = b as { name?: string; input?: unknown };
-      return { name: block.name ?? "", input: block.input };
+      const block = b as { id?: string; name?: string; input?: unknown };
+      return { id: block.id ?? "", name: block.name ?? "", input: block.input };
     });
+}
+
+function extractToolResults(message: unknown): Array<{ toolUseId: string; output: string; isError: boolean }> {
+  const m = message as { content?: unknown };
+  if (!Array.isArray(m.content)) return [];
+  return m.content
+    .filter((b: unknown) => (b as { type?: string }).type === "tool_result")
+    .map((b: unknown) => {
+      const block = b as { tool_use_id?: string; content?: unknown; is_error?: boolean };
+      let output = "";
+      if (typeof block.content === "string") {
+        output = block.content;
+      } else if (Array.isArray(block.content)) {
+        output = block.content
+          .filter((c: unknown) => (c as { type?: string }).type === "text")
+          .map((c: unknown) => (c as { text?: string }).text ?? "")
+          .join("");
+      }
+      return { toolUseId: block.tool_use_id ?? "", output, isError: block.is_error ?? false };
+    })
+    .filter((r) => r.toolUseId);
 }
 
 function pruneGeminiChats(): void {
