@@ -87,7 +87,27 @@ npx vitest run src/components/ui/Badge.test.tsx   # Run a single test file
 - Chat panel is full-screen on mobile (`fixed inset-0`), positioned panel on desktop.
 - Avoid `position: fixed` overlays that repaint on scroll.
 
-## V1 Features In Progress
+## Agent Server (`agent-server/`)
+
+Standalone Node.js service that runs AI agents via the Anthropic Agent SDK.
+
+### Auth Detection (`agent-server/src/auth.ts`)
+Priority order: ANTHROPIC_API_KEY → Claude subscription (.credentials.json) → Google Gemini fallback
+- Default Anthropic model: `claude-sonnet-4-5-20250929`
+- Default Gemini model: `gemini-2.5-flash-preview-04-17`
+- `detectAuthMode()` returns `AgentConfig` with mode, model, and API keys
+- `getAgentEnv()` builds env overrides for the Agent SDK
+- `getStatusInfo()` returns human-readable auth status
+
+### Agent Server Commands
+```bash
+cd agent-server
+npm run dev          # Dev server with tsx watch
+npm run build        # Compile TypeScript
+npm test             # Vitest tests (auth detection, etc.)
+```
+
+## V1 Features (Shipped)
 
 ### API Key Onboarding Step
 - Onboarding page uses a `phase` state machine: `"chat" | "setup" | "complete"`
@@ -96,13 +116,13 @@ npx vitest run src/components/ui/Badge.test.tsx   # Run a single test file
 - Model option arrays shared via `src/lib/aiModels.ts` (used by both onboarding and Settings page)
 - Calls `userSettings.upsert()` mutation to persist
 
-### Chat-First Landing
+### Chat-First Landing (Shipped)
 - `convex/dashboard.ts` exports `isEmpty` query (three indexed `.first()` lookups, early bail)
 - `client-layout.tsx` passes `initialChatOpen` prop to DashboardShell when dashboard is empty
 - DashboardShell uses a `chatAutoOpened` ref to prevent re-opening after explicit close
 - ChatPanel empty state shows suggested prompt chips that pre-fill the input
 
-### Weekly AI Digest
+### Weekly AI Digest (Shipped)
 - `convex/ai/weeklyDigest.ts` — `runAll` internalAction (lists users) + `generateForUser` internalAction (calls AI, saves insight)
 - Cron: `weekly-ai-digest` runs Sunday 8:00 UTC via `convex/crons.ts`
 - Uses user's own API key; silently skips users without keys or zero data

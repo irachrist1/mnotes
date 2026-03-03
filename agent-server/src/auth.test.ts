@@ -80,7 +80,7 @@ describe("agent auth detection", () => {
 
     expect(config.mode).toBe("gemini");
     expect(config.googleApiKey).toBe("google-key");
-    expect(config.model).toBe("gemini-3-flash-preview");
+    expect(config.model).toBe("gemini-2.5-flash-preview-04-17");
   });
 
   it("accepts GOOGLE_API_KEY alias for Gemini auth", () => {
@@ -105,7 +105,7 @@ describe("agent auth detection", () => {
     expect(
       getAgentEnv({
         mode: "gemini",
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash-preview-04-17",
         googleApiKey: "google-key",
       })
     ).toEqual({
@@ -149,7 +149,7 @@ describe("agent auth detection", () => {
 
     expect(config.mode).toBe("gemini");
     expect(config.googleApiKey).toBe("google-key");
-    expect(config.model).toBe("gemini-3-flash-preview");
+    expect(config.model).toBe("gemini-2.5-flash-preview-04-17");
   });
 
   it("reports status with Gemini fallback when both providers are configured", () => {

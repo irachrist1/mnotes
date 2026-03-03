@@ -173,6 +173,6 @@ export function getStatusInfo(config: AgentConfig) {
           ? hasGeminiFallback
             ? "Using Anthropic API key with Gemini fallback"
             : "Using Anthropic API key"
-          : "Using Google Gemini 3 Flash",
+          : "Using Google Gemini (fallback)",
   };
 }

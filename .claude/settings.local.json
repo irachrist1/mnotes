@@ -22,7 +22,13 @@
       "WebFetch(domain:intuitionlabs.ai)",
       "WebFetch(domain:docs.anthropic.com)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ls -1 /Users/christiantonny/Documents/Development/mnotes/*.md)",
+      "Bash(node --version)",
+      "Bash(node -e \"import\\(''@anthropic-ai/claude-agent-sdk''\\).then\\(m => console.log\\(''exports:'', Object.keys\\(m\\)\\)\\).catch\\(e => console.error\\(''ERROR:'', e.message\\)\\)\")",
+      "Bash(claude --version)",
+      "Bash(timeout 10 curl -s http://localhost:3001/api/health)",
+      "Bash(node -e \":*)"
     ],
     "deny": [],
     "ask": []
