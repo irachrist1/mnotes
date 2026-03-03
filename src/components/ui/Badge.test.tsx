@@ -15,6 +15,7 @@ describe("Badge", () => {
     expect(badge).toHaveClass("text-stone-700");
   });
 
+
   it("renders all 7 variants", () => {
     const variants = [
       "default",
